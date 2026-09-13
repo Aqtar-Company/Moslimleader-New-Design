@@ -175,6 +175,41 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     return () => window.removeEventListener('tareeq-chime-fallback', onFallback);
   }, []);
 
+  /**
+   * Clear the OS notification tray when the app comes to the front.
+   *
+   * `clearAppBadge()` alone does NOT remove the red count from the launcher icon on
+   * Android. The launcher derives that badge from the app's ACTIVE notifications, so a
+   * push that is still sitting in the shade keeps the number there no matter what the
+   * Badging API says — which is why opening the app and reading everything left the "1"
+   * exactly where it was.
+   *
+   * So on every return to the foreground the app closes its own notifications. Only its
+   * own: `registration.getNotifications()` is scoped to this service worker.
+   */
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const clearTray = async () => {
+      if (document.hidden) return;
+      try {
+        const reg = await navigator.serviceWorker.getRegistration('/tareeq');
+        const shown = await reg?.getNotifications();
+        // A ringing call is the one thing that must survive: closing it would take away
+        // the only way to answer from outside the app.
+        shown?.forEach(n => { if (!n.tag?.startsWith('call-')) n.close(); });
+      } catch { /* unsupported, or no registration yet */ }
+    };
+
+    clearTray();
+    document.addEventListener('visibilitychange', clearTray);
+    window.addEventListener('focus', clearTray);
+    return () => {
+      document.removeEventListener('visibilitychange', clearTray);
+      window.removeEventListener('focus', clearTray);
+    };
+  }, []);
+
   // Update PWA app-icon badge (Badging API)
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('setAppBadge' in navigator)) return;

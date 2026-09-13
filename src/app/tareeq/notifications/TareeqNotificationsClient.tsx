@@ -290,15 +290,39 @@ function Inner() {
 
   useEffect(() => {
     if (!user) return;
-    fetch('/api/tareeq/notifications?limit=50', { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => setNotifs((d.notifications ?? []).filter((n: TareeqNotif) => n.type !== 'message')))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-    // Mark all read
-    fetch('/api/tareeq/notifications', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-      .then(() => refresh())
-      .catch(() => {});
+    let cancelled = false;
+
+    /**
+     * READ THE LIST FIRST, then mark it read. These used to fire in parallel, and whichever
+     * landed first decided what the user saw: when the mark-all-read won the race, the list
+     * came back with every row already `read: true` and nothing was highlighted — so the
+     * page that exists to show you what you missed showed no trace of it.
+     *
+     * The unread styling below is the whole point of the visit, and it can only be drawn
+     * from a snapshot taken BEFORE the rows were marked.
+     */
+    (async () => {
+      try {
+        const res = await fetch('/api/tareeq/notifications?limit=50', { credentials: 'include' });
+        const d = await res.json();
+        if (!cancelled) {
+          setNotifs((d.notifications ?? []).filter((n: TareeqNotif) => n.type !== 'message'));
+        }
+      } catch { /* leave the empty state */ }
+      if (!cancelled) setLoading(false);
+
+      try {
+        await fetch('/api/tareeq/notifications', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        refresh();
+      } catch { /* the badge stays until the next poll */ }
+    })();
+
+    return () => { cancelled = true; };
   }, [user, refresh]);
 
   function handleClick(n: TareeqNotif) {
@@ -347,8 +371,12 @@ function Inner() {
                 onClick={() => handleClick(n)}
                 className="w-full text-start flex items-start gap-3 p-4 rounded-2xl transition"
                 style={{
-                  background: n.read ? 'var(--tr-surface)' : 'var(--tr-raised)',
-                  border: n.read ? '1px solid var(--tr-border-subtle)' : '1px solid var(--tr-gold-dim)',
+                  // Unread has to be obvious at a glance, not a shade apart. `--tr-raised`
+                  // against `--tr-surface` was a difference you had to look for, on the one
+                  // screen whose entire job is showing what you have not seen.
+                  background: n.read ? 'var(--tr-surface)' : 'var(--tr-gold-glow)',
+                  border: n.read ? '1px solid var(--tr-border-subtle)' : '1px solid var(--tr-gold)',
+                  borderInlineStartWidth: n.read ? 1 : 4,
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.read ? 'var(--tr-surface)' : 'var(--tr-raised)'; }}

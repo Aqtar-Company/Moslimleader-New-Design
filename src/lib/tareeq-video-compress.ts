@@ -97,6 +97,27 @@ export async function compressVideo(file: File, onProgress?: Progress): Promise<
       video.onerror = () => reject(new Error('cannot read video'));
     });
 
+    /**
+     * A file recorded by `MediaRecorder` — which includes anything captured in a browser
+     * and re-shared — carries no duration in its header, so the element reports
+     * `Infinity`. Seeking past the end forces the browser to resolve the real length.
+     * Without this, every such file was silently refused and the user was told to compress
+     * it themselves.
+     */
+    if (!isFinite(video.duration)) {
+      await new Promise<void>(resolve => {
+        const onUpdate = () => {
+          video.removeEventListener('timeupdate', onUpdate);
+          resolve();
+        };
+        video.addEventListener('timeupdate', onUpdate);
+        video.currentTime = 1e101;
+        // Never hang on a file that refuses to resolve.
+        setTimeout(() => { video.removeEventListener('timeupdate', onUpdate); resolve(); }, 3000);
+      });
+      video.currentTime = 0;
+    }
+
     if (!video.duration || !isFinite(video.duration) || video.duration > MAX_DURATION_SECONDS) {
       return null;
     }

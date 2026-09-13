@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import TareeqVideo from './TareeqVideo';
 import Link from 'next/link';
 import TareeqTip from '@/components/tareeq/TareeqTip';
 import TareeqShareSheet from '@/components/tareeq/TareeqShareSheet';
@@ -329,7 +330,7 @@ export function SharedOriginalCard({ original, isRtl }: { original: SharedOrigin
       {/* A shared video used to render nothing at all — only imageUrl was drawn. */}
       {original.videoUrl && !original.imageUrl && (
         <div onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
-          <video
+          <TareeqVideo
             src={original.videoUrl}
             poster={original.thumbnailUrl ?? undefined}
             controls
@@ -1544,7 +1545,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
           {post.videoUrl && !hasImage && (
             <div className="mt-3 rounded-2xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
-              <video
+              <TareeqVideo
                 src={post.videoUrl}
                 // The author's cover frame, so the card shows a still instead of a black
                 // rectangle before playback. It was being collected and thrown away.

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import TareeqVideo from '@/components/tareeq/TareeqVideo';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
@@ -1086,7 +1087,7 @@ function Inner({ groupId }: { groupId: string }) {
                           }}>
                           {m.audioUrl && <VoiceGroupMessage url={m.audioUrl} mine={grp.mine} />}
                           {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full max-w-xs rounded-xl object-cover" style={{ maxHeight: 220 }} />}
-                          {m.videoUrl && <video src={m.videoUrl} className="w-full max-w-xs rounded-xl" style={{ maxHeight: 220 }} controls playsInline />}
+                          {m.videoUrl && <TareeqVideo src={m.videoUrl} className="w-full max-w-xs rounded-xl" style={{ maxHeight: 220 }} controls playsInline />}
                           {m.content && (
                             <p className="px-3.5 py-2.5 text-sm leading-relaxed" style={{ wordBreak: 'break-word' }} dir="auto">
                               {m.content}
@@ -1123,7 +1124,7 @@ function Inner({ groupId }: { groupId: string }) {
                 ? <img src={localPreview} alt="" className="w-full h-full object-cover" />
                 : mediaUrl ? (mediaType === 'image'
                     ? <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
-                    : <video src={mediaUrl} className="w-full h-full object-cover" />)
+                    : <TareeqVideo src={mediaUrl} className="w-full h-full object-cover" />)
                   : <div className="w-full h-full" style={{ background: 'var(--tr-overlay)' }} />
               }
               {uploading && (

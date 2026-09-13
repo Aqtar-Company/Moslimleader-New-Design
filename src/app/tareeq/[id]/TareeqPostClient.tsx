@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import TareeqVideo from '@/components/tareeq/TareeqVideo';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -413,7 +414,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
             {/* Uploaded video */}
             {!editing && post.videoUrl && (
               <div className="mt-6 rounded-2xl overflow-hidden bg-black">
-                <video src={post.videoUrl} controls playsInline className="w-full max-h-[60vw] sm:max-h-[500px]" />
+                <TareeqVideo src={post.videoUrl} controls playsInline className="w-full max-h-[60vw] sm:max-h-[500px]" />
               </div>
             )}
 

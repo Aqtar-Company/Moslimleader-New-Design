@@ -115,6 +115,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const msElapsed = Date.now() - new Date(post.createdAt).getTime();
   const canEdit = !!isOwner && (isAdmin || msElapsed < EDIT_WINDOW_MS);
   const minutesLeft = Math.max(0, Math.ceil((EDIT_WINDOW_MS - msElapsed) / 60_000));
+  // Mirrors the PUT route: media posts and shares may have a short or empty caption.
+  const editMinLen = (post.videoUrl || post.imageUrl || post.sharedFromId) ? 0 : 10;
   const editTimeLeft = isAdmin
     ? null
     : minutesLeft >= 60
@@ -125,13 +127,15 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   // read from the URL directly rather than through useSearchParams, which in Next 14
   // needs a Suspense boundary around the page for no benefit here.
   useEffect(() => {
-    if (!canEdit) return;
     try {
-      if (new URLSearchParams(window.location.search).get('edit') === '1') {
-        setEditing(true);
-        // Drop the flag so a refresh does not reopen the editor.
-        window.history.replaceState(null, '', window.location.pathname);
-      }
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('edit') !== '1') return;
+      if (canEdit) setEditing(true);
+      // Drop the flag either way, keeping any other query parameters, so a refresh does
+      // not reopen the editor and an expired link does not sit in the URL forever.
+      params.delete('edit');
+      const rest = params.toString();
+      window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''));
     } catch { /* no URL access — nothing to do */ }
   }, [canEdit]);
   const catKey = post.category as TareeqCategoryKey | null;
@@ -204,7 +208,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   }
 
   async function saveEdit() {
-    if (editContent.trim().length < 10) return;
+    if (editContent.trim().length < editMinLen) return;
     setEditSaving(true);
     const res = await fetch(`/api/tareeq/${post.id}`, {
       method: 'PUT',
@@ -392,6 +396,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
               <div className="space-y-3">
                 <input
                   value={editTitle}
+                  maxLength={120}
                   onChange={e => setEditTitle(e.target.value)}
                   placeholder={isRtl ? 'عنوان (اختياري)' : 'Title (optional)'}
                   className="w-full rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none transition"
@@ -408,7 +413,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 <div className="flex gap-2">
                   <button
                     onClick={saveEdit}
-                    disabled={editSaving || editContent.trim().length < 10}
+                    disabled={editSaving || editContent.trim().length < editMinLen}
                     className="px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40 transition"
                     style={{ background: 'var(--tr-gold)', color: '#fff' }}
                   >

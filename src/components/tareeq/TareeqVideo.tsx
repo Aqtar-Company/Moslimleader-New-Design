@@ -61,7 +61,10 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
         // put on "the video" still lands on the video. Without it a tall portrait clip
         // would size to its intrinsic height and overflow the card; the wrapper's
         // `overflow: hidden` is the second line of defence, not the first.
-        style={{ width: '100%', maxHeight: 'inherit', display: 'block', background: '#000', borderRadius: 'inherit' }}
+        // `height`/`object-fit: inherit` too: the inbox and group attachment tiles pass
+        // `h-full object-cover` and expect the video to FILL a 64px square, not sit in it
+        // at 16:9 with a gap.
+        style={{ width: '100%', height: '100%', maxHeight: 'inherit', objectFit: 'inherit', display: 'block', background: '#000', borderRadius: 'inherit' }}
         onPlay={e => { setPlaying(true); onPlay?.(e); }}
         onPause={e => { setPlaying(false); onPause?.(e); }}
         onEnded={e => { setPlaying(false); onEnded?.(e); }}
@@ -72,21 +75,26 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
         }}
       />
 
-      {!playing && (
+      {/* Only where there are native controls to hand over to. A tile with no `controls`
+          is a thumbnail, not a player: giving it a play button starts a video that can
+          then never be paused. */}
+      {!playing && rest.controls && (
         <>
           {/* One big target. `pointer-events` only on the button itself, so the native
               controls along the bottom stay reachable while the overlay is up. */}
           <button
             type="button"
             onClick={start}
-            aria-label="Play video"
+            aria-label="تشغيل الفيديو — Play video"
             style={{
               position: 'absolute',
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              width: 72,
-              height: 72,
+              // Relative to the box on small players, capped on big ones.
+              width: 'min(72px, 40%)',
+              height: 'min(72px, 40%)',
+              aspectRatio: '1',
               borderRadius: '50%',
               border: '2px solid rgba(255,255,255,0.55)',
               background: 'rgba(0,0,0,0.55)',
@@ -103,14 +111,14 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
           >
             {/* Triangle nudged right by two pixels: an optically centred play glyph sits a
                 little off geometric centre or it looks like it is leaning left. */}
-            <svg width={30} height={30} viewBox="0 0 24 24" fill="currentColor" style={{ marginInlineStart: 3 }} aria-hidden>
+            <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: '42%', height: '42%', marginInlineStart: '4%' }} aria-hidden>
               <path d="M8 5v14l11-7z" />
             </svg>
           </button>
 
           {duration !== null && (
             <span
-              // Bottom corner above the native control bar, and always LTR: "2:19" is a
+              // Top corner, clear of the native control bar, and always LTR: "2:19" is a
               // number, not a sentence, and must not flip in an RTL card.
               dir="ltr"
               style={{

@@ -85,6 +85,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   /** Candidate cover frames pulled from the local file, for "pick a frame". */
   const [frames, setFrames] = useState<string[]>([]);
   const [pickingFrame, setPickingFrame] = useState<number | null>(null);
+  /** A cover (auto or picked) is on its way up. Publish must wait for it. */
+  const [coverUploading, setCoverUploading] = useState(false);
   const framesForFileRef = useRef<File | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   /**
@@ -106,6 +108,19 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   /** Where the compressor mounts its <video>. It has to be ON SCREEN — see the note in
    *  tareeq-video-compress.ts about Android suspending frames for invisible elements. */
   const compressPreviewRef = useRef<HTMLDivElement | null>(null);
+  /** Which re-encoder is running — the UI for the two is different (see the preview box). */
+  const [compressMode, setCompressMode] = useState<'fast' | 'realtime' | null>(null);
+  /** Cancels a running WebCodecs conversion when the composer closes. */
+  const abortRef = useRef<AbortController | null>(null);
+  /** Set on unmount; a compression that finishes afterwards must NOT upload its result. */
+  const closedRef = useRef(false);
+  useEffect(() => {
+    closedRef.current = false;
+    return () => {
+      closedRef.current = true;
+      abortRef.current?.abort();
+    };
+  }, []);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadFileSize, setUploadFileSize] = useState(0);
@@ -243,7 +258,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       }
     }, 1500);
     return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
-  }, [content, category, mediaUrl, mediaType, extraImages]);
+  }, [content, title, category, mediaUrl, mediaType, extraImages, customThumbUrl, autoThumbUrl]);
 
   // On unmount: revoke all object URLs + save draft immediately
   useEffect(() => {
@@ -327,8 +342,11 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   useEffect(() => {
     if (mediaType !== 'video' || !mediaUrl || !videoThumb || customThumbUrl || autoThumbUrl) return;
     let cancelled = false;
-    void uploadCoverDataUrl(videoThumb).then(url => { if (!cancelled && url) setAutoThumbUrl(url); });
-    return () => { cancelled = true; };
+    setCoverUploading(true);
+    void uploadCoverDataUrl(videoThumb)
+      .then(url => { if (!cancelled && url) setAutoThumbUrl(url); })
+      .finally(() => { if (!cancelled) setCoverUploading(false); });
+    return () => { cancelled = true; setCoverUploading(false); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaType, mediaUrl, videoThumb, customThumbUrl, autoThumbUrl]);
 
@@ -393,6 +411,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     // It runs in real time (see tareeq-video-compress.ts), so the progress bar is not
     // decoration: without it a three-minute video looks like a frozen app.
     let failReason: CompressFailure | null = null;
+    // Hoisted so the diagnostic line in the failure message can name it: two encoders can
+    // now fail in sequence, and the second used to erase the first without a trace.
+    let webcodecsReason: CompressFailure | null = null;
 
     /**
      * Re-encode for COMPATIBILITY, not only for size.
@@ -434,15 +455,6 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       setUploadProgress(0);
       setError('');
       try {
-        // One frame, so React has actually mounted the preview box above. Handing over a
-        // ref that is still null would put the <video> back off-screen — the exact
-        // condition this whole change exists to avoid.
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
-        // A second frame if the ref is STILL null — a slow device can miss the first one,
-        // and silently compressing off-screen is the frozen-picture bug coming back.
-        if (!compressPreviewRef.current) {
-          await new Promise(r => setTimeout(r, 120));
-        }
         // ONLY when the codec is the reason we are here. If the file is also over the cap,
         // allowing a bigger output just produces something the size check refuses two
         // lines later, and tells the user we made their file bigger.
@@ -457,19 +469,38 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
          * old path might not share.
          */
         let smaller: File | null = null;
-        let webcodecsReason: CompressFailure | null = null;
         if (canTranscodeWithWebCodecs()) {
+          setCompressMode('fast');
+          abortRef.current = new AbortController();
           smaller = await transcodeVideo(
             file,
             pct => setUploadProgress(pct),
-            reason => { webcodecsReason = reason; },
-            { acceptLarger },
+            (reason, detail) => {
+              webcodecsReason = reason;
+              // The only record of WHY. Nothing else keeps it, and the fallback's own
+              // failure would otherwise overwrite it in the message the user sees.
+              console.warn('[tareeq] webcodecs transcode failed:', reason, detail ?? '');
+            },
+            { acceptLarger, signal: abortRef.current.signal },
           );
+          abortRef.current = null;
+        }
+        // The composer was closed while this ran. Stop here — do not fall back to a
+        // two-minute real-time encode, and above all do not upload anything.
+        if (closedRef.current || webcodecsReason === 'canceled') {
+          setUploading(false);
+          return;
         }
         // Reasons that are about the FILE, not about this browser's WebCodecs, will not
         // change on the slower path — do not make the user sit through it for the same answer.
         const finalForFile = webcodecsReason === 'too-long' || webcodecsReason === 'not-smaller';
         if (!smaller && !finalForFile && canCompressVideo()) {
+          setCompressMode('realtime');
+          // One frame, so React has actually mounted the preview box. Handing over a ref
+          // that is still null would put the <video> back off-screen — on Android that is
+          // the frozen-picture bug coming back. A second wait if it is STILL null.
+          await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+          if (!compressPreviewRef.current) await new Promise(r => setTimeout(r, 120));
           smaller = await compressVideo(
             file,
             pct => setUploadProgress(pct),
@@ -490,6 +521,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         /* fall through to the size check below */
       } finally {
         setCompressing(false);
+        setCompressMode(null);
         setUploadProgress(0);
       }
     }
@@ -533,8 +565,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         // branch a failure came from; the message that reports the failure is the cheapest
         // possible place to put the answer.
         const sizes = isRtl
-          ? `(الملف ${mb(file.size)} ميجا، الحد ${mb(cap)} ميجا، الترميز ${detectedCodec}${compatTranscode ? '، اتحوّل بسبب الترميز' : ''})`
-          : `(file ${mb(file.size)} MB, limit ${mb(cap)} MB, codec ${detectedCodec}${compatTranscode ? ', re-encoded for codec' : ''})`;
+          ? `(الملف ${mb(file.size)} ميجا، الحد ${mb(cap)} ميجا، الترميز ${detectedCodec}${compatTranscode ? '، اتحوّل بسبب الترميز' : ''}${webcodecsReason ? `، webcodecs: ${webcodecsReason}` : ''})`
+          : `(file ${mb(file.size)} MB, limit ${mb(cap)} MB, codec ${detectedCodec}${compatTranscode ? ', re-encoded for codec' : ''}${webcodecsReason ? `, webcodecs: ${webcodecsReason}` : ''})`;
 
         let msg: string;
         if (tried) {
@@ -569,6 +601,13 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         setError(msg);
         return;
       }
+    }
+
+    // Closed during compression: the result belongs to nobody. Uploading it would leave an
+    // orphan in storage and spend one of the user's twenty hourly upload slots.
+    if (closedRef.current) {
+      setUploading(false);
+      return;
     }
 
     file = workingFile;
@@ -648,6 +687,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setMainUploadFailed(false);
     setAutoThumbUrl(null);
     setFrames([]);
+    setPickingFrame(null);
+    setCoverUploading(false);
     framesForFileRef.current = null;
     // The previous file's error stayed on screen through the whole codec scan of the new
     // one, describing a file the user had already replaced.
@@ -658,7 +699,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     if (file.type.startsWith('image/')) {
       setLocalPreview(URL.createObjectURL(file));
     } else if (file.type.startsWith('video/')) {
-      generateVideoThumb(file).then(t => { if (t) setVideoThumb(t); });
+      // Guarded: pick A then quickly pick B, and A's frame used to arrive after B's reset
+      // and become B's poster — and, now that the poster is uploaded as the default cover,
+      // B's stored cover.
+      generateVideoThumb(file).then(t => { if (t && lastMediaFileRef.current === file) setVideoThumb(t); });
     }
     await doUpload(file);
     e.target.value = '';
@@ -684,6 +728,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setError('');
     setAutoThumbUrl(null);
     setFrames([]);
+    setPickingFrame(null);
+    setCoverUploading(false);
     framesForFileRef.current = null;
     setCompatNotice(false);
     setQualityNotice(null);
@@ -873,7 +919,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   // Exclude failed items — url stays null for a failed upload (only `failed:true` marks
   // it), so without this filter one flaky thumbnail permanently disabled Publish.
   const extraUploading = extraImages.some(e => e.url === null && !e.failed);
-  const canPublish = !loading && !uploading && !extraUploading && !thumbUploading && !mainUploadFailed && !!(mediaUrl || content.trim());
+  // `coverUploading` included: without it Publish lit up the instant the video finished,
+  // while the default cover was still uploading — and the post went out with no cover,
+  // the exact hole the auto-cover exists to close.
+  const canPublish = !loading && !uploading && !extraUploading && !thumbUploading && !coverUploading && !mainUploadFailed && !!(mediaUrl || content.trim());
   // A draft has nothing to wait for that publishing doesn't, so it shares the gate.
   const canDraft = canPublish;
   const catObj = category ? TAREEQ_CATEGORIES[category] : null;
@@ -1269,7 +1318,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                         <video> here, and Android only keeps decoding frames while the
                         element is actually visible. Seeing it move is also the clearest
                         possible signal that the work is progressing. */}
-                    {compressing && (
+                    {compressing && compressMode === 'realtime' && (
                       <div
                         ref={compressPreviewRef}
                         style={{
@@ -1284,9 +1333,13 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                     )}
                     {compressing && (
                       <span className="text-[11px] text-center" style={{ color: 'var(--tr-gold-bright)' }}>
-                        {isRtl
-                          ? 'جاري ضغط الفيديو — يستغرق مدة الفيديو نفسها. لا تغلق الصفحة.'
-                          : 'Compressing — this takes as long as the video itself. Keep this screen open.'}
+                        {compressMode === 'realtime'
+                          ? (isRtl
+                            ? 'جاري ضغط الفيديو — يستغرق مدة الفيديو نفسها. لا تغلق الصفحة.'
+                            : 'Compressing — this takes as long as the video itself. Keep this screen open.')
+                          : (isRtl
+                            ? 'جاري ضغط الفيديو — ثوانٍ لا دقائق. سيب الصفحة مفتوحة لحد ما يخلص.'
+                            : 'Compressing — seconds, not minutes. Keep this screen open until it finishes.')}
                       </span>
                     )}
                     {/* Linear progress bar */}
@@ -1530,10 +1583,18 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                         type="button"
                         disabled={pickingFrame !== null || thumbUploading}
                         onClick={async () => {
+                          const forFile = lastMediaFileRef.current;
                           setPickingFrame(i);
+                          setCoverUploading(true);
                           const url = await uploadCoverDataUrl(f);
-                          if (url) setCustomThumbUrl(url);
+                          // The user may have swapped or removed the video meanwhile — a
+                          // cover for the OLD file must not attach to the new one.
+                          if (lastMediaFileRef.current === forFile) {
+                            if (url) setCustomThumbUrl(url);
+                            else setError(isRtl ? 'تعذّر رفع الغلاف، حاول تاني' : 'Could not upload the cover — try again');
+                          }
                           setPickingFrame(null);
+                          setCoverUploading(false);
                         }}
                         className="relative shrink-0 rounded-lg overflow-hidden transition active:scale-95 disabled:opacity-70"
                         style={{ width: 96, height: 54, border: '2px solid var(--tr-border-soft)', background: '#000' }}

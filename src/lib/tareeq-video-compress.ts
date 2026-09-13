@@ -210,6 +210,7 @@ export type CompressFailure =
   | 'no-motion'
   | 'stalled'
   | 'truncated'
+  | 'canceled'
   | 'not-smaller'
   | 'error';
 

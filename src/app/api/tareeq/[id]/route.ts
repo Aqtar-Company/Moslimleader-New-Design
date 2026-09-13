@@ -74,7 +74,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
   }
 
-  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true, createdAt: true } });
+  const post = await prisma.tareeqPost.findUnique({
+    where: { id: params.id },
+    select: { userId: true, createdAt: true, videoUrl: true, imageUrl: true, sharedFromId: true },
+  });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   if (post.userId !== user.userId) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
@@ -101,7 +104,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const rawCategory = body.category === undefined ? undefined : String(body.category ?? '').trim();
   const category = rawCategory === undefined ? undefined : (rawCategory ? (CATEGORY_KEY[rawCategory] ?? null) : null);
 
-  if (content.length < 10) return NextResponse.json({ error: 'اكتب أكثر' }, { status: 400 });
+  // Same rule as the create route: a post that carries media, or is a share, may have a
+  // short caption or none. Requiring ten characters here — while create required none —
+  // made every video post with a short caption, and every share, impossible to edit; the
+  // author saw a greyed Save button with no explanation.
+  const hasMediaOrShare = !!(post.videoUrl || post.imageUrl || post.sharedFromId);
+  if (content.length < (hasMediaOrShare ? 0 : 10)) return NextResponse.json({ error: 'اكتب أكثر' }, { status: 400 });
   if (content.length > 5000) return NextResponse.json({ error: 'النص طويل جداً' }, { status: 400 });
 
   // The create route runs edited text through the same content filter — an

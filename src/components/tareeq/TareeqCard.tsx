@@ -1176,7 +1176,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
 {showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
-        {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
+        {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
         {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
       </>
@@ -1375,7 +1375,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
 {showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
-        {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
+        {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
         {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
       </>
@@ -1637,7 +1637,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
 {showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
-      {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
+      {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
       {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
     </>
@@ -1739,11 +1739,22 @@ function ReactorsModal({ postId, isRtl, onClose }: { postId: string; isRtl: bool
 }
 
 /* ── Options sheet ────────────────────────────────────────────────── */
-function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, onClose }: {
+/**
+ * Mirrors the PUT route: 24 hours for the author, no limit for an admin. Offering "Edit"
+ * past that opened the post page and silently did nothing.
+ */
+function canEditPost(createdAt: string, user: { id: string; role?: string | null } | null | undefined, postUserId: string | null | undefined): boolean {
+  if (!user || !postUserId || user.id !== postUserId) return false;
+  if (user.role === 'admin') return true;
+  return Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
+}
+
+function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onDeleted, onClose }: {
   isRtl: boolean;
   postId: string;
   postUserId: string;
   isOwn: boolean;
+  canEdit: boolean;
   onReport: () => void;
   onDeleted: () => void;
   onClose: () => void;
@@ -1894,6 +1905,7 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
                   and the sheet only ever offered delete — the only way to edit was a small
                   grey link on the post page that most people never found. The editor lives
                   on the post page; `?edit=1` opens it directly. */}
+              {canEdit && (
               <button
                 onClick={() => { onClose(); router.push(`/tareeq/${postId}?edit=1`); }}
                 className={row}
@@ -1904,6 +1916,7 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
                 </svg>
                 <span className="font-semibold text-sm">{isRtl ? 'تعديل المنشور' : 'Edit post'}</span>
               </button>
+              )}
               <button
                 onClick={() => setConfirmDelete(true)}
                 className={row}

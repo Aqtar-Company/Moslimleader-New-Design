@@ -8,6 +8,7 @@ export const QUEUE_KEY = 'tareeq-post-queue';
 interface QueuedPost {
   id: string;
   content: string;
+  title?: string | null;
   category: string | null;
   imageUrl: string | null;
   // The composer writes all of these; the replay used to send only content/category/
@@ -75,7 +76,7 @@ export default function TareeqQueueBanner() {
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
-            content: post.content, category: post.category,
+            content: post.content, title: post.title ?? undefined, category: post.category,
             imageUrl: post.imageUrl, imageUrls: post.imageUrls ?? undefined,
             videoUrl: post.videoUrl, thumbnailUrl: post.thumbnailUrl ?? undefined,
             seriesTitle: post.seriesTitle ?? undefined,

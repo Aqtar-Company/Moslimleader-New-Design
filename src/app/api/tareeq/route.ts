@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const content = String(body.content ?? '').trim();
-  const title = String(body.title ?? '').trim() || null;
+  const title = String(body.title ?? '').trim().slice(0, 120) || null;
   const summary = String(body.summary ?? '').trim() || null;
 
   // Normalize category to canonical English key

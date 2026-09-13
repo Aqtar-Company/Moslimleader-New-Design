@@ -63,7 +63,15 @@ export async function transcodeVideo(
   file: File,
   onProgress?: TranscodeProgress,
   onFailure?: (reason: CompressFailure, detail?: string) => void,
-  opts?: { acceptLarger?: boolean },
+  opts?: {
+    acceptLarger?: boolean;
+    /**
+     * Aborting cancels the conversion. Without it, closing the composer left the encode
+     * running to completion — WebCodecs, unlike a detached <video>, does not stall — and
+     * the finished file was then uploaded to a post that no longer existed.
+     */
+    signal?: AbortSignal;
+  },
 ): Promise<File | null> {
   const fail = (reason: CompressFailure, detail?: string): null => {
     onFailure?.(reason, detail);
@@ -167,15 +175,30 @@ export async function transcodeVideo(
       showWarnings: false,
     });
 
+    const reasons = conversion.discardedTracks.map(d => `${d.track.type}:${d.reason}`).join(',');
     if (!conversion.isValid) {
       // Map mediabunny's reasons onto the union the UI already has Arabic strings for.
-      const reasons = conversion.discardedTracks.map(d => `${d.track.type}:${d.reason}`).join(',');
       const videoReason = conversion.discardedTracks.find(d => d.track.type === 'video')?.reason;
       if (videoReason === 'undecodable_source_codec' || videoReason === 'unknown_source_codec') {
         return fail('no-video-track', reasons);
       }
       return fail('unsupported-browser', reasons);
     }
+
+    /**
+     * A video-only output is "valid" to the muxer — MP4 and WebM both allow zero audio
+     * tracks — so a source WITH audio whose track could not be carried (AAC into WebM on a
+     * browser with no AAC decoder or no Opus encoder) would come out SILENT, and nothing
+     * would have said so. Refuse instead: the MediaRecorder fallback captures the element's
+     * audio directly and does not have this hole.
+     */
+    const audioIn = await input.getPrimaryAudioTrack();
+    if (audioIn && conversion.discardedTracks.some(d => d.track.type === 'audio')) {
+      return fail('unsupported-browser', `audio dropped: ${reasons}`);
+    }
+
+    if (opts?.signal?.aborted) return fail('canceled', 'aborted before start');
+    opts?.signal?.addEventListener('abort', () => { void conversion.cancel(); }, { once: true });
 
     let lastPct = -1;
     conversion.onProgress = (p: number) => {
@@ -199,6 +222,7 @@ export async function transcodeVideo(
     return new File([buffer], `${base}.${ext}`, { type });
   } catch (e) {
     const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    if (e instanceof mb.ConversionCanceledError) return fail('canceled', 'canceled');
     // An input the demuxer does not recognise, as opposed to one it cannot decode.
     if (e instanceof mb.UnsupportedInputFormatError) return fail('unreadable', msg);
     return fail('error', msg);

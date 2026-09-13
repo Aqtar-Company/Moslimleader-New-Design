@@ -6,6 +6,7 @@ import { LanguageProvider } from '@/context/LanguageContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { RegionalPricingProvider } from '@/context/RegionalPricingContext';
 import Header from '@/components/layout/Header';
+import DeployReloadGuard from '@/components/DeployReloadGuard';
 import Footer from '@/components/layout/Footer';
 import AmeenChat from '@/components/AmeenChat';
 import WhatsAppButton from '@/components/WhatsAppButton';
@@ -76,6 +77,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Cairo:wght@400;600;700;900&family=Inter:wght@400;600;700;900&family=Noto+Sans+Arabic:wght@400;600;700;900&display=swap" rel="stylesheet" />
       </head>
       <body>
+        {/* Outside every provider on purpose: it must still work when a provider's own
+            chunk is the one that failed to load. */}
+        <DeployReloadGuard />
         <LanguageProvider>
           <AuthProvider>
             <RegionalPricingProvider>

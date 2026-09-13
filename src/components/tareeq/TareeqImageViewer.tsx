@@ -20,7 +20,15 @@ import { createPortal } from 'react-dom';
  *  - Portalled to `document.body` and `position: fixed` with no padding or max-width, so
  *    no rounded, clipping or transformed ancestor can contain it — which is what happens
  *    when a viewer is rendered inside the card it was opened from.
+ *  - Above EVERYTHING. The first version sat at z-index 300 and opened *behind* the post
+ *    sheet that launched it: that sheet is at 9998/9999 and other overlays in Tareeq go to
+ *    10000. Being portalled is not enough on its own — a sibling of `body` with a lower
+ *    z-index still loses. This is deliberately the highest number in the app, because a
+ *    viewer that opens behind the thing you opened it from is worse than no viewer.
  */
+
+/** Higher than every other overlay in Tareeq (sheets 9998–9999, menus 10000). */
+const VIEWER_Z = 100000;
 export default function TareeqImageViewer({
   src,
   alt,
@@ -55,7 +63,7 @@ export default function TareeqImageViewer({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 300,
+        zIndex: VIEWER_Z,
         background: '#000',
         overflow: 'auto',
         WebkitOverflowScrolling: 'touch',
@@ -71,7 +79,7 @@ export default function TareeqImageViewer({
           position: 'fixed',
           top: 'max(14px, env(safe-area-inset-top))',
           insetInlineEnd: 14,
-          zIndex: 301,
+          zIndex: VIEWER_Z + 1,
           width: 40,
           height: 40,
           borderRadius: '50%',

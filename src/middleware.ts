@@ -63,7 +63,10 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // '/tareeq/:id' is one segment only: post permalinks, for the crawler rewrite above. GET
-  // requests from ordinary browsers fall straight through to the page.
-  matcher: ['/', '/api/:path*', '/tareeq/:id'],
+  // NOT '/tareeq/:id'. Next 14 compiled that single, unmodified param to a regexp matching
+  // bare `/tareeq` only (see .next/server/middleware-manifest.json after a build) — the
+  // middleware never ran for a permalink and the crawler rewrite silently did nothing on
+  // the live site. `:path*` compiles correctly; the cuid test in POST_PATH is what limits
+  // the rewrite to permalinks. Ordinary GETs on the other /tareeq pages cost one regexp.
+  matcher: ['/', '/api/:path*', '/tareeq/:path*'],
 };

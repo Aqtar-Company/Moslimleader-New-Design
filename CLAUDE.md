@@ -497,6 +497,23 @@ Books are protected from download at two levels:
     (`hvc1`/`hev1`/`dvh1`/`dvhe`, scanning both ends because `moov` can be at either).
     Such files are re-encoded **regardless of size**, with `acceptLarger` set, because HEVC
     is the more efficient codec and the re-encode usually comes out bigger.
+- **Link previews (WhatsApp/Facebook/Telegram…) for طريق posts are served by a dedicated
+  route, not the page.** `src/middleware.ts` REWRITES requests whose User-Agent matches
+  `UNFURL_BOT` for `/tareeq/<cuid>` to `src/app/tareeq/[id]/preview/route.ts` — ~2 KB of
+  og:/twitter: tags, one indexed query, answers in ~50 ms (the full page is ~50 KB and
+  WhatsApp's crawler gave up on it and showed only the domain). Verified live:
+  `curl -A "WhatsApp/2" https://moslimleader.com/tareeq/<id> -D -` → `x-tareeq-preview: hit`.
+  Three things to know:
+  - **Matcher trap:** `'/tareeq/:id'` compiled (Next 14.2) to a regexp matching bare
+    `/tareeq` only — the param was dropped and the middleware never ran for permalinks.
+    Use `'/tareeq/:path*'` and filter with `POST_PATH` in code. Check
+    `.next/server/middleware-manifest.json` after any matcher change.
+  - A preview miss (post not found / query error) answers **302 to the page with `?_np=1`**;
+    the middleware skips the rewrite when `_np` is present (no loop). Drafts/hidden → 404.
+    Header `X-Tareeq-Preview: hit | miss:<reason>:id=…` is the diagnostic.
+  - The preview is cached 5 min (`max-age=300`); the tags must stay in step with
+    `generateMetadata` in `src/app/tareeq/[id]/page.tsx` (title rule, media choice, guards).
+    WhatsApp also caches a preview per URL on the device — test with a fresh link or `?v=2`.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

@@ -42,25 +42,48 @@ function cutAtWord(text: string, max: number): string {
   return (lastSpace > max * 0.5 ? head.slice(0, lastSpace) : head).trimEnd() + '…';
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  // Belt and braces: `params` comes from the route match of the REWRITTEN URL. Should it
+  // ever come through empty, the id is still in the path.
+  const id = params?.id || req.nextUrl.pathname.split('/').filter(Boolean)[1] || '';
+
+  // An object, not a `let`: TypeScript cannot see an assignment made inside the .catch
+  // callback and would narrow a plain variable to `null` for the rest of the function.
+  const failure: { msg: string | null } = { msg: null };
   const post = await prisma.tareeqPost
     .findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         title: true, content: true, authorName: true,
         imageUrl: true, thumbnailUrl: true, videoUrl: true,
         isDraft: true, isHidden: true,
       },
     })
-    .catch(() => null);
+    .catch((e: unknown) => {
+      failure.msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      return null;
+    });
 
-  const pageUrl = `${SITE}/tareeq/${params.id}`;
+  const pageUrl = `${SITE}/tareeq/${id}`;
 
   // Same guard as the page: a draft or a moderated post describes nothing to a scraper.
   if (!post || post.isDraft || post.isHidden) {
+    // Says WHY, in a header a curl can read. The first live test of this route answered
+    // 404 for a post that the page itself served fine, and a bare 404 cannot be debugged.
+    const queryError = failure.msg;
+    const reason = queryError ? 'error' : !post ? 'not-found' : post.isDraft ? 'draft' : 'hidden';
+    if (queryError) console.error('[tareeq preview] query failed for', id, queryError);
     return new NextResponse(
       `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>طريق — مسلم ليدر</title><meta property="og:title" content="طريق — مسلم ليدر"><meta property="og:url" content="${esc(pageUrl)}"><meta http-equiv="refresh" content="0;url=${esc(pageUrl)}"></head><body></body></html>`,
-      { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } },
+      {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Robots-Tag': 'noindex',
+          'X-Tareeq-Preview': `miss:${reason}:id=${id.slice(0, 40)}${queryError ? `:${queryError.slice(0, 120).replace(/[^\x20-\x7e]/g, '?')}` : ''}`,
+        },
+      },
     );
   }
 
@@ -69,7 +92,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const media = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null);
   // og:image must be absolute or crawlers drop it. Falls back to the generated card route
   // for a text-only post — that one is slow, but it is the same fallback the page uses.
-  const image = media ? new URL(media, SITE).toString() : `${SITE}/tareeq/${params.id}/opengraph-image`;
+  const image = media ? new URL(media, SITE).toString() : `${SITE}/tareeq/${id}/opengraph-image`;
   const isVideo = !!post.videoUrl;
 
   const html = `<!doctype html>
@@ -106,6 +129,7 @@ ${post.authorName ? `<meta property="article:author" content="${esc(post.authorN
       // five minutes, and an edit to the title shows up within the same window.
       'Cache-Control': 'public, max-age=300, s-maxage=300',
       'X-Robots-Tag': 'noindex',
+      'X-Tareeq-Preview': 'hit',
     },
   });
 }

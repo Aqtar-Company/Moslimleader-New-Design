@@ -36,7 +36,9 @@ export async function middleware(req: NextRequest) {
   // Crawlers asking for a post get the lightweight preview document instead — a REWRITE,
   // so the URL they display and share stays the canonical post URL. See
   // src/app/tareeq/[id]/preview/route.ts.
-  if (req.method === 'GET' || req.method === 'HEAD') {
+  // `_np=1` is set by the preview route when it sends a crawler on to the full page; without
+  // this exception that redirect would be rewritten straight back to the preview — a loop.
+  if ((req.method === 'GET' || req.method === 'HEAD') && !req.nextUrl.searchParams.has('_np')) {
     const m = POST_PATH.exec(pathname);
     if (m && UNFURL_BOT.test(req.headers.get('user-agent') ?? '')) {
       const url = req.nextUrl.clone();

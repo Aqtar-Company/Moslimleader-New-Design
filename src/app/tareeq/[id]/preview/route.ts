@@ -73,6 +73,23 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const queryError = failure.msg;
     const reason = queryError ? 'error' : !post ? 'not-found' : post.isDraft ? 'draft' : 'hidden';
     if (queryError) console.error('[tareeq preview] query failed for', id, queryError);
+
+    /**
+     * Not found, or the query failed: send the crawler to the FULL page instead of an
+     * empty document. The full page is known to answer in 0.2s with correct tags, so it is
+     * a good preview — and "the preview route could not find a post the page can serve" is
+     * a bug in this route, which must never become a worse share than having no route.
+     * `_np=1` tells the middleware not to rewrite the redirected request back here.
+     * Drafts and hidden posts are the one exception: the page 404s them too.
+     */
+    if (reason === 'not-found' || reason === 'error') {
+      const target = new URL(pageUrl);
+      target.searchParams.set('_np', '1');
+      return NextResponse.redirect(target.toString(), {
+        status: 302,
+        headers: { 'Cache-Control': 'no-store', 'X-Tareeq-Preview': `miss:${reason}:id=${id.slice(0, 40)}${queryError ? `:${queryError.slice(0, 120).replace(/[^\x20-\x7e]/g, '?')}` : ''}` },
+      });
+    }
     return new NextResponse(
       `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>طريق — مسلم ليدر</title><meta property="og:title" content="طريق — مسلم ليدر"><meta property="og:url" content="${esc(pageUrl)}"><meta http-equiv="refresh" content="0;url=${esc(pageUrl)}"></head><body></body></html>`,
       {

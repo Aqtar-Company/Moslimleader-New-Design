@@ -52,7 +52,12 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
   return (
     // Sized by the caller's `style`/`className` exactly as the bare element was, so no
     // existing layout moves. The overlay is absolutely positioned inside.
-    <div className={className} style={{ position: 'relative', display: 'block', lineHeight: 0, overflow: 'hidden', ...style }}>
+    <div className={`tr-video${className ? ` ${className}` : ''}`} style={{ position: 'relative', display: 'block', lineHeight: 0, overflow: 'hidden', ...style }}>
+      {/* iOS Safari paints its own large play glyph in the centre of a paused video with
+          controls — on top of ours, so the phone showed two. Desktop browsers do not. The
+          WebKit pseudo-element is the only handle on it; hiding it leaves one button, ours,
+          on every device. Tapping the video itself still starts playback. */}
+      <style>{`.tr-video video::-webkit-media-controls-start-playback-button{display:none!important;-webkit-appearance:none}`}</style>
       <video
         ref={ref}
         {...rest}

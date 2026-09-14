@@ -511,6 +511,9 @@ Books are protected from download at two levels:
   - A preview miss (post not found / query error) answers **302 to the page with `?_np=1`**;
     the middleware skips the rewrite when `_np` is present (no loop). Drafts/hidden → 404.
     Header `X-Tareeq-Preview: hit | miss:<reason>:id=…` is the diagnostic.
+  - **No `<meta http-equiv="refresh">` in the preview.** WhatsApp ignores it; Facebook's
+    scraper follows it as a redirect → back to the canonical URL → rewritten to the preview
+    again → loop, and the share dialog hangs on "Posting". Body carries a plain link instead.
   - The preview is cached 5 min (`max-age=300`); the tags must stay in step with
     `generateMetadata` in `src/app/tareeq/[id]/page.tsx` (title rule, media choice, guards).
     WhatsApp also caches a preview per URL on the device — test with a fresh link or `?v=2`.

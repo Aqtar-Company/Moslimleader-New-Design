@@ -20,8 +20,11 @@ import { prisma } from '@/lib/prisma';
  * back is a few hundred bytes of HTML that answers in milliseconds: one indexed query, no
  * session, no comments, no client bundle.
  *
- * A human who somehow lands here (a crawler UA in a browser) is sent on to the real page
- * by the `<meta http-equiv="refresh">`; crawlers ignore that tag.
+ * NO `<meta http-equiv="refresh">` in this document. WhatsApp ignores that tag, but
+ * Facebook's scraper FOLLOWS it as a redirect: back to the canonical URL, which the
+ * middleware rewrites here again, which refreshes again — a loop, and the share dialog
+ * sat on "Posting" forever. A human with a crawler UA is not a case worth a redirect; the
+ * body carries a plain link to the post instead.
  *
  * Keep the tags here in step with `generateMetadata` in `../page.tsx`: same title rule,
  * same media choice (image, else the video's cover), same draft/hidden guard.
@@ -91,7 +94,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       });
     }
     return new NextResponse(
-      `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>طريق — مسلم ليدر</title><meta property="og:title" content="طريق — مسلم ليدر"><meta property="og:url" content="${esc(pageUrl)}"><meta http-equiv="refresh" content="0;url=${esc(pageUrl)}"></head><body></body></html>`,
+      `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>طريق — مسلم ليدر</title><meta property="og:title" content="طريق — مسلم ليدر"><meta property="og:url" content="${esc(pageUrl)}"></head><body><a href="${esc(pageUrl)}">طريق</a></body></html>`,
       {
         status: 404,
         headers: {
@@ -133,7 +136,6 @@ ${post.authorName ? `<meta property="article:author" content="${esc(post.authorN
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(description)}">
 <meta name="twitter:image" content="${esc(image)}">
-<meta http-equiv="refresh" content="0;url=${esc(pageUrl)}">
 </head>
 <body><a href="${esc(pageUrl)}">${esc(title)}</a></body>
 </html>`;

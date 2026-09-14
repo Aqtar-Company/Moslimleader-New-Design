@@ -1238,18 +1238,37 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             {/* Name + Textarea */}
             <div className="flex-1 min-w-0 pt-1">
               <p className="text-sm font-bold mb-2" style={{ color: 'var(--tr-text-primary)' }}>{user?.name}</p>
-              <input
-                type="text"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                maxLength={120}
-                placeholder={mediaType === 'video' || pickedKind === 'video'
-                  ? (isRtl ? 'عنوان الفيديو (اختياري)' : 'Video title (optional)')
-                  : (isRtl ? 'عنوان (اختياري)' : 'Title (optional)')}
-                className="w-full text-[15px] font-extrabold outline-none bg-transparent mb-1.5"
-                style={{ color: 'var(--tr-text-primary)' }}
-                dir="auto"
-              />
+              {/* A real field, not a bare bold line. The first version was an unbordered
+                  input with a grey placeholder above the caption, and the author published a
+                  video without noticing it was there. */}
+              {(() => {
+                const forVideo = mediaType === 'video' || pickedKind === 'video';
+                return (
+                  <label className="block mb-2.5">
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold mb-1" style={{ color: forVideo ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+                      <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" d="M4 6h16M4 12h10M4 18h7" /></svg>
+                      {forVideo ? (isRtl ? 'عنوان الفيديو' : 'Video title') : (isRtl ? 'العنوان' : 'Title')}
+                      <span className="font-medium" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? '(اختياري — يظهر في الفيد وعند المشاركة)' : '(optional — shown in the feed and when shared)'}</span>
+                    </span>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={e => setTitle(e.target.value)}
+                      maxLength={120}
+                      placeholder={forVideo
+                        ? (isRtl ? 'مثال: أغنية خطوة بخطوة — وسام القائد' : 'e.g. Step by Step — Leader Medal')
+                        : (isRtl ? 'عنوان قصير للمنشور' : 'A short title for the post')}
+                      className="w-full text-[15px] font-extrabold outline-none rounded-xl px-3 py-2"
+                      style={{
+                        color: 'var(--tr-text-primary)',
+                        background: 'var(--tr-raised)',
+                        border: `1.5px solid ${forVideo && !title.trim() ? 'var(--tr-gold-dim)' : 'var(--tr-border-soft)'}`,
+                      }}
+                      dir="auto"
+                    />
+                  </label>
+                );
+              })()}
               <textarea
                 ref={textareaRef}
                 value={content}

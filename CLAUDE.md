@@ -365,6 +365,25 @@ systemctl start nginx
 ```
 > لا تستخدم `certbot renew` بدون إيقاف ليتسبيد أولاً — سيفشل لأنه يحاول يعيد تشغيل نجينكس بينما ليتسبيد شايل المنفذ.
 
+### السيرفر عمل ريبوت والمواقع كلها مش بتفتح (حصل 2026-09-15)
+
+سببان اتجمعوا في نفس الوقت، وكل واحد لازم يتفحص لوحده:
+
+1. **`.next/BUILD_ID` مش موجود → PM2 في crash-loop.** بيلد اتقطع (الترمينال قفل في نص
+   `npm run build`) فمجلد `.next` كان ناقص. بعد الريبوت PM2 حاول يشغّل `next start` فطلّع
+   `Error: Could not find a production build in the '.next' directory` وفضل يعيد المحاولة.
+   الفحص: `pm2 logs moslimleader --lines 30 --nostream` + `ls .next/BUILD_ID`.
+   العلاج: `pm2 stop moslimleader` ثم `npm run build` ثم `pm2 restart moslimleader --update-env`.
+   **قاعدة:** لا تعمل `pm2 restart` أبداً قبل ما تتأكد إن `.next/BUILD_ID` موجود.
+2. **ليتسبيد خطف المنفذ 443 قبل نجينكس.** الـunit الحقيقي اسمه `lshttpd` (و`lsws` مجرد alias)،
+   والعملية اسمها `litespeed` وبتمسك `[::]:443` (IPv6) فنجينكس بيفشل يقلع.
+   `systemctl stop lsws` لوحده ما كفى؛ اللي اشتغل: `systemctl stop lshttpd; pkill -x litespeed`
+   ثم `systemctl start nginx`. الفحص: `ss -ltnp | grep 443`.
+   **لا تعطّل `lshttpd` بدون فحص:** عنده vhosts لدومينات مشاريع أخرى في
+   `/usr/local/lsws/conf/vhosts/` (kaleemai.com، waqfelafkar.com…). اتأكد الأول إن نجينكس هو اللي
+   بيخدمها فعلاً (`grep -rl 'kaleemai\|waqfelafkar' /etc/nginx/conf.d/`) قبل أي
+   `systemctl disable lshttpd`.
+
 ### Build بذاكرة أكبر (لو TypeScript نفد منه الذاكرة)
 ```bash
 NODE_OPTIONS="--max-old-space-size=4096" npm run build

@@ -379,10 +379,14 @@ systemctl start nginx
    والعملية اسمها `litespeed` وبتمسك `[::]:443` (IPv6) فنجينكس بيفشل يقلع.
    `systemctl stop lsws` لوحده ما كفى؛ اللي اشتغل: `systemctl stop lshttpd; pkill -x litespeed`
    ثم `systemctl start nginx`. الفحص: `ss -ltnp | grep 443`.
-   **لا تعطّل `lshttpd` بدون فحص:** عنده vhosts لدومينات مشاريع أخرى في
-   `/usr/local/lsws/conf/vhosts/` (kaleemai.com، waqfelafkar.com…). اتأكد الأول إن نجينكس هو اللي
-   بيخدمها فعلاً (`grep -rl 'kaleemai\|waqfelafkar' /etc/nginx/conf.d/`) قبل أي
-   `systemctl disable lshttpd`.
+   **الحالة الآن (2026-09-15): `lshttpd` معطّل نهائياً** (`systemctl disable --now lshttpd`).
+   قبل التعطيل اتأكدنا إن نجينكس هو اللي بيخدم كل الدومينات اللي ليتسبيد عنده vhosts ليها
+   (kaleemai.com، api.kaleemai.com، waqfelafkar.com، api.waqfelafkar.com — كلها ردّت
+   `Server: nginx` وملفاتها في `/etc/nginx/conf.d/`). الوحيد اللي كان ليتسبيد بيخدمه فعلاً هو
+   `mail.kaleemai.com` (سب دومين تلقائي من CyberPanel). لو حد احتاجه، يُخدم من نجينكس — لا تُرجّع
+   ليتسبيد. لو المواقع وقعت بعد ريبوت، أول فحص: `ss -ltnp | grep 443` — لو `litespeed` ظهر تاني
+   (CyberPanel ممكن يعيد تفعيله)، كرّر `systemctl disable --now lshttpd; pkill -x litespeed; systemctl start nginx`.
+   الرجوع للوضع القديم لو لزم: `systemctl enable --now lshttpd`.
 
 ### Build بذاكرة أكبر (لو TypeScript نفد منه الذاكرة)
 ```bash

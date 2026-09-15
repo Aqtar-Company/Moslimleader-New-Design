@@ -30,11 +30,21 @@ import { useEffect, useRef, useState } from 'react';
  * demuxer cannot find a keyframe). The seek is gone; durations are written correctly at
  * encode time now (WebCodecs path), and `Infinity` simply shows no badge.
  */
-export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoElement>) {
+export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoElement> & {
+  /**
+   * How the picture fills its box. `contain` (default) letterboxes and never distorts —
+   * what a player must do, in the card and above all in fullscreen. `cover` crops to fill,
+   * for the small square attachment tiles only.
+   */
+  fit?: 'contain' | 'cover';
+}) {
   const ref = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
-  const { style, className, onPlay, onPause, onEnded, onLoadedMetadata, ...rest } = props;
+  const { style, className, onPlay, onPause, onEnded, onLoadedMetadata, fit, ...rest } = props;
+  // Callers that already say `object-cover` in their className (the inbox/group tiles) get
+  // cover without having to change; everyone else gets contain.
+  const objectFit: 'contain' | 'cover' = fit ?? (className?.includes('object-cover') ? 'cover' : 'contain');
 
   // `autoPlay` videos are already in motion; do not cover them with a button.
   useEffect(() => {
@@ -66,10 +76,12 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
         // put on "the video" still lands on the video. Without it a tall portrait clip
         // would size to its intrinsic height and overflow the card; the wrapper's
         // `overflow: hidden` is the second line of defence, not the first.
-        // `height`/`object-fit: inherit` too: the inbox and group attachment tiles pass
-        // `h-full object-cover` and expect the video to FILL a 64px square, not sit in it
-        // at 16:9 with a gap.
-        style={{ width: '100%', height: '100%', maxHeight: 'inherit', objectFit: 'inherit', display: 'block', background: '#000', borderRadius: 'inherit' }}
+        // `object-fit` is set EXPLICITLY. A previous version used `inherit`, meaning to pick
+        // up the tiles' `object-cover` — but the wrapper div has no object-fit of its own, so
+        // the inherited value was the initial `fill`, which overrode the browser's default
+        // `contain` for <video>. Result: the picture was STRETCHED to the box, and in
+        // fullscreen — where the box is the whole screen — visibly distorted.
+        style={{ width: '100%', height: '100%', maxHeight: 'inherit', objectFit, display: 'block', background: '#000', borderRadius: 'inherit' }}
         onPlay={e => { setPlaying(true); onPlay?.(e); }}
         onPause={e => { setPlaying(false); onPause?.(e); }}
         onEnded={e => { setPlaying(false); onEnded?.(e); }}

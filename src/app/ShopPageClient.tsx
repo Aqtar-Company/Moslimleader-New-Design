@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { products as staticProducts, categories } from '@/lib/products';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
@@ -103,18 +103,14 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
   const searchParams = useSearchParams();
   const { t, isRtl } = useLang();
   const { user, isLoading: authLoading } = useAuth();
-  const router = useRouter();
   const initialCategory = searchParams.get('category') || 'all';
 
-  // Client-side fallback: redirect logged-in mobile users to /tareeq.
-  // The middleware redirect is unreliable on iOS Safari because sameSite:none
-  // cookies are not sent on initial top-level navigation.
-  useEffect(() => {
-    if (authLoading || !user) return;
-    if (/mobile|android|iphone|ipad|ipod/i.test(navigator.userAgent)) {
-      router.replace('/tareeq');
-    }
-  }, [user, authLoading, router]);
+  // There is deliberately NO redirect to /tareeq here. A signed-in visitor on a phone used
+  // to be sent from the shop's home page straight into طريق the moment their session
+  // resolved — so on mobile "moslimleader.com" simply could not be opened; it always became
+  // /tareeq. The shop is the site; طريق is one section of it, reached by its own link or
+  // its own installed app (whose manifest start_url is /tareeq). A side effect of the old
+  // redirect was that the browser recorded طريق's favicon against the shop's root URL.
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [ageFilter, setAgeFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState<'male' | 'female' | ''>('');

@@ -379,16 +379,15 @@ systemctl start nginx
    والعملية اسمها `litespeed` وبتمسك `[::]:443` (IPv6) فنجينكس بيفشل يقلع.
    `systemctl stop lsws` لوحده ما كفى؛ اللي اشتغل: `systemctl stop lshttpd; pkill -x litespeed`
    ثم `systemctl start nginx`. الفحص: `ss -ltnp | grep 443`.
-   **الحالة الآن (2026-09-15): `lshttpd` لا يزال مفعّلاً بقرار المالك.** اتعطّل مؤقتاً واتأكدنا إن
-   نجينكس بيخدم كل الدومينات (kaleemai.com، api.kaleemai.com، waqfelafkar.com،
-   api.waqfelafkar.com ردّت `Server: nginx`)، والوحيد اللي ليتسبيد كان بيخدمه فعلاً هو
-   `mail.kaleemai.com` (سب دومين تلقائي من CyberPanel) — ثم أعاد المالك تفعيله
-   (`systemctl enable --now lshttpd`). عشان ما يخطفش 443 بعد الريبوت، الحل هو ترتيب الإقلاع:
-   drop-in في `/etc/systemd/system/lshttpd.service.d/after-nginx.conf` فيه
-   `After=nginx.service` + `Wants=nginx.service`. لما نجينكس يمسك `0.0.0.0:443` أولاً، ليتسبيد
-   يتعايش معاه على `[::]:443` بدون مشاكل. لو المواقع وقعت بعد ريبوت: `ss -ltnp | grep 443`؛ لو
-   `litespeed` لوحده، نفّذ `systemctl stop lshttpd; pkill -x litespeed; systemctl start nginx;
-   systemctl start lshttpd` بالترتيب ده.
+   **الحل النهائي (2026-09-15): ليتسبيد اتحرّك من 443 إلى 8443.** في
+   `/usr/local/lsws/conf/httpd_config.conf` الـlisteners `SSL` و`SSL IPv6` صاروا `*:8443` و
+   `[ANY]:8443` (نسخة احتياطية `httpd_config.conf.bak-<timestamp>` جنبه). نجينكس لوحده على 443
+   ولا يوجد سباق على المنفذ بعد الريبوت. ليتسبيد لا يزال مفعّلاً (`lshttpd`) بقرار المالك، ومع
+   drop-in `/etc/systemd/system/lshttpd.service.d/after-nginx.conf` (`After=nginx.service`)
+   كطبقة أمان ثانية. قبل التغيير اتأكدنا إن نجينكس هو اللي بيخدم كل الدومينات
+   (kaleemai.com، api.kaleemai.com، waqfelafkar.com، api.waqfelafkar.com)، وإن moslimleader.com
+   ما عندوش سجل AAAA — فما كان فيه أي زائر بيوصل لليتسبيد أصلاً. لا تستخدم `fuser -k 443/tcp` في
+   تجديد SSL بعد الآن إلا لو `ss -ltnp | grep 443` أظهر عملية غير نجينكس.
 
 ### Build بذاكرة أكبر (لو TypeScript نفد منه الذاكرة)
 ```bash

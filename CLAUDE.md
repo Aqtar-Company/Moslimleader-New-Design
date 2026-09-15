@@ -379,14 +379,16 @@ systemctl start nginx
    والعملية اسمها `litespeed` وبتمسك `[::]:443` (IPv6) فنجينكس بيفشل يقلع.
    `systemctl stop lsws` لوحده ما كفى؛ اللي اشتغل: `systemctl stop lshttpd; pkill -x litespeed`
    ثم `systemctl start nginx`. الفحص: `ss -ltnp | grep 443`.
-   **الحالة الآن (2026-09-15): `lshttpd` معطّل نهائياً** (`systemctl disable --now lshttpd`).
-   قبل التعطيل اتأكدنا إن نجينكس هو اللي بيخدم كل الدومينات اللي ليتسبيد عنده vhosts ليها
-   (kaleemai.com، api.kaleemai.com، waqfelafkar.com، api.waqfelafkar.com — كلها ردّت
-   `Server: nginx` وملفاتها في `/etc/nginx/conf.d/`). الوحيد اللي كان ليتسبيد بيخدمه فعلاً هو
-   `mail.kaleemai.com` (سب دومين تلقائي من CyberPanel). لو حد احتاجه، يُخدم من نجينكس — لا تُرجّع
-   ليتسبيد. لو المواقع وقعت بعد ريبوت، أول فحص: `ss -ltnp | grep 443` — لو `litespeed` ظهر تاني
-   (CyberPanel ممكن يعيد تفعيله)، كرّر `systemctl disable --now lshttpd; pkill -x litespeed; systemctl start nginx`.
-   الرجوع للوضع القديم لو لزم: `systemctl enable --now lshttpd`.
+   **الحالة الآن (2026-09-15): `lshttpd` لا يزال مفعّلاً بقرار المالك.** اتعطّل مؤقتاً واتأكدنا إن
+   نجينكس بيخدم كل الدومينات (kaleemai.com، api.kaleemai.com، waqfelafkar.com،
+   api.waqfelafkar.com ردّت `Server: nginx`)، والوحيد اللي ليتسبيد كان بيخدمه فعلاً هو
+   `mail.kaleemai.com` (سب دومين تلقائي من CyberPanel) — ثم أعاد المالك تفعيله
+   (`systemctl enable --now lshttpd`). عشان ما يخطفش 443 بعد الريبوت، الحل هو ترتيب الإقلاع:
+   drop-in في `/etc/systemd/system/lshttpd.service.d/after-nginx.conf` فيه
+   `After=nginx.service` + `Wants=nginx.service`. لما نجينكس يمسك `0.0.0.0:443` أولاً، ليتسبيد
+   يتعايش معاه على `[::]:443` بدون مشاكل. لو المواقع وقعت بعد ريبوت: `ss -ltnp | grep 443`؛ لو
+   `litespeed` لوحده، نفّذ `systemctl stop lshttpd; pkill -x litespeed; systemctl start nginx;
+   systemctl start lshttpd` بالترتيب ده.
 
 ### Build بذاكرة أكبر (لو TypeScript نفد منه الذاكرة)
 ```bash

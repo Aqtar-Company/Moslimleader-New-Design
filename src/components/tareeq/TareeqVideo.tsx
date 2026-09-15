@@ -40,6 +40,8 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
+  // True from the first play() onwards — see the `controls` note on the element.
+  const [started, setStarted] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
   const { style, className, onPlay, onPause, onEnded, onLoadedMetadata, fit, ...rest } = props;
   // Callers that already say `object-cover` in their className (the inbox/group tiles) get
@@ -48,7 +50,7 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
 
   // `autoPlay` videos are already in motion; do not cover them with a button.
   useEffect(() => {
-    if (props.autoPlay) setPlaying(true);
+    if (props.autoPlay) { setPlaying(true); setStarted(true); }
   }, [props.autoPlay]);
 
   const start = (e: React.SyntheticEvent) => {
@@ -56,6 +58,9 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
     // not "open the post".
     e.stopPropagation();
     e.preventDefault();
+    // Hand over to the native controls from here on, whether or not play() succeeds —
+    // if it is refused (autoplay policy) the user needs them to start it themselves.
+    setStarted(true);
     void ref.current?.play().catch(() => { /* autoplay policy — the user can use the controls */ });
   };
 
@@ -71,6 +76,16 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
       <video
         ref={ref}
         {...rest}
+        // The native controls are withheld until the first play. WebKit (Safari AND Chrome
+        // on iOS — same engine) draws its own large play glyph in the centre of any paused
+        // video that has `controls`, on top of ours, and on iOS 17+ the pseudo-element rule
+        // above no longer reaches it: the phone showed two buttons. With no `controls`
+        // attribute WebKit draws nothing at all, so ours is the only one. The first tap
+        // flips `controls` on and starts playback; from then on the browser owns the UI
+        // (scrubbing, volume, fullscreen, and its own play/pause when paused).
+        controls={rest.controls ? started : undefined}
+        // Metadata must load even without controls, or the duration badge never appears.
+        preload={rest.preload ?? 'metadata'}
         // `max-height: inherit` takes the wrapper's COMPUTED max-height — whether it came
         // from a `style` prop or a Tailwind `max-h-*` class — so the constraint the caller
         // put on "the video" still lands on the video. Without it a tall portrait clip
@@ -82,7 +97,7 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
         // `contain` for <video>. Result: the picture was STRETCHED to the box, and in
         // fullscreen — where the box is the whole screen — visibly distorted.
         style={{ width: '100%', height: '100%', maxHeight: 'inherit', objectFit, display: 'block', background: '#000', borderRadius: 'inherit' }}
-        onPlay={e => { setPlaying(true); onPlay?.(e); }}
+        onPlay={e => { setPlaying(true); setStarted(true); onPlay?.(e); }}
         onPause={e => { setPlaying(false); onPause?.(e); }}
         onEnded={e => { setPlaying(false); onEnded?.(e); }}
         onLoadedMetadata={e => {
@@ -94,8 +109,9 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
 
       {/* Only where there are native controls to hand over to. A tile with no `controls`
           is a thumbnail, not a player: giving it a play button starts a video that can
-          then never be paused. */}
-      {!playing && rest.controls && (
+          then never be paused. Once started, the overlay never returns — the native
+          controls are visible by then and show their own play button when paused. */}
+      {!playing && !started && rest.controls && (
         <>
           {/* One big target. `pointer-events` only on the button itself, so the native
               controls along the bottom stay reachable while the overlay is up. */}

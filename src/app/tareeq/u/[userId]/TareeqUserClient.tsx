@@ -6,6 +6,7 @@ import { compressImage } from '@/lib/compress-image';
 import TareeqCard, { TareeqPostSummary, ReportModal } from '@/components/tareeq/TareeqCard';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
+import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqQRModal from '@/components/tareeq/TareeqQRModal';
 import TareeqCoverEditor from '@/components/tareeq/TareeqCoverEditor';
@@ -646,11 +647,12 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     return (
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         {src ? (
-          <img
+          <TareeqAvatarImg
             src={src}
-            alt={profileUser.name}
+            name={profileUser.name}
             className="rounded-full object-cover w-full h-full"
             style={{ border: `${border}px solid var(--tr-surface)`, boxShadow: `0 0 0 ${ring}px var(--tr-gold)` }}
+            fallbackStyle={{ fontSize: size * 0.38, background: coverGradient, color: '#fff' }}
           />
         ) : (
           <div
@@ -1273,7 +1275,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       ════════════════════════════════════════════════════════════ */}
       <div className="lg:hidden" style={{ overflowX: 'hidden' }}>
         {/* Cover */}
-        <div className="relative w-full" style={{ height: 110, background: coverGradient }}>
+        {/* 3:1 like the stored cover itself (1500x500), so the WHOLE banner the member
+            chose is visible on a phone instead of a 110px slice out of its middle. */}
+        <div className="relative w-full" style={{ aspectRatio: '3 / 1', minHeight: 110, background: coverGradient }}>
           {(coverPreview ?? (coverLoadError ? null : coverUrl)) ? (
             <img src={coverPreview ?? coverUrl!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setCoverLoadError(true)} />
           ) : (
@@ -1336,9 +1340,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                 </div>
               )}
 
-              {/* Follow/Message/QR buttons */}
+              {/* Follow/Message/QR/⋯ — four controls beside a 96px avatar do not fit a
+                  390px phone in one line, and the ⋯ was being pushed clean out of the card.
+                  The row may WRAP now, and it takes only the width the avatar leaves. */}
               {!isOwnProfile && (
-                <div className="flex gap-2 mt-14">
+                <div className="flex flex-wrap justify-end items-center gap-2 mt-14 flex-1 min-w-0">
                   {contentBlocked ? (
                     <span className="font-bold text-sm px-5 py-2 rounded-full" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }}>
                       {isRtl ? 'غير متاح' : 'Unavailable'}
@@ -1366,7 +1372,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                           } finally { setFollowLoading(false); }
                         }}
                         disabled={followLoading}
-                        className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                        className="font-bold text-sm px-4 py-2 rounded-full transition active:scale-95"
                         style={isFollowing
                           ? { background: '#3b82f6', color: '#fff', border: '1px solid #3b82f6' }
                           : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
@@ -1375,7 +1381,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       </button>
                       <button
                         onClick={handleSendMessage}
-                        className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                        className="font-bold text-sm px-4 py-2 rounded-full transition active:scale-95"
                         style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
                       >
                         {isRtl ? 'رسالة' : 'Message'}

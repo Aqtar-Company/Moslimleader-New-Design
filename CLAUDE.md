@@ -517,6 +517,13 @@ Books are protected from download at two levels:
   - The preview is cached 5 min (`max-age=300`); the tags must stay in step with
     `generateMetadata` in `src/app/tareeq/[id]/page.tsx` (title rule, media choice, guards).
     WhatsApp also caches a preview per URL on the device — test with a fresh link or `?v=2`.
+- **Profile avatars and covers live on R2 (`src/lib/r2.ts`), never in `public/`.** The old
+  routes wrote to `public/uploads/avatars/` and stored `/uploads/avatars/<file>`; production
+  Next.js serves only files present in `public/` at BUILD time, so every photo uploaded after
+  a deploy was a broken image (and the directory is neither in the repo nor gitignored).
+  Rows that still hold a `/uploads/...` URL render the member's initial via
+  `TareeqAvatarImg` (an `<img>` with an onError fallback — use it for every avatar) until
+  they re-upload. New objects get a timestamped key per upload, so no `?v=` cache-busting.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

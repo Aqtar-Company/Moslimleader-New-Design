@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import TareeqVideo from './TareeqVideo';
+import TareeqAvatarImg from './TareeqAvatarImg';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TareeqTip from '@/components/tareeq/TareeqTip';
@@ -294,7 +295,7 @@ export function SharedOriginalCard({ original, isRtl }: { original: SharedOrigin
       >
         <div className="flex items-center gap-2 px-3 pt-2.5">
           {original.user?.avatarUrl
-            ? <img src={original.user.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+            ? <TareeqAvatarImg src={original.user.avatarUrl} name={original.user?.name ?? ""} className="w-7 h-7 rounded-full object-cover shrink-0" />
             : (
               <span
                 className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-black"
@@ -1087,12 +1088,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               {post.userId
                 ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="shrink-0">
                     {post.user?.avatarUrl
-                      ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
+                      ? <TareeqAvatarImg src={post.user.avatarUrl} name={post.authorName} className="w-8 h-8 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
                       : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
                     }
                   </Link>
                 : (post.user?.avatarUrl
-                    ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+                    ? <TareeqAvatarImg src={post.user.avatarUrl} name={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
                     : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
                   )
               }
@@ -1272,7 +1273,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               {/* Author */}
               <Link href={post.userId ? `/tareeq/u/${post.userId}` : '#'} onClick={e => e.stopPropagation()} className="flex flex-col items-center gap-0.5">
                 {post.user?.avatarUrl
-                  ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(255,255,255,0.5)' }} />
+                  ? <TareeqAvatarImg src={post.user.avatarUrl} name={post.authorName} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(255,255,255,0.5)' }} />
                   : <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '2px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)' }}>{post.authorName.charAt(0)}</div>
                 }
                 <p className="text-white text-[9px] font-bold text-center leading-tight mt-0.5" style={{ maxWidth: 52, textShadow: '0 1px 3px rgba(0,0,0,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.authorName}</p>
@@ -1339,12 +1340,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 {post.userId
                   ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="shrink-0">
                       {post.user?.avatarUrl
-                        ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-9 h-9 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
+                        ? <TareeqAvatarImg src={post.user.avatarUrl} name={post.authorName} className="w-9 h-9 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
                         : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
                       }
                     </Link>
                   : (post.user?.avatarUrl
-                      ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+                      ? <TareeqAvatarImg src={post.user.avatarUrl} name={post.authorName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
                       : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
                     )
                 }
@@ -1415,12 +1416,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             {post.userId
               ? <Link href={`/tareeq/u/${post.userId}`} className="shrink-0" onClick={e => e.stopPropagation()}>
                   {post.user?.avatarUrl
-                    ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-11 h-11 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
+                    ? <TareeqAvatarImg src={post.user.avatarUrl} name={post.authorName} className="w-11 h-11 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
                     : <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
                   }
                 </Link>
               : (post.user?.avatarUrl
-                  ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-11 h-11 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+                  ? <TareeqAvatarImg src={post.user.avatarUrl} name={post.authorName} className="w-11 h-11 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
                   : <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
                 )
             }

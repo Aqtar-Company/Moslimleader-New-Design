@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { r2 } from '@/lib/r2';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -30,14 +31,6 @@ const MAX_VIDEO_MB = Number(process.env.NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB) || 50;
 const MAX_VIDEO = MAX_VIDEO_MB * 1024 * 1024;
 const MAX_AUDIO = 20 * 1024 * 1024;  // 20MB
 
-const r2 = new S3Client({
-  region: 'auto',
-  endpoint: process.env.R2_ENDPOINT!,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-});
 
 async function compressImageBuffer(buffer: Buffer): Promise<{ data: Buffer; ext: string }> {
   try {

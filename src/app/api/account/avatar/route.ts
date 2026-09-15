@@ -1,24 +1,31 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, unlink } from 'fs/promises';
-import path from 'path';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { putToR2, r2KeyFromUrl, deleteFromR2 } from '@/lib/r2';
+
+/**
+ * Profile picture upload.
+ *
+ * Stored on R2 like every other user upload. This route used to write to
+ * `public/uploads/avatars/` on disk, which production Next.js does not serve for files
+ * added after the build — so every new photo was a broken image. See `src/lib/r2.ts`.
+ */
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
-async function processImage(buffer: Buffer): Promise<{ data: Buffer; ext: string }> {
+async function processImage(buffer: Buffer): Promise<Buffer> {
   try {
     const sharp = (await import('sharp')).default;
-    const data = await sharp(buffer)
+    return await sharp(buffer)
+      .rotate() // honour EXIF orientation — a phone photo is often stored sideways
       .resize(400, 400, { fit: 'cover', position: 'center' })
       .jpeg({ quality: 88, progressive: true })
       .toBuffer();
-    return { data, ext: 'jpg' };
   } catch {
     // sharp not available — use raw buffer
-    return { data: buffer, ext: 'jpg' };
+    return buffer;
   }
 }
 
@@ -35,17 +42,26 @@ export async function POST(req: NextRequest) {
   if (file.size > MAX_SIZE) return NextResponse.json({ error: 'الحجم الأقصى 5MB' }, { status: 400 });
 
   const raw = Buffer.from(await file.arrayBuffer());
-  const { data, ext } = await processImage(raw);
+  const data = await processImage(raw);
 
-  const filename = `${auth.userId}.${ext}`;
-  const dest = path.join(process.cwd(), 'public', 'uploads', 'avatars', filename);
+  // A timestamp in the KEY, not a `?v=` on a fixed name: a new object per upload means no
+  // browser, CDN or service-worker cache can ever show the previous photo.
+  const key = `avatars/${auth.userId}-${Date.now()}.jpg`;
+  let avatarUrl: string;
+  try {
+    avatarUrl = await putToR2(key, data, 'image/jpeg');
+  } catch (e) {
+    console.error('[avatar] R2 upload failed', e);
+    return NextResponse.json({ error: 'تعذّر حفظ الصورة، حاول تاني' }, { status: 502 });
+  }
 
-  await writeFile(dest, data);
-  // Append a version timestamp so browsers don't serve a stale cached copy
-  // after the user uploads a new photo to the same filename.
-  const avatarUrl = `/uploads/avatars/${filename}?v=${Date.now()}`;
-
+  const prev = await prisma.user.findUnique({ where: { id: auth.userId }, select: { avatarUrl: true } });
   await prisma.user.update({ where: { id: auth.userId }, data: { avatarUrl } });
+
+  // The old object is only removed AFTER the row points at the new one, so a failure in
+  // between never leaves the profile with no picture at all.
+  const oldKey = r2KeyFromUrl(prev?.avatarUrl);
+  if (oldKey && oldKey !== key) void deleteFromR2(oldKey);
 
   return NextResponse.json({ ok: true, avatarUrl });
 }
@@ -55,13 +71,11 @@ export async function DELETE() {
   if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const user = await prisma.user.findUnique({ where: { id: auth.userId }, select: { avatarUrl: true } });
-  if (user?.avatarUrl) {
-    // Strip query params (e.g. ?v=timestamp) before building the file path
-    const cleanPath = user.avatarUrl.split('?')[0];
-    const filePath = path.join(process.cwd(), 'public', cleanPath);
-    await unlink(filePath).catch(() => {});
-  }
-
   await prisma.user.update({ where: { id: auth.userId }, data: { avatarUrl: null } });
+
+  const key = r2KeyFromUrl(user?.avatarUrl);
+  if (key) void deleteFromR2(key);
+  // A legacy `/uploads/...` disk path is simply dropped; nothing served it anyway.
+
   return NextResponse.json({ ok: true });
 }

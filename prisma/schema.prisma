@@ -79,6 +79,7 @@ model User {
   tareeqNotifications     TareeqNotification[]     @relation("TareeqNotifRecipient")
   tareeqSentMessages      TareeqMessage[]          @relation("TareeqMsgSender")
   tareeqPushSubscriptions TareeqPushSubscription[] @relation("TareeqPushSubs")
+  adminBroadcastReceipts  AdminBroadcastRecipient[] @relation("AdminBroadcastRecipients")
   tareeqFollowing         TareeqFollow[]           @relation("TareeqFollowing")
   tareeqFollowers         TareeqFollow[]           @relation("TareeqFollowers")
   tareeqReactions         TareeqReaction[]
@@ -2018,4 +2019,74 @@ model MembershipPerk {
 
   @@index([isActive])
   @@index([validUntil])
+}
+
+// ─── Admin broadcasts (إعلام المستخدمين) ────────────────────────────────────
+//
+// A message from the administration to members: a platform update, an announcement, a
+// reminder or a personal note — to everyone, to Tareeq members only, to shop-only
+// customers, or to a hand-picked list. Delivered on up to three channels, each optional:
+// an in-app Tareeq notification (a TareeqNotification row whose postId is the broadcast
+// id), a web push, and an email. One recipient row per user drives the background sender,
+// makes a crashed send resumable, and gives the admin a per-person delivery report.
+
+model AdminBroadcast {
+  id               String   @id @default(cuid())
+  /// update | announcement | reminder | note
+  kind             String
+  title            String   @db.VarChar(160)
+  body             String   @db.Text
+  linkUrl          String?  @db.VarChar(500)
+  linkLabel        String?  @db.VarChar(80)
+  /// all | tareeq | shop | selected
+  audience         String
+  /// string[] of user ids — only when audience = selected
+  targetUserIds    Json?
+  channelInApp     Boolean  @default(true)
+  channelPush      Boolean  @default(true)
+  channelEmail     Boolean  @default(false)
+  /// A service message reaches people who opted out of marketing email. Promotional
+  /// announcements should leave this off.
+  serviceMessage   Boolean  @default(true)
+  /// draft | sending | sent | failed | canceled
+  status           String   @default("draft")
+  recipientCount   Int      @default(0)
+  processedCount   Int      @default(0)
+  inAppCount       Int      @default(0)
+  pushCount        Int      @default(0)
+  emailSentCount   Int      @default(0)
+  emailFailedCount Int      @default(0)
+  error            String?  @db.Text
+  createdById      String?
+  createdByName    String?
+  createdAt        DateTime @default(now())
+  startedAt        DateTime?
+  finishedAt       DateTime?
+
+  recipients AdminBroadcastRecipient[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AdminBroadcastRecipient {
+  id          String         @id @default(cuid())
+  broadcastId String
+  broadcast   AdminBroadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User           @relation("AdminBroadcastRecipients", fields: [userId], references: [id], onDelete: Cascade)
+  email       String?
+  /// queued | done | failed
+  status      String         @default("queued")
+  inAppSent   Boolean        @default(false)
+  pushSent    Boolean        @default(false)
+  /// skipped | queued | sent | failed
+  emailStatus String         @default("skipped")
+  error       String?        @db.VarChar(500)
+  readAt      DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@unique([broadcastId, userId])
+  @@index([broadcastId, status])
+  @@index([userId, readAt])
 }

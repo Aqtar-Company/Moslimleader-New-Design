@@ -41,6 +41,10 @@ function NotifIcon({ type }: { type: string }) {
       <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
     </svg>
   );
+  if (type === 'admin_update')       return <span className="text-base leading-none">🔄</span>;
+  if (type === 'admin_announcement') return <span className="text-base leading-none">📣</span>;
+  if (type === 'admin_reminder')     return <span className="text-base leading-none">⏰</span>;
+  if (type === 'admin_note')         return <span className="text-base leading-none">📝</span>;
   if (type === 'perk_new')    return <span className="text-base leading-none">🎁</span>;
   if (type === 'product_new') return <span className="text-base leading-none">🛍️</span>;
   if (type === 'follow') return (
@@ -91,6 +95,21 @@ function NotifText({ n, isRtl }: { n: TareeqNotif; isRtl: boolean }) {
   }
   if (n.type === 'follow') {
     return <span>{isRtl ? `${actor} بدأ متابعتك` : `${actor} started following you`}</span>;
+  }
+  if (n.type.startsWith('admin_')) {
+    // A message from the administration: the title is the headline, the body a preview.
+    // `actorName` is the admin's display name ("إدارة طريق" by default).
+    const label = n.type === 'admin_update' ? (isRtl ? 'تحديث' : 'Update')
+      : n.type === 'admin_announcement' ? (isRtl ? 'إعلان' : 'Announcement')
+      : n.type === 'admin_reminder' ? (isRtl ? 'تذكير' : 'Reminder')
+      : (isRtl ? 'ملاحظة' : 'Note');
+    return (
+      <span>
+        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full me-1.5 align-middle" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>{label}</span>
+        <span className="font-bold">{n.postTitle || actor}</span>
+        {n.body && <span className="block text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
+      </span>
+    );
   }
   if (n.type === 'perk_new') {
     return (
@@ -367,6 +386,8 @@ function Inner() {
       router.push('/tareeq/inbox');
     } else if (n.type === 'follow' && n.actorId) {
       router.push(`/tareeq/u/${n.actorId}`);
+    } else if (n.type.startsWith('admin_') && n.postId) {
+      router.push(`/tareeq/notices/${n.postId}`);
     } else if (n.type === 'perk_new') {
       router.push('/membership');
     } else if (n.type === 'product_new' && n.postId) {

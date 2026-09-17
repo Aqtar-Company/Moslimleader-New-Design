@@ -548,6 +548,35 @@ Books are protected from download at two levels:
   Rows that still hold a `/uploads/...` URL render the member's initial via
   `TareeqAvatarImg` (an `<img>` with an onError fallback — use it for every avatar) until
   they re-upload. New objects get a timestamped key per upload, so no `?v=` cache-busting.
+- **إعلام المستخدمين (admin broadcasts) lives in `/admin/tareeq` → tab «📣 الرسائل».** One
+  message (kind: update / announcement / reminder / note) to an audience (all / Tareeq members /
+  shop-only / a hand-picked list ≤ 500) on up to three channels: in-app (`TareeqNotification`
+  rows with `type = admin_*` and `postId = <broadcast id>`), web push, email. Everything that is
+  not an HTTP handler is in `src/lib/admin-broadcast.ts`; the client-safe vocabulary is in
+  `admin-broadcast-shared.ts` (import THAT from components — the other file pulls in Prisma).
+  Models: `AdminBroadcast` + `AdminBroadcastRecipient` (one row per user; `status: queued →
+  done|failed` is the resume point). Member pages: `/tareeq/notices`, `/tareeq/notices/[id]`
+  (opening marks read in both the recipient row and the notification rows), and
+  `TareeqNoticeBanner` in the shell for the newest unread announcement/update ≤ 7 days.
+  Things to know:
+  - **Sending is fire-and-forget on the PM2 fork** (`queueBroadcast` then `void runBroadcast`),
+    same shape as `campaign-runner.ts`. Email is throttled to ~30/min (`EMAIL_GAP_MS`), push to
+    8 concurrent. A restart mid-send leaves `queued` rows; the admin's «استكمال الإرسال» button
+    calls `/send` again, which only processes those. «إيقاف» sets `status = canceled`; the runner
+    re-reads the status before each chunk of 100.
+  - **Preferences:** in-app + push respect the member's «إعلانات المنصة» switch
+    (`tareeqNotifPrefs.announcements`), except in-app for a hand-picked list (personal
+    correspondence is always delivered). Email respects `marketingOptIn` unless the message is
+    marked «رسالة خدمية» (`serviceMessage`, default ON for everything but announcements). The
+    delivery report shows «—» for a person the switch excluded — that is not a failure.
+  - **Audience `tareeq` vs `shop`** is `tareeqLastSeen != null` vs `== null` — "has ever opened
+    Tareeq". There is no other signal.
+  - **Adding a kind:** `BROADCAST_KINDS` in the shared file, the matching `admin_<kind>` in
+    `TareeqNotifType` + `NOTIF_GROUP` (tareeq-notify.ts), the icon/label in
+    `TareeqNotificationsClient.tsx`. The notif type string is what the SW/notifications screen
+    switch on.
+  - Deleting a sent broadcast cascades the recipient rows but keeps the `TareeqNotification`
+    rows members already received (a delivered message stays delivered).
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

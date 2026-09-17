@@ -7,6 +7,11 @@ import { Prisma } from '@prisma/client';
 // here rather than ad-hoc strings so the dashboard can render Arabic
 // labels consistently.
 export const AUDIT_ACTIONS = {
+  // Tareeq — admin broadcasts (إعلام المستخدمين)
+  'tareeq.broadcast.send': 'إرسال رسالة للمستخدمين',
+  'tareeq.broadcast.resume': 'استكمال إرسال رسالة للمستخدمين',
+  'tareeq.broadcast.cancel': 'إلغاء إرسال رسالة للمستخدمين',
+  'tareeq.broadcast.delete': 'حذف رسالة للمستخدمين',
   // Settings & shipping
   'intl-shipping.update': 'تحديث إعدادات الشحن الدولي',
   'shipping.update': 'تحديث أسعار الشحن المحلي',

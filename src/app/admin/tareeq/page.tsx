@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import BroadcastsTab from './BroadcastsTab';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -62,7 +63,7 @@ const TYPE_AR: Record<string, string> = { post: 'منشور', comment: 'تعلي
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AdminTareeqPage() {
-  const [tab, setTab] = useState<'reports' | 'posts' | 'users'>('reports');
+  const [tab, setTab] = useState<'reports' | 'posts' | 'users' | 'broadcasts'>('reports');
   const [msg, setMsg] = useState('');
 
   function flash(text: string) { setMsg(text); setTimeout(() => setMsg(''), 2500); }
@@ -76,14 +77,14 @@ export default function AdminTareeqPage() {
       )}
 
       <h1 style={{ fontSize: 24, fontWeight: 900, color: '#d4a843', marginBottom: 4 }}>إدارة طريق</h1>
-      <p style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>إشراف على البلاغات والمنشورات والمستخدمين</p>
+      <p style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>إشراف على البلاغات والمنشورات والمستخدمين، وإعلام المستخدمين</p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {(['reports', 'posts', 'users'] as const).map(t => (
+        {(['reports', 'posts', 'users', 'broadcasts'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '8px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer',
               background: tab === t ? '#d4a843' : '#1e293b', color: tab === t ? '#0f172a' : '#94a3b8' }}>
-            {t === 'reports' ? '🚨 البلاغات' : t === 'posts' ? '📝 المنشورات' : '👤 المستخدمون'}
+            {t === 'reports' ? '🚨 البلاغات' : t === 'posts' ? '📝 المنشورات' : t === 'users' ? '👤 المستخدمون' : '📣 الرسائل'}
           </button>
         ))}
       </div>
@@ -91,6 +92,7 @@ export default function AdminTareeqPage() {
       {tab === 'reports' && <ReportsTab flash={flash} />}
       {tab === 'posts' && <PostsTab flash={flash} />}
       {tab === 'users' && <UsersTab flash={flash} />}
+      {tab === 'broadcasts' && <BroadcastsTab flash={flash} />}
     </div>
   );
 }

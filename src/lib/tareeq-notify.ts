@@ -22,7 +22,9 @@ export type TareeqNotifType =
   | 'like' | 'inspired' | 'thanks' | 'agree' | 'yarabb' | 'mashaallah'
   | 'comment' | 'subscribed_comment'
   | 'mention' | 'follow' | 'share' | 'message' | 'call'
-  | 'post_update' | 'perk_new' | 'product_new' | 'generic';
+  | 'post_update' | 'perk_new' | 'product_new' | 'generic'
+  // Admin broadcasts (src/lib/admin-broadcast.ts) — one per BROADCAST_KINDS entry.
+  | 'admin_update' | 'admin_announcement' | 'admin_reminder' | 'admin_note';
 
 /**
  * Which preference switch governs each type.
@@ -41,6 +43,8 @@ export const NOTIF_GROUP: Record<TareeqNotifType, string> = {
   call: 'calls',
   post_update: 'updates',
   perk_new: 'announcements', product_new: 'announcements', generic: 'announcements',
+  admin_update: 'announcements', admin_announcement: 'announcements',
+  admin_reminder: 'announcements', admin_note: 'announcements',
 };
 
 /** The switches, in the order the settings screen shows them. */

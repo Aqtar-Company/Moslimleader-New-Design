@@ -45,6 +45,7 @@ const NAV: NavItem[] = [
   { href: '/admin/ip',                label: 'الملكية الفكرية',   icon: '📚', requireAny: ['ip.read'] },
   { href: '/admin/partners',          label: 'الشركاء والمستثمرون', icon: '🪙', requireAny: ['partners.read'] },
   { href: '/admin/campaigns',         label: 'حملات التسويق',     icon: '📢', requireAny: ['campaigns.read'] },
+  { href: '/admin/tareeq',            label: 'إدارة طريق',        icon: '★', superAdminOnly: true },
   { href: '/admin/ai-facebook-assistant', label: 'مساعد فيسبوك',     icon: '🤖', requireAny: ['ai-assistant.read'] },
   { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
   { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },

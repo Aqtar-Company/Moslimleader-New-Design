@@ -21,7 +21,7 @@ export default function TareeqNoticeClient({ id }: { id: string }) {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push(`/tareeq/login?redirect=/tareeq/notices/${id}`); return; }
+    if (!user) { router.replace(`/tareeq/login?redirect=/tareeq/notices/${id}`); return; }
     let cancelled = false;
     (async () => {
       const res = await fetch(`/api/tareeq/notices/${id}`);
@@ -75,7 +75,7 @@ export default function TareeqNoticeClient({ id }: { id: string }) {
               <span className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>{formatNoticeDate(notice.startedAt ?? notice.createdAt, isRtl)}</span>
             </div>
             <h2 className="font-black text-2xl mt-3 leading-snug" style={{ color: 'var(--tr-text-primary)', textWrap: 'balance' }}>{notice.title}</h2>
-            <p className="text-xs mt-1" style={{ color: 'var(--tr-text-muted)' }}>{notice.createdByName || (isRtl ? 'إدارة طريق' : 'Tareeq team')}</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'إدارة طريق' : 'Tareeq team'}</p>
             <div className="mt-5 text-[15px] leading-8" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>
               {notice.body}
             </div>

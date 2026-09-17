@@ -403,6 +403,10 @@ function Inner() {
     <div className="min-h-screen">
       <div className="py-8 px-4 text-center">
         <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإشعارات' : 'Notifications'}</h1>
+        {/* The bell shows each message from the administration once; this is where they stay. */}
+        <button type="button" onClick={() => router.push('/tareeq/notices')} className="mt-2 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px solid var(--tr-border-soft)' }}>
+          📣 {isRtl ? 'الإعلانات والتحديثات من الإدارة' : 'Announcements & updates from the team'}
+        </button>
         <PushPermissionBanner isRtl={isRtl} />
         <NotificationSettings isRtl={isRtl} />
       </div>

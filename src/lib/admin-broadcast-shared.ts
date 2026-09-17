@@ -30,11 +30,12 @@ export const BROADCAST_SELECTED_MAX = 500;
 /** Sender name shown on the in-app row and the push. */
 export const BROADCAST_ACTOR_NAME = 'إدارة طريق';
 
+// `in` would accept 'constructor' / 'toString' (Object.prototype); own-property only.
 export function isBroadcastKind(v: unknown): v is BroadcastKind {
-  return typeof v === 'string' && v in BROADCAST_KINDS;
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(BROADCAST_KINDS, v);
 }
 export function isBroadcastAudience(v: unknown): v is BroadcastAudience {
-  return typeof v === 'string' && v in BROADCAST_AUDIENCES;
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(BROADCAST_AUDIENCES, v);
 }
 
 /** Only http(s) links, or site-relative paths. Anything else is dropped, never stored. */
@@ -42,7 +43,17 @@ export function sanitizeBroadcastLink(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const v = raw.trim();
   if (!v) return null;
-  if (v.startsWith('/') && !v.startsWith('//')) return v.slice(0, 500);
+  if (v.startsWith('/')) {
+    // Resolve against the site and insist it stays on it: `/\evil.com` and `//evil.com`
+    // both resolve to another origin in a browser (backslash counts as a slash).
+    try {
+      const u = new URL(v, 'https://moslimleader.com');
+      if (u.origin !== 'https://moslimleader.com' || /[\s\\]/.test(v)) return null;
+      return (u.pathname + u.search + u.hash).slice(0, 500);
+    } catch {
+      return null;
+    }
+  }
   try {
     const u = new URL(v);
     if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { NOTICE_SELECT } from '@/lib/admin-broadcast';
+import { NOTICE_SELECT, personalize } from '@/lib/admin-broadcast';
 
 /**
  * One notice, for a member who received it (or an admin previewing it).
@@ -15,8 +15,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const [broadcast, receipt] = await Promise.all([
+  const [broadcast, me, receipt] = await Promise.all([
     prisma.adminBroadcast.findUnique({ where: { id: params.id }, select: { ...NOTICE_SELECT, status: true } }),
+    prisma.user.findUnique({ where: { id: user.userId }, select: { name: true } }),
     prisma.adminBroadcastRecipient.findUnique({
       where: { broadcastId_userId: { broadcastId: params.id, userId: user.userId } },
       select: { id: true, readAt: true, status: true },
@@ -42,15 +43,17 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     ]);
   }
 
-  const { status: _status, ...notice } = broadcast;
-  return NextResponse.json({ notice: { ...notice, readAt: receipt?.readAt ?? new Date() } });
+  // `{{firstName}}` is substituted for the reader, as it is in the bell, the push and the email.
+  const { status: _status, ...rest } = broadcast;
+  const notice = { ...rest, title: personalize(rest.title, me?.name), body: personalize(rest.body, me?.name) };
+  return NextResponse.json({ notice: { ...notice, readAt: receipt ? (receipt.readAt ?? new Date()) : null } });
 }
 
 // POST /api/tareeq/notices/[id] — mark read WITHOUT opening (the banner's dismiss).
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ ok: false }, { status: 401 });
-  await Promise.all([
+  const [receipt] = await Promise.all([
     prisma.adminBroadcastRecipient.updateMany({
       where: { broadcastId: params.id, userId: user.userId, readAt: null },
       data: { readAt: new Date() },
@@ -60,5 +63,8 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       data: { read: true },
     }),
   ]);
+  // Nothing touched: either not addressed to this person or already read. Visible in
+  // devtools when a stale banner id is retried; harmless otherwise.
+  if (receipt.count === 0) return NextResponse.json({ ok: false }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

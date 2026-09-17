@@ -46,3 +46,14 @@ export async function GET(req: NextRequest) {
     unreadCount,
   });
 }
+
+// POST /api/tareeq/notices — mark every notice read (the list page's "تحديد الكل كمقروء").
+export async function POST() {
+  const user = await getAuthUser().catch(() => null);
+  if (!user) return NextResponse.json({ ok: false }, { status: 401 });
+  await Promise.all([
+    prisma.adminBroadcastRecipient.updateMany({ where: { userId: user.userId, readAt: null }, data: { readAt: new Date() } }),
+    prisma.tareeqNotification.updateMany({ where: { userId: user.userId, read: false, type: { startsWith: 'admin_' } }, data: { read: true } }),
+  ]);
+  return NextResponse.json({ ok: true });
+}

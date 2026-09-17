@@ -50,7 +50,7 @@ interface Recipient {
   id: string;
   userId: string;
   email: string | null;
-  status: 'queued' | 'done' | 'failed';
+  status: 'queued' | 'processing' | 'done' | 'failed';
   inAppSent: boolean;
   pushSent: boolean;
   emailStatus: 'skipped' | 'queued' | 'sent' | 'failed';
@@ -59,7 +59,7 @@ interface Recipient {
   user: { name: string; avatarUrl: string | null };
 }
 
-interface Reach { total: number; withPush: number; emailOptIn: number }
+interface Reach { total: number; withPush: number; emailVerified: number; emailOptIn: number }
 
 type Form = {
   kind: BroadcastKind;
@@ -114,6 +114,7 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
 
   const [list, setList] = useState<Broadcast[]>([]);
   const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState(1);
   const [loadingList, setLoadingList] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -123,7 +124,7 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
   // ── Reach: recomputed when the audience (or the picked list) changes, debounced.
   useEffect(() => {
     const ids = form.audience === 'selected' ? form.selected.map(u => u.id) : [];
-    if (form.audience === 'selected' && ids.length === 0) { setReach({ total: 0, withPush: 0, emailOptIn: 0 }); return; }
+    if (form.audience === 'selected' && ids.length === 0) { setReach({ total: 0, withPush: 0, emailVerified: 0, emailOptIn: 0 }); return; }
     const t = setTimeout(async () => {
       try {
         const res = await fetch(`/api/admin/tareeq/broadcasts/audience?audience=${form.audience}${ids.length ? `&ids=${ids.join(',')}` : ''}`);
@@ -138,7 +139,7 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
     setLoadingList(true);
     try {
       const res = await fetch(`/api/admin/tareeq/broadcasts?page=${page}`);
-      if (res.ok) { const d = await res.json(); setList(d.broadcasts); setTotal(d.total); }
+      if (res.ok) { const d = await res.json(); setList(d.broadcasts); setTotal(d.total); if (d.limit) setPageSize(d.limit); }
     } finally { setLoadingList(false); }
   }, [page]);
   useEffect(() => { loadList(); }, [loadList]);
@@ -230,7 +231,8 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
     && (form.audience !== 'selected' || form.selected.length > 0);
 
   const kind = BROADCAST_KINDS[form.kind];
-  const emailReach = reach ? (form.serviceMessage ? reach.total : reach.emailOptIn) : null;
+  // Email only ever goes to a VERIFIED address; promotional mail also needs the opt-in.
+  const emailReach = reach ? (form.serviceMessage ? reach.emailVerified : reach.emailOptIn) : null;
 
   return (
     <div>
@@ -251,7 +253,7 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
           {BROADCAST_KIND_KEYS.map(k => {
             const on = form.kind === k;
             return (
-              <button key={k} type="button" onClick={() => { set('kind', k); if (k !== 'announcement') set('serviceMessage', true); else set('serviceMessage', false); }}
+              <button key={k} type="button" onClick={() => setForm(f => ({ ...f, kind: k, serviceMessage: k !== 'announcement' }))}
                 style={{ padding: '8px 14px', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', border: `1px solid ${on ? '#d4a843' : '#334155'}`, background: on ? '#d4a84322' : '#0f172a', color: on ? '#d4a843' : '#94a3b8' }}>
                 {BROADCAST_KINDS[k].icon} {BROADCAST_KINDS[k].ar}
               </button>
@@ -267,7 +269,7 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
         <div style={{ marginBottom: 12 }}>
           <label style={S.label}>النص <span style={{ color: '#64748b', fontWeight: 500 }}>({form.body.length}/{BROADCAST_BODY_MAX})</span></label>
           <textarea style={{ ...S.input, minHeight: 140, lineHeight: 1.7, resize: 'vertical' }} maxLength={BROADCAST_BODY_MAX} value={form.body} onChange={e => set('body', e.target.value)}
-            placeholder="اكتب الرسالة كما ستصل للناس. سطر فاضي = فقرة جديدة. يمكنك كتابة {{firstName}} ليُستبدل باسم المستلم في الإيميل." />
+            placeholder="اكتب الرسالة كما ستصل للناس. سطر فاضي = فقرة جديدة. يمكنك كتابة {{firstName}} ليُستبدل باسم المستلم الأول في كل القنوات." />
           <p style={S.hint}>الإشعار داخل طريق والـpush يعرضان أول 180–280 حرفاً، والنص الكامل يظهر في صفحة الرسالة وفي الإيميل.</p>
         </div>
 
@@ -368,18 +370,18 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
 
       {/* ── Confirm dialog ──────────────────────────────────────────── */}
       {confirmSend && (
-        <div role="dialog" aria-modal style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setConfirmSend(false)}>
+        <div role="dialog" aria-modal aria-labelledby="bc-confirm-title" onKeyDown={e => { if (e.key === 'Escape') setConfirmSend(false); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setConfirmSend(false)}>
           <div style={{ ...S.card, maxWidth: 440, width: '100%', marginBottom: 0 }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#f1f5f9' }}>تأكيد الإرسال</h3>
+            <h3 id="bc-confirm-title" style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#f1f5f9' }}>تأكيد الإرسال</h3>
             <p style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.8, margin: '10px 0' }}>
               <b>{kind.icon} {form.title}</b><br />
               إلى: {BROADCAST_AUDIENCES[form.audience].ar}{form.audience === 'selected' ? ` (${form.selected.length})` : ''}<br />
               العدد: <b style={{ color: '#f1f5f9' }}>{reach?.total ?? '…'}</b> شخص<br />
               القنوات: {[form.channelInApp && 'داخل طريق', form.channelPush && 'push', form.channelEmail && `إيميل (${emailReach ?? '…'})`].filter(Boolean).join(' · ')}
             </p>
-            <p style={{ fontSize: 12, color: '#f59e0b', margin: '0 0 12px' }}>لا يمكن التراجع عن الرسائل التي وصلت. يمكنك إيقاف الإرسال في منتصفه من السجل.</p>
+            <p style={{ fontSize: 12, color: '#f59e0b', margin: '0 0 12px' }}>لا يمكن استرجاع الرسائل التي وصلت بالفعل. يمكنك إيقاف الإرسال في منتصفه من السجل.</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" style={S.ghost} onClick={() => setConfirmSend(false)}>رجوع</button>
+              <button type="button" autoFocus style={S.ghost} onClick={() => setConfirmSend(false)}>رجوع</button>
               <button type="button" style={S.btn('#d4a843')} onClick={send}>نعم، أرسل</button>
             </div>
           </div>
@@ -395,11 +397,11 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
       ) : list.map(b => (
         <BroadcastRow key={b.id} b={b} open={openId === b.id} onToggle={() => setOpenId(openId === b.id ? null : b.id)} onChanged={loadList} onTemplate={useAsTemplate} flash={flash} />
       ))}
-      {total > 20 && (
+      {total > pageSize && (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10 }}>
           <button type="button" style={S.ghost} disabled={page === 1} onClick={() => setPage(p => p - 1)}>السابق</button>
-          <span style={{ color: '#94a3b8', fontSize: 13, alignSelf: 'center' }}>{page} / {Math.ceil(total / 20)}</span>
-          <button type="button" style={S.ghost} disabled={page >= Math.ceil(total / 20)} onClick={() => setPage(p => p + 1)}>التالي</button>
+          <span style={{ color: '#94a3b8', fontSize: 13, alignSelf: 'center' }}>{page} / {Math.ceil(total / pageSize)}</span>
+          <button type="button" style={S.ghost} disabled={page >= Math.ceil(total / pageSize)} onClick={() => setPage(p => p + 1)}>التالي</button>
         </div>
       )}
     </div>
@@ -510,6 +512,7 @@ function BroadcastRow({ b, open, onToggle, onChanged, onTemplate, flash }: {
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 8, fontSize: 12, color: '#94a3b8' }}>
           <span>{fmtDate(b.startedAt ?? b.createdAt)}</span>
+          {b.status === 'sending' && b.startedAt && <span style={{ color: '#60a5fa' }}>قيد الإرسال منذ {Math.max(1, Math.round((Date.now() - new Date(b.startedAt).getTime()) / 60000))} د</span>}
           <span>{channels}</span>
           {b.status !== 'draft' && <span>{b.processedCount}/{b.recipientCount} مستلم</span>}
           {b.channelInApp && b.status !== 'draft' && <span>🔔 {b.inAppCount}</span>}
@@ -533,7 +536,7 @@ function BroadcastRow({ b, open, onToggle, onChanged, onTemplate, flash }: {
             {b.status === 'draft' && <button type="button" style={S.btn('#d4a843')} disabled={busy} onClick={() => onTemplate(b)}>✏️ تعديل المسودة</button>}
             {b.status === 'draft' && <button type="button" style={S.ghost} disabled={busy} onClick={() => act('send', 'بدأ الإرسال ✓')}>📣 إرسال</button>}
             {b.status === 'sending' && <button type="button" style={S.btn('#f59e0b')} disabled={busy} onClick={() => act('cancel', 'تم إيقاف الإرسال')}>⏸ إيقاف الإرسال</button>}
-            {(b.status === 'canceled' || b.status === 'failed') && b.processedCount < b.recipientCount && <button type="button" style={S.btn('#60a5fa')} disabled={busy} onClick={() => act('send', 'استُكمل الإرسال ✓')}>▶ استكمال الإرسال للباقين</button>}
+            {(b.status === 'canceled' || b.status === 'failed') && b.processedCount < b.recipientCount && <button type="button" style={S.btn('#60a5fa')} disabled={busy} onClick={() => act('send', 'بدأ استكمال الإرسال ✓')}>▶ استكمال الإرسال للباقين</button>}
             {b.status !== 'draft' && <TemplateButton b={b} onTemplate={onTemplate} />}
             {b.status !== 'sending' && <button type="button" style={{ ...S.ghost, color: '#f87171', borderColor: '#7f1d1d' }} disabled={busy} onClick={remove}>🗑 حذف</button>}
           </div>
@@ -614,8 +617,8 @@ function RecipientsReport({ id, channelEmail }: { id: string; channelEmail: bool
                     <span style={{ fontWeight: 700, color: '#f1f5f9' }}>{r.user.name}</span>
                     <span style={{ color: '#64748b', marginInlineStart: 6 }} dir="ltr">{r.email}</span>
                   </td>
-                  <td style={{ padding: '6px', textAlign: 'center' }}>{r.status === 'queued' ? '⏳' : r.inAppSent ? '✓' : '—'}</td>
-                  <td style={{ padding: '6px', textAlign: 'center' }}>{r.status === 'queued' ? '⏳' : r.pushSent ? '✓' : '—'}</td>
+                  <td style={{ padding: '6px', textAlign: 'center' }}>{r.status === 'queued' || r.status === 'processing' ? '⏳' : r.inAppSent ? '✓' : '—'}</td>
+                  <td style={{ padding: '6px', textAlign: 'center' }}>{r.status === 'queued' || r.status === 'processing' ? '⏳' : r.pushSent ? '✓' : '—'}</td>
                   {channelEmail && <td style={{ padding: '6px', textAlign: 'center', color: r.emailStatus === 'failed' ? '#f87171' : undefined }}>{emailLabel[r.emailStatus] ?? r.emailStatus}</td>}
                   <td style={{ padding: '6px', textAlign: 'center' }}>{r.readAt ? '👁' : ''}</td>
                   <td style={{ padding: '6px', textAlign: 'start', color: '#fca5a5' }}>{r.error ?? ''}</td>
@@ -632,7 +635,7 @@ function RecipientsReport({ id, channelEmail }: { id: string; channelEmail: bool
           <button type="button" style={{ ...S.ghost, padding: '4px 10px', fontSize: 12 }} disabled={page >= pages} onClick={() => setPage(p => p + 1)}>التالي</button>
         </div>
       )}
-      <p style={S.hint}>«—» في عمود طريق أو push يعني أن الشخص أوقف «إعلانات المنصة» من إعداداته، أو لا يملك جهازاً مفعّلاً للـpush.</p>
+      <p style={S.hint}>«—» في عمود طريق يعني أن الشخص أوقف «إعلانات المنصة» من إعداداته. في عمود push يعني ذلك أو أنه لا يملك جهازاً مفعّلاً للإشعارات. في عمود الإيميل يعني أن بريده غير مُفعَّل أو لم يوافق على الرسائل التسويقية.</p>
     </div>
   );
 }

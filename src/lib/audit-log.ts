@@ -12,6 +12,7 @@ export const AUDIT_ACTIONS = {
   'tareeq.broadcast.resume': 'استكمال إرسال رسالة للمستخدمين',
   'tareeq.broadcast.cancel': 'إلغاء إرسال رسالة للمستخدمين',
   'tareeq.broadcast.delete': 'حذف رسالة للمستخدمين',
+  'tareeq.broadcast.test': 'إرسال نسخة تجريبية من رسالة للمستخدمين',
   // Settings & shipping
   'intl-shipping.update': 'تحديث إعدادات الشحن الدولي',
   'shipping.update': 'تحديث أسعار الشحن المحلي',

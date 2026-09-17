@@ -2076,7 +2076,7 @@ model AdminBroadcastRecipient {
   userId      String
   user        User           @relation("AdminBroadcastRecipients", fields: [userId], references: [id], onDelete: Cascade)
   email       String?
-  /// queued | done | failed
+  /// queued | processing | done | failed — `processing` is a claimed chunk (crash-safe resume)
   status      String         @default("queued")
   inAppSent   Boolean        @default(false)
   pushSent    Boolean        @default(false)
@@ -2089,4 +2089,5 @@ model AdminBroadcastRecipient {
   @@unique([broadcastId, userId])
   @@index([broadcastId, status])
   @@index([userId, readAt])
+  @@index([userId, status])
 }

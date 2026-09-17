@@ -555,20 +555,31 @@ Books are protected from download at two levels:
   not an HTTP handler is in `src/lib/admin-broadcast.ts`; the client-safe vocabulary is in
   `admin-broadcast-shared.ts` (import THAT from components — the other file pulls in Prisma).
   Models: `AdminBroadcast` + `AdminBroadcastRecipient` (one row per user; `status: queued →
-  done|failed` is the resume point). Member pages: `/tareeq/notices`, `/tareeq/notices/[id]`
+  processing → done|failed`; a chunk is CLAIMED as `processing` before anything is delivered
+  and every email is recorded on its row as it goes, so a crash mid-chunk never re-sends an
+  email on resume — in-app is checked against the notification table, push is not repeated). Member pages: `/tareeq/notices`, `/tareeq/notices/[id]`
   (opening marks read in both the recipient row and the notification rows), and
   `TareeqNoticeBanner` in the shell for the newest unread announcement/update ≤ 7 days.
   Things to know:
   - **Sending is fire-and-forget on the PM2 fork** (`queueBroadcast` then `void runBroadcast`),
     same shape as `campaign-runner.ts`. Email is throttled to ~30/min (`EMAIL_GAP_MS`), push to
-    8 concurrent. A restart mid-send leaves `queued` rows; the admin's «استكمال الإرسال» button
-    calls `/send` again, which only processes those. «إيقاف» sets `status = canceled`; the runner
-    re-reads the status before each chunk of 100.
+    8 concurrent. A restart mid-send leaves the broadcast at `sending` with nothing running it:
+    `GET /api/admin/tareeq/broadcasts` (opening the tab) calls `resumeOrphanedBroadcasts()`,
+    and `/send` also accepts a `sending` broadcast that is not running in this process. The
+    chunk query has NO cursor on purpose — processed rows leave the `queued` filter, and a
+    cursor on a row that no longer matches the filter made `skip: 1` drop one real recipient
+    per chunk. «إيقاف» sets `status = canceled`; the runner re-reads the status before each
+    chunk of 100, and restarts itself if the status went back to `sending` while it was
+    winding down (cancel → resume within one chunk).
   - **Preferences:** in-app + push respect the member's «إعلانات المنصة» switch
     (`tareeqNotifPrefs.announcements`), except in-app for a hand-picked list (personal
     correspondence is always delivered). Email respects `marketingOptIn` unless the message is
-    marked «رسالة خدمية» (`serviceMessage`, default ON for everything but announcements). The
-    delivery report shows «—» for a person the switch excluded — that is not a failure.
+    marked «رسالة خدمية» (`serviceMessage`, default ON for everything but announcements), and
+    ALWAYS requires `emailVerified` (unverified signups are the addresses that bounce). Broad
+    audiences exclude `tareeqSuspended` members; a hand-picked list does not. `{{firstName}}`
+    is substituted on every channel (`personalize()`), including the notice page. The sender
+    shown to members is always `BROADCAST_ACTOR_NAME` («إدارة طريق»), never the admin's name.
+    The delivery report shows «—» for a person a switch excluded — that is not a failure.
   - **Audience `tareeq` vs `shop`** is `tareeqLastSeen != null` vs `== null` — "has ever opened
     Tareeq". There is no other signal.
   - **Adding a kind:** `BROADCAST_KINDS` in the shared file, the matching `admin_<kind>` in

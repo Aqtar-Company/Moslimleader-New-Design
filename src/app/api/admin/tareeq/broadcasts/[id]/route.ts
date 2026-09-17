@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { logActionSafe } from '@/lib/audit-log';
+import { Prisma } from '@prisma/client';
 import { BROADCAST_LIST_SELECT, parseBroadcastInput } from '@/lib/admin-broadcast';
 
 async function requireAdmin() {
@@ -26,13 +27,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const limit = 50;
   const where = {
     broadcastId: params.id,
-    ...(filter === 'failed' ? { status: 'failed' } : filter === 'queued' ? { status: 'queued' } : {}),
+    ...(filter === 'failed' ? { status: 'failed' } : filter === 'queued' ? { status: { in: ['queued', 'processing'] } } : {}),
   };
   const [total, recipients, readCount] = await Promise.all([
     prisma.adminBroadcastRecipient.count({ where }),
     prisma.adminBroadcastRecipient.findMany({
       where,
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], // createMany gives 100 rows one createdAt
       skip: (page - 1) * limit,
       take: limit,
       select: {
@@ -70,7 +71,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const broadcast = await prisma.adminBroadcast.update({
     where: { id: params.id },
-    data: { ...parsed.data, targetUserIds: parsed.data.targetUserIds ?? undefined },
+    // `null` must CLEAR the list — switching a draft from a hand-picked list to `all` used
+    // to keep the stale ids in the row.
+    data: { ...parsed.data, targetUserIds: parsed.data.targetUserIds ?? Prisma.JsonNull },
     select: BROADCAST_LIST_SELECT,
   });
   return NextResponse.json({ broadcast });

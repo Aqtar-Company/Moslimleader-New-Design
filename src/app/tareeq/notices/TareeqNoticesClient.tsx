@@ -18,7 +18,6 @@ export interface Notice {
   body: string;
   linkUrl: string | null;
   linkLabel: string | null;
-  createdByName: string | null;
   startedAt: string | null;
   createdAt: string;
   receivedAt: string;
@@ -45,11 +44,17 @@ export default function TareeqNoticesClient() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
+  const unread = notices.filter(n => !n.readAt).length;
+
+  async function markAllRead() {
+    setNotices(prev => prev.map(n => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })));
+    await fetch('/api/tareeq/notices', { method: 'POST' }).catch(() => {});
+  }
 
   const load = useCallback(async (from?: string | null) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/tareeq/notices?limit=20${from ? `&cursor=${from}` : ''}`);
+      const res = await fetch(`/api/tareeq/notices?limit=20${from ? `&cursor=${encodeURIComponent(from)}` : ''}`);
       if (!res.ok) return;
       const d = await res.json();
       setNotices(prev => (from ? [...prev, ...d.notices] : d.notices));
@@ -62,7 +67,7 @@ export default function TareeqNoticesClient() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push('/tareeq/login?redirect=/tareeq/notices'); return; }
+    if (!user) { router.replace('/tareeq/login?redirect=/tareeq/notices'); return; }
     load();
   }, [user, authLoading, router, load]);
 
@@ -76,7 +81,12 @@ export default function TareeqNoticesClient() {
             aria-label={isRtl ? 'رجوع' : 'Back'}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ transform: isRtl ? 'none' : 'scaleX(-1)' }}><path d="M9 6l6 6-6 6" /></svg>
           </Link>
-          <h1 className="font-black text-lg" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإعلانات والتحديثات' : 'Announcements & updates'}</h1>
+          <h1 className="font-black text-lg flex-1" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإعلانات والتحديثات' : 'Announcements & updates'}</h1>
+          {unread > 0 && (
+            <button type="button" onClick={markAllRead} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px solid var(--tr-border-soft)' }}>
+              {isRtl ? 'تحديد الكل كمقروء' : 'Mark all read'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -109,7 +119,7 @@ export default function TareeqNoticesClient() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)' }}>{isRtl ? k.ar : k.en}</span>
-                          <span className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>{formatNoticeDate(n.receivedAt, isRtl)}</span>
+                          <span className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>{formatNoticeDate(n.startedAt ?? n.receivedAt, isRtl)}</span>
                           {unread && <span className="w-2 h-2 rounded-full" style={{ background: 'var(--tr-gold)' }} aria-label={isRtl ? 'غير مقروء' : 'Unread'} />}
                         </div>
                         <h2 className="font-black mt-1 leading-snug" style={{ color: 'var(--tr-text-primary)' }}>{n.title}</h2>

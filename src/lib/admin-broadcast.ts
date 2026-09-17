@@ -37,6 +37,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 import { sendPushToUser } from '@/lib/tareeq-push';
 import { wantsNotif, type TareeqNotifType } from '@/lib/tareeq-notify';
 import { getTransporter } from '@/lib/smtp';
@@ -68,12 +69,15 @@ export function broadcastNoticeUrl(id: string): string {
  * - `tareeq`: has opened Tareeq at least once (`tareeqLastSeen` is stamped by presence).
  * - `shop`:   never has. These are the customers who only know the store.
  */
-export function audienceWhere(audience: BroadcastAudience, targetUserIds: string[] = []) {
+export function audienceWhere(audience: BroadcastAudience, targetUserIds: string[] = []): Prisma.UserWhereInput {
   switch (audience) {
-    case 'all':      return {};
-    case 'tareeq':   return { tareeqLastSeen: { not: null } };
-    case 'shop':     return { tareeqLastSeen: null };
+    // Broad audiences leave out suspended members — they are barred from the platform the
+    // message is about. A hand-picked list may include one on purpose (e.g. to explain).
+    case 'all':      return { tareeqSuspended: false };
+    case 'tareeq':   return { tareeqSuspended: false, tareeqLastSeen: { not: null } };
+    case 'shop':     return { tareeqSuspended: false, tareeqLastSeen: null };
     case 'selected': return { id: { in: targetUserIds.slice(0, BROADCAST_SELECTED_MAX) } };
+    default:         return { id: { in: [] } }; // never "everyone" by accident
   }
 }
 
@@ -81,19 +85,22 @@ export type Reach = {
   total: number;
   /** Members with at least one push subscription. */
   withPush: number;
-  /** Members reachable by email for a promotional (non-service) message. */
+  /** Members with a verified address — who a SERVICE email reaches. */
+  emailVerified: number;
+  /** Verified AND opted in to marketing — who a PROMOTIONAL email reaches. */
   emailOptIn: number;
 };
 
 /** How many people a broadcast would reach on each channel — for the compose screen. */
 export async function computeReach(audience: BroadcastAudience, targetUserIds: string[] = []): Promise<Reach> {
   const where = audienceWhere(audience, targetUserIds);
-  const [total, withPush, emailOptIn] = await Promise.all([
+  const [total, withPush, emailVerified, emailOptIn] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.count({ where: { ...where, tareeqPushSubscriptions: { some: {} } } }),
-    prisma.user.count({ where: { ...where, marketingOptIn: true } }),
+    prisma.user.count({ where: { ...where, emailVerified: true } }),
+    prisma.user.count({ where: { ...where, emailVerified: true, marketingOptIn: true } }),
   ]);
-  return { total, withPush, emailOptIn };
+  return { total, withPush, emailVerified, emailOptIn };
 }
 
 // ─── Sending ────────────────────────────────────────────────────────────────────────────
@@ -104,22 +111,33 @@ const PUSH_CONCURRENCY = 8;
 const EMAIL_GAP_MS = 2000;
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-/** Broadcasts this process is currently sending. Guards against a double-click on "send". */
+/**
+ * Broadcasts THIS process is currently sending. PM2 runs one fork, so an in-memory set is a
+ * valid guard against a double-click; clustering would need a DB lock instead.
+ */
 const running = new Set<string>();
+export const isBroadcastRunning = (id: string) => running.has(id);
 
 type BroadcastRow = NonNullable<Awaited<ReturnType<typeof prisma.adminBroadcast.findUnique>>>;
 
+/** `{{firstName}}` → the recipient's first name, everywhere the text is shown. */
+export function personalize(text: string, fullName: string | null | undefined): string {
+  const first = (fullName || '').trim().split(/\s+/)[0] || '';
+  return text.replace(/\{\{firstName\}\}/g, first);
+}
+
 /**
  * Create the recipient rows for a broadcast and mark it `sending`. Returns how many people
- * were queued. Idempotent: re-running for a broadcast that already has rows only adds the
- * missing ones (someone who joined since) and requeues nothing that already finished.
+ * are on the list. Idempotent: re-running for a broadcast that already has rows only adds the
+ * missing ones (someone who joined since) and requeues nothing that already finished — so it
+ * is also the RESUME action for a canceled, failed, or orphaned (process restarted) send.
  *
  * Throws with an Arabic message the route can hand straight to the admin.
  */
 export async function queueBroadcast(id: string): Promise<number> {
   const b = await prisma.adminBroadcast.findUnique({ where: { id } });
   if (!b) throw new Error('الرسالة غير موجودة');
-  if (b.status === 'sending') throw new Error('الرسالة قيد الإرسال بالفعل');
+  if (b.status === 'sending' && running.has(id)) throw new Error('الرسالة قيد الإرسال بالفعل');
   if (!b.channelInApp && !b.channelPush && !b.channelEmail) throw new Error('اختر قناة إرسال واحدة على الأقل');
 
   const audience = b.audience as BroadcastAudience;
@@ -128,17 +146,19 @@ export async function queueBroadcast(id: string): Promise<number> {
 
   const users = await prisma.user.findMany({
     where: audienceWhere(audience, ids),
-    select: { id: true, email: true, marketingOptIn: true },
+    select: { id: true, email: true, emailVerified: true, marketingOptIn: true },
   });
   if (users.length === 0) throw new Error('لا يوجد مستلمون مطابقون لهذا الجمهور');
 
-  // Email is queued only for those who may receive it; the rest are `skipped`, which the
-  // report shows honestly instead of counting them as failures.
+  // Email is queued only for those who may receive it — a verified address, and either a
+  // service message or a marketing opt-in. The rest are `skipped`, which the report shows
+  // honestly instead of counting them as failures. Unverified addresses are exactly the
+  // typos and throwaways that bounce and hurt the transactional domain.
   const rows = users.map(u => ({
     broadcastId: id,
     userId: u.id,
     email: u.email,
-    emailStatus: b.channelEmail && (b.serviceMessage || u.marketingOptIn) ? 'queued' : 'skipped',
+    emailStatus: b.channelEmail && u.emailVerified && (b.serviceMessage || u.marketingOptIn) ? 'queued' : 'skipped',
   }));
   for (let i = 0; i < rows.length; i += CHUNK) {
     await prisma.adminBroadcastRecipient.createMany({ data: rows.slice(i, i + CHUNK), skipDuplicates: true });
@@ -159,161 +179,240 @@ export async function queueBroadcast(id: string): Promise<number> {
 }
 
 /**
- * Deliver every `queued` recipient of a broadcast, then finalise its status. Never throws:
- * a failure is written to `AdminBroadcast.error` and the status becomes `failed`.
+ * Deliver every pending recipient of a broadcast, then finalise its status. Never throws: a
+ * failure is written to `AdminBroadcast.error` and the status becomes `failed`.
  *
- * Safe to call again on the same id — a second concurrent call returns at once, and a later
- * call after a crash resumes the remaining rows.
+ * ## Crash safety
+ *
+ * A chunk is CLAIMED (`status: processing`) before anything is delivered, and every email is
+ * recorded on its row the moment it is sent. So after a restart mid-chunk (a deploy does
+ * `pm2 stop` — realistic during a 35-minute email run) the resume sees `processing` rows and
+ * knows: in-app is checked against the notification table (exact), push is NOT repeated (a
+ * duplicate push is worse than a missing one), and only emails still `queued` on the row go
+ * out. Nobody gets the same email twice.
+ *
+ * Safe to call again on the same id — a second concurrent call returns at once. If the
+ * status was flipped back to `sending` (resume) while this run was winding down, the run
+ * restarts itself so the broadcast never sits at `sending` with no runner.
  */
 export async function runBroadcast(id: string): Promise<void> {
   if (running.has(id)) return;
   running.add(id);
+  let finalized = false;
   try {
     const b = await prisma.adminBroadcast.findUnique({ where: { id } });
     if (!b || b.status !== 'sending') return;
-    const notifType = BROADCAST_KINDS[b.kind as BroadcastKind]?.notifType ?? 'admin_note';
+    const kindDef = BROADCAST_KINDS[b.kind as BroadcastKind];
+    const notifType = kindDef?.notifType ?? 'admin_note';
     const personal = b.audience === 'selected';
     const url = broadcastNoticeUrl(b.id);
 
-    // Rows are fetched a chunk at a time by cursor, so a huge audience never sits in memory,
-    // and each chunk re-reads the status so "cancel" takes effect within one chunk.
-    let cursor: string | undefined;
     for (;;) {
+      // Re-read the status before each chunk so "cancel" takes effect within one chunk.
       const fresh = await prisma.adminBroadcast.findUnique({ where: { id }, select: { status: true } });
-      if (fresh?.status !== 'sending') return; // canceled from the admin screen
+      if (fresh?.status !== 'sending') return;
 
+      // No cursor: every processed row leaves this filter, so the query is its own cursor.
+      // (A cursor on a row that no longer matches the filter made `skip: 1` drop a real
+      // recipient on every chunk after the first.)
       const batch = await prisma.adminBroadcastRecipient.findMany({
-        where: { broadcastId: id, status: 'queued' },
-        orderBy: { id: 'asc' },
+        where: { broadcastId: id, status: { in: ['queued', 'processing'] } },
+        orderBy: [{ status: 'desc' }, { id: 'asc' }], // `processing` (crash leftovers) first
         take: CHUNK,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-        include: { user: { select: { id: true, name: true, email: true, tareeqNotifPrefs: true } } },
+        include: {
+          user: { select: { id: true, name: true, email: true, tareeqNotifPrefs: true, tareeqPushSubscriptions: { select: { id: true }, take: 1 } } },
+        },
       });
       if (batch.length === 0) break;
-      cursor = batch[batch.length - 1].id;
+      const ids = batch.map(r => r.id);
 
+      // Claim the chunk before delivering anything.
+      await prisma.adminBroadcastRecipient.updateMany({ where: { id: { in: ids }, status: 'queued' }, data: { status: 'processing' } });
+
+      const leftovers = batch.filter(r => r.status === 'processing'); // from a crashed run
       const wants = new Map<string, boolean>();
       for (const r of batch) wants.set(r.userId, wantsNotif(r.user.tareeqNotifPrefs, notifType as TareeqNotifType));
 
-      // 1. In-app — one createMany for the whole chunk.
-      const inAppIds = b.channelInApp
-        ? batch.filter(r => personal || wants.get(r.userId)).map(r => r.userId)
-        : [];
-      if (inAppIds.length) {
-        await prisma.tareeqNotification.createMany({
-          data: inAppIds.map(userId => ({
-            userId,
-            type: notifType,
-            actorName: b.createdByName ?? BROADCAST_ACTOR_NAME,
-            postId: b.id,
-            postTitle: b.title,
-            body: b.body.length > 280 ? `${b.body.slice(0, 277)}…` : b.body,
-          })),
-        });
+      // 1. In-app — one createMany for the chunk. Leftovers are checked against the table so
+      //    a crash between createMany and the claim cannot produce a second bell entry.
+      let inAppIds = new Set<string>();
+      if (b.channelInApp) {
+        const eligible = batch.filter(r => personal || wants.get(r.userId));
+        const already = leftovers.length
+          ? new Set((await prisma.tareeqNotification.findMany({
+              where: { postId: b.id, userId: { in: leftovers.map(r => r.userId) }, type: { startsWith: 'admin_' } },
+              select: { userId: true },
+            })).map(n => n.userId))
+          : new Set<string>();
+        const toWrite = eligible.filter(r => !already.has(r.userId));
+        if (toWrite.length) {
+          await prisma.tareeqNotification.createMany({
+            data: toWrite.map(r => {
+              const body = personalize(b.body, r.user.name);
+              return {
+                userId: r.userId,
+                type: notifType,
+                actorName: BROADCAST_ACTOR_NAME,
+                postId: b.id,
+                postTitle: personalize(b.title, r.user.name).slice(0, 190),
+                body: body.length > 280 ? `${body.slice(0, 277)}…` : body,
+              };
+            }),
+          });
+        }
+        inAppIds = new Set([...eligible.map(r => r.userId)]);
       }
 
-      // 2. Push — bounded concurrency.
-      const pushTargets = b.channelPush ? batch.filter(r => wants.get(r.userId)) : [];
+      // 2. Push — only people with a device, only fresh rows, bounded concurrency. Counted
+      //    only when the person actually has a subscription, so the report is not fiction.
       const pushed = new Set<string>();
-      for (let i = 0; i < pushTargets.length; i += PUSH_CONCURRENCY) {
-        await Promise.all(pushTargets.slice(i, i + PUSH_CONCURRENCY).map(async r => {
-          try {
-            await sendPushToUser(r.userId, {
-              title: `${BROADCAST_KINDS[b.kind as BroadcastKind]?.icon ?? '📣'} ${b.title}`,
-              body: b.body.length > 180 ? `${b.body.slice(0, 177)}…` : b.body,
-              url,
-              tag: `tareeq-broadcast-${b.id}`,
-              type: 'generic',
-            });
-            pushed.add(r.userId);
-          } catch { /* a dead device is not a failed recipient */ }
-        }));
+      if (b.channelPush) {
+        const targets = batch.filter(r => r.status === 'queued' && wants.get(r.userId) && r.user.tareeqPushSubscriptions.length > 0);
+        for (let i = 0; i < targets.length; i += PUSH_CONCURRENCY) {
+          await Promise.all(targets.slice(i, i + PUSH_CONCURRENCY).map(async r => {
+            try {
+              const body = personalize(b.body, r.user.name);
+              await sendPushToUser(r.userId, {
+                title: `${kindDef?.icon ?? '📣'} ${personalize(b.title, r.user.name)}`,
+                body: body.length > 180 ? `${body.slice(0, 177)}…` : body,
+                url,
+                tag: `tareeq-broadcast-${b.id}`,
+                type: 'generic',
+              });
+              pushed.add(r.userId);
+            } catch { /* a dead device is not a failed recipient */ }
+          }));
+        }
       }
 
-      // 3. Email — sequential, throttled.
-      const emailResult = new Map<string, { ok: boolean; error?: string }>();
+      // 3. Email — sequential, throttled, and RECORDED PER ROW as it goes.
+      const emailResult = new Map<string, boolean>();
       for (const r of batch) {
         if (r.emailStatus !== 'queued' || !r.email) continue;
         try {
-          await sendBroadcastEmail({
-            to: r.email,
-            userId: r.userId,
-            firstName: (r.user.name || '').split(/\s+/)[0] || '',
-            broadcast: b,
-          });
-          emailResult.set(r.userId, { ok: true });
+          await sendBroadcastEmail({ to: r.email, userId: r.userId, name: r.user.name, broadcast: b });
+          emailResult.set(r.userId, true);
+          await prisma.adminBroadcastRecipient.update({ where: { id: r.id }, data: { emailStatus: 'sent', error: null } });
         } catch (e) {
-          emailResult.set(r.userId, { ok: false, error: String((e as Error)?.message ?? e).slice(0, 480) });
+          emailResult.set(r.userId, false);
+          await prisma.adminBroadcastRecipient.update({
+            where: { id: r.id },
+            data: { emailStatus: 'failed', error: String((e as Error)?.message ?? e).slice(0, 480) },
+          });
         }
         await sleep(EMAIL_GAP_MS);
       }
 
-      // 4. Book-keeping for the chunk. Per-row updates so the report is exact; the counters
-      //    on the broadcast are incremented once per chunk.
+      // 4. Close the chunk. Row statuses and the broadcast counters commit in ONE
+      //    transaction, so a crash cannot leave the progress bar disagreeing with the rows.
       let inApp = 0, push = 0, emailOk = 0, emailKo = 0;
-      await prisma.$transaction(batch.map(r => {
-        const sentInApp = inAppIds.includes(r.userId);
-        const sentPush = pushed.has(r.userId);
+      const rowUpdates = batch.map(r => {
+        const sentInApp = r.status === 'queued' ? inAppIds.has(r.userId) : r.inAppSent || inAppIds.has(r.userId);
+        const sentPush = r.status === 'queued' ? pushed.has(r.userId) : r.pushSent;
         const em = emailResult.get(r.userId);
-        if (sentInApp) inApp++;
-        if (sentPush) push++;
-        if (em?.ok) emailOk++;
-        if (em && !em.ok) emailKo++;
+        if (sentInApp && !r.inAppSent) inApp++;
+        if (sentPush && !r.pushSent) push++;
+        if (em === true) emailOk++;
+        if (em === false) emailKo++;
+        const emailFailed = em === false || (em === undefined && r.emailStatus === 'failed');
         return prisma.adminBroadcastRecipient.update({
           where: { id: r.id },
-          data: {
-            status: em && !em.ok ? 'failed' : 'done',
-            inAppSent: sentInApp,
-            pushSent: sentPush,
-            emailStatus: em ? (em.ok ? 'sent' : 'failed') : r.emailStatus,
-            error: em && !em.ok ? em.error : null,
-          },
+          data: { status: emailFailed ? 'failed' : 'done', inAppSent: sentInApp, pushSent: sentPush },
         });
-      }));
-      await prisma.adminBroadcast.update({
-        where: { id },
-        data: {
-          processedCount: { increment: batch.length },
-          inAppCount: { increment: inApp },
-          pushCount: { increment: push },
-          emailSentCount: { increment: emailOk },
-          emailFailedCount: { increment: emailKo },
-        },
       });
+      await prisma.$transaction([
+        ...rowUpdates,
+        prisma.adminBroadcast.update({
+          where: { id },
+          data: {
+            processedCount: { increment: batch.length },
+            inAppCount: { increment: inApp },
+            pushCount: { increment: push },
+            emailSentCount: { increment: emailOk },
+            emailFailedCount: { increment: emailKo },
+          },
+        }),
+      ]);
     }
 
-    const done = await prisma.adminBroadcast.findUnique({ where: { id }, select: { status: true, recipientCount: true, emailFailedCount: true, channelEmail: true, emailSentCount: true } });
+    // Finalise — from the recipient table, not from the counters, so it is exact.
+    const done = await prisma.adminBroadcast.findUnique({ where: { id }, select: { status: true, channelEmail: true, channelPush: true, channelInApp: true } });
     if (done?.status !== 'sending') return;
-    // `failed` only when email was the point and not one got through; partial failures
-    // are still `sent`, with the failures listed per recipient.
-    const allEmailFailed = done.channelEmail && done.emailSentCount === 0 && done.emailFailedCount > 0;
+    const [pending, total, emailSent, emailFailed, pushSent] = await Promise.all([
+      prisma.adminBroadcastRecipient.count({ where: { broadcastId: id, status: { in: ['queued', 'processing'] } } }),
+      prisma.adminBroadcastRecipient.count({ where: { broadcastId: id } }),
+      prisma.adminBroadcastRecipient.count({ where: { broadcastId: id, emailStatus: 'sent' } }),
+      prisma.adminBroadcastRecipient.count({ where: { broadcastId: id, emailStatus: 'failed' } }),
+      prisma.adminBroadcastRecipient.count({ where: { broadcastId: id, pushSent: true } }),
+    ]);
+    if (pending > 0) return; // never write `sent` with people still waiting
+    // `failed` only when a channel was the point and not one delivery got through; partial
+    // failures are still `sent`, with the failures listed per recipient.
+    const allEmailFailed = done.channelEmail && emailSent === 0 && emailFailed > 0;
+    const noPushAtAll = done.channelPush && !done.channelInApp && !done.channelEmail && pushSent === 0 && total > 0;
     await prisma.adminBroadcast.update({
       where: { id },
-      data: { status: allEmailFailed ? 'failed' : 'sent', finishedAt: new Date(), error: allEmailFailed ? 'لم ينجح إرسال أي بريد — راجع إعدادات SMTP' : null },
+      data: {
+        status: allEmailFailed || noPushAtAll ? 'failed' : 'sent',
+        finishedAt: new Date(),
+        processedCount: total,
+        emailSentCount: emailSent,
+        emailFailedCount: emailFailed,
+        pushCount: pushSent,
+        error: allEmailFailed ? 'لم ينجح إرسال أي بريد — راجع إعدادات SMTP'
+          : noPushAtAll ? 'لم يُسلَّم أي إشعار push — تحقق من مفاتيح VAPID أو أن أحداً فعّل الإشعارات'
+          : null,
+      },
     });
+    finalized = true;
   } catch (e) {
     console.error('[admin-broadcast] run failed', id, e);
+    finalized = true;
     await prisma.adminBroadcast.update({
       where: { id },
       data: { status: 'failed', finishedAt: new Date(), error: String((e as Error)?.message ?? e).slice(0, 2000) },
     }).catch(() => {});
   } finally {
     running.delete(id);
+    if (!finalized) {
+      // We left because the status was not `sending` at some point. If the admin resumed
+      // in the meantime (cancel → resume within one chunk), the status is `sending` again
+      // and nothing else is running it: pick it up.
+      const again = await prisma.adminBroadcast.findUnique({ where: { id }, select: { status: true } }).catch(() => null);
+      if (again?.status === 'sending') void runBroadcast(id);
+    }
   }
+}
+
+/**
+ * Broadcasts left at `sending` by a process that is no longer running them — a restart
+ * mid-send. Called from the admin list route, so opening the tab after a deploy resumes
+ * anything orphaned without a separate boot hook.
+ */
+export async function resumeOrphanedBroadcasts(): Promise<number> {
+  const rows = await prisma.adminBroadcast.findMany({ where: { status: 'sending' }, select: { id: true } });
+  let kicked = 0;
+  for (const r of rows) {
+    if (running.has(r.id)) continue;
+    kicked++;
+    void runBroadcast(r.id);
+  }
+  return kicked;
 }
 
 // ─── Email ──────────────────────────────────────────────────────────────────────────────
 
-async function sendBroadcastEmail(opts: { to: string; userId: string; firstName: string; broadcast: BroadcastRow }) {
+async function sendBroadcastEmail(opts: { to: string; userId: string; name: string | null; broadcast: BroadcastRow }) {
   const { broadcast: b } = opts;
   const baseUrl = getBaseUrl();
   const kind = BROADCAST_KINDS[b.kind as BroadcastKind];
   const ctaUrl = b.linkUrl
     ? (b.linkUrl.startsWith('/') ? `${baseUrl}${b.linkUrl}` : b.linkUrl)
     : `${baseUrl}${broadcastNoticeUrl(b.id)}`;
+  const firstName = (opts.name || '').trim().split(/\s+/)[0] || '';
   const html = renderPlainTextEmail({
     bodyText: b.body,
-    firstName: opts.firstName,
+    firstName,
     ctaLabel: b.linkLabel || (b.linkUrl ? 'افتح الرابط' : 'اقرأ في طريق'),
     ctaUrl,
   });
@@ -334,7 +433,7 @@ async function sendBroadcastEmail(opts: { to: string; userId: string; firstName:
   await getTransporter().sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: opts.to,
-    subject: `${kind?.icon ?? '📣'} ${b.title}`,
+    subject: `${kind?.icon ?? '📣'} ${personalize(b.title, opts.name)}`,
     html,
     headers,
   });
@@ -355,14 +454,14 @@ export async function sendBroadcastTest(id: string, toUserId: string): Promise<{
 
   if (b.channelInApp) {
     await prisma.tareeqNotification.create({
-      data: { userId: user.id, type: notifType, actorName: b.createdByName ?? BROADCAST_ACTOR_NAME, postId: b.id, postTitle: `[تجريبي] ${b.title}`, body: b.body.slice(0, 280) },
+      data: { userId: user.id, type: notifType, actorName: BROADCAST_ACTOR_NAME, postId: b.id, postTitle: `[تجريبي] ${personalize(b.title, user.name)}`.slice(0, 190), body: personalize(b.body, user.name).slice(0, 280) },
     });
     result.inApp = true;
   }
   if (b.channelPush) {
     await sendPushToUser(user.id, {
-      title: `[تجريبي] ${b.title}`,
-      body: b.body.slice(0, 180),
+      title: `[تجريبي] ${personalize(b.title, user.name)}`,
+      body: personalize(b.body, user.name).slice(0, 180),
       url: broadcastNoticeUrl(b.id),
       tag: `tareeq-broadcast-test-${b.id}`,
       type: 'generic',
@@ -370,7 +469,7 @@ export async function sendBroadcastTest(id: string, toUserId: string): Promise<{
     result.push = true;
   }
   if (b.channelEmail) {
-    await sendBroadcastEmail({ to: user.email, userId: user.id, firstName: (user.name || '').split(/\s+/)[0] || '', broadcast: b });
+    await sendBroadcastEmail({ to: user.email, userId: user.id, name: user.name, broadcast: b });
     result.email = true;
   }
   return result;
@@ -438,5 +537,5 @@ export function parseBroadcastInput(body: Record<string, unknown>) {
 /** What a MEMBER sees of a broadcast — no audience, counters or channel flags. */
 export const NOTICE_SELECT = {
   id: true, kind: true, title: true, body: true, linkUrl: true, linkLabel: true,
-  createdByName: true, startedAt: true, createdAt: true,
+  startedAt: true, createdAt: true,
 } as const;

@@ -22,7 +22,9 @@ export default function TareeqNoticeBanner() {
   const [notice, setNotice] = useState<{ id: string; kind: string; title: string } | null>(null);
   const [hidden, setHidden] = useState(false);
 
-  const onNoticePage = pathname.startsWith('/tareeq/notices');
+  const onNoticePage = pathname === '/tareeq/notices' || pathname.startsWith('/tareeq/notices/');
+  // The one immersive page — the nav hides there too.
+  const immersive = pathname.startsWith('/tareeq/khatmati/read');
 
   useEffect(() => {
     if (!user || onNoticePage) return;
@@ -40,7 +42,7 @@ export default function TareeqNoticeBanner() {
     return () => { cancelled = true; clearInterval(t); };
   }, [user, onNoticePage]);
 
-  if (!user || onNoticePage || hidden || !notice) return null;
+  if (!user || onNoticePage || immersive || hidden || !notice) return null;
   const k = BROADCAST_KINDS[notice.kind as BroadcastKind];
 
   const dismiss = () => {
@@ -49,8 +51,8 @@ export default function TareeqNoticeBanner() {
   };
 
   return (
-    <div dir={isRtl ? 'rtl' : 'ltr'} className="relative z-30 flex items-center gap-2 px-3 py-2 text-sm"
-      style={{ background: 'var(--tr-gold-glow)', borderBottom: '1px solid var(--tr-gold-dim)', color: 'var(--tr-text-primary)' }}>
+    <div dir={isRtl ? 'rtl' : 'ltr'} className="sticky top-0 z-50 flex items-center gap-2 px-3 py-2 text-sm"
+      style={{ background: 'var(--tr-gold-glow)', backdropFilter: 'blur(8px)', borderBottom: '1px solid var(--tr-gold-dim)', color: 'var(--tr-text-primary)' }}>
       <span aria-hidden className="shrink-0">{k?.icon ?? '📣'}</span>
       <Link href={`/tareeq/notices/${notice.id}`} className="flex-1 min-w-0 truncate font-bold hover:underline">
         {notice.title}

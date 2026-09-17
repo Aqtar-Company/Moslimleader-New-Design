@@ -4,8 +4,10 @@ import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { logActionSafe } from '@/lib/audit-log';
 import {
-  BROADCAST_LIST_SELECT, parseBroadcastInput, queueBroadcast, runBroadcast,
+  BROADCAST_LIST_SELECT, parseBroadcastInput, queueBroadcast, runBroadcast, resumeOrphanedBroadcasts,
 } from '@/lib/admin-broadcast';
+
+const STATUSES = new Set(['draft', 'sending', 'sent', 'failed', 'canceled']);
 
 /**
  * Admin broadcasts — list and create.
@@ -28,9 +30,14 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url);
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
-  const status = url.searchParams.get('status') || undefined;
+  const statusParam = url.searchParams.get('status');
+  const status = statusParam && STATUSES.has(statusParam) ? statusParam : undefined;
   const limit = 20;
   const where = status ? { status } : {};
+
+  // A send orphaned by a process restart sits at `sending` with nothing running it. The
+  // admin opening this tab is the natural moment to pick it up again — no boot hook needed.
+  void resumeOrphanedBroadcasts().catch(() => {});
 
   const [total, broadcasts] = await Promise.all([
     prisma.adminBroadcast.count({ where }),

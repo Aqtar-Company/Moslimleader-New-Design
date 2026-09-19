@@ -144,6 +144,23 @@ export async function queueBroadcast(id: string): Promise<number> {
   const ids = Array.isArray(b.targetUserIds) ? (b.targetUserIds as unknown[]).filter((x): x is string => typeof x === 'string') : [];
   if (audience === 'selected' && ids.length === 0) throw new Error('لم يتم اختيار أي مستلم');
 
+  // Rows whose ONLY failure was the email (an SMTP outage) go back in the queue. They are
+  // requeued as `processing`, not `queued`, so the chunk treats them as leftovers: the
+  // in-app row is checked against the notification table instead of written again, the push
+  // is not repeated, and only the mail is retried. Without this a ten-minute Titan outage
+  // left a permanently dead broadcast whose only recovery was composing a new one — which
+  // would have re-notified everyone who already got it.
+  const retried = await prisma.adminBroadcastRecipient.updateMany({
+    where: { broadcastId: id, status: 'failed', emailStatus: 'failed' },
+    data: { status: 'processing', emailStatus: 'queued', error: null },
+  });
+  if (retried.count > 0) {
+    await prisma.adminBroadcast.update({
+      where: { id },
+      data: { emailFailedCount: 0, processedCount: { decrement: retried.count } },
+    });
+  }
+
   const users = await prisma.user.findMany({
     where: audienceWhere(audience, ids),
     select: { id: true, email: true, emailVerified: true, marketingOptIn: true },
@@ -217,7 +234,9 @@ export async function runBroadcast(id: string): Promise<void> {
       // recipient on every chunk after the first.)
       const batch = await prisma.adminBroadcastRecipient.findMany({
         where: { broadcastId: id, status: { in: ['queued', 'processing'] } },
-        orderBy: [{ status: 'desc' }, { id: 'asc' }], // `processing` (crash leftovers) first
+        // `processing` sorts before `queued` ascending, so crash leftovers drain FIRST and
+        // the window in which a row sits claimed-but-unfinished stays as short as possible.
+        orderBy: [{ status: 'asc' }, { id: 'asc' }],
         take: CHUNK,
         include: {
           user: { select: { id: true, name: true, email: true, tareeqNotifPrefs: true, tareeqPushSubscriptions: { select: { id: true }, take: 1 } } },
@@ -272,23 +291,38 @@ export async function runBroadcast(id: string): Promise<void> {
           await Promise.all(targets.slice(i, i + PUSH_CONCURRENCY).map(async r => {
             try {
               const body = personalize(b.body, r.user.name);
-              await sendPushToUser(r.userId, {
+              // Counted only when a device actually ACCEPTED it — sendPushToUser returns the
+              // number of endpoints that took it, which is 0 when VAPID is misconfigured.
+              const delivered = await sendPushToUser(r.userId, {
                 title: `${kindDef?.icon ?? '📣'} ${personalize(b.title, r.user.name)}`,
                 body: body.length > 180 ? `${body.slice(0, 177)}…` : body,
                 url,
                 tag: `tareeq-broadcast-${b.id}`,
                 type: 'generic',
               });
-              pushed.add(r.userId);
+              if (delivered > 0) pushed.add(r.userId);
             } catch { /* a dead device is not a failed recipient */ }
           }));
         }
       }
 
       // 3. Email — sequential, throttled, and RECORDED PER ROW as it goes.
+      //
+      // The cancel check is INSIDE this loop, not only before the chunk: at one mail every
+      // two seconds a full chunk takes three and a half minutes, and an admin pressing
+      // «إيقاف» to stop a mistake should not watch it keep mailing for that long. Breaking
+      // out mid-loop is safe — every mail already sent is recorded on its own row, and the
+      // rows not reached stay `processing` for the resume.
       const emailResult = new Map<string, boolean>();
+      let canceledMidChunk = false;
+      let sentThisChunk = 0;
       for (const r of batch) {
         if (r.emailStatus !== 'queued' || !r.email) continue;
+        if (sentThisChunk > 0 && sentThisChunk % 10 === 0) {
+          const still = await prisma.adminBroadcast.findUnique({ where: { id }, select: { status: true } });
+          if (still?.status !== 'sending') { canceledMidChunk = true; break; }
+        }
+        sentThisChunk++;
         try {
           await sendBroadcastEmail({ to: r.email, userId: r.userId, name: r.user.name, broadcast: b });
           emailResult.set(r.userId, true);
@@ -305,8 +339,13 @@ export async function runBroadcast(id: string): Promise<void> {
 
       // 4. Close the chunk. Row statuses and the broadcast counters commit in ONE
       //    transaction, so a crash cannot leave the progress bar disagreeing with the rows.
+      // A chunk cut short by «إيقاف» closes only the rows it actually handled; the rest
+      // keep their `processing` claim so the resume picks them up.
+      const closing = canceledMidChunk
+        ? batch.filter(r => emailResult.has(r.userId) || r.emailStatus !== 'queued')
+        : batch;
       let inApp = 0, push = 0, emailOk = 0, emailKo = 0;
-      const rowUpdates = batch.map(r => {
+      const rowUpdates = closing.map(r => {
         const sentInApp = r.status === 'queued' ? inAppIds.has(r.userId) : r.inAppSent || inAppIds.has(r.userId);
         const sentPush = r.status === 'queued' ? pushed.has(r.userId) : r.pushSent;
         const em = emailResult.get(r.userId);
@@ -325,7 +364,7 @@ export async function runBroadcast(id: string): Promise<void> {
         prisma.adminBroadcast.update({
           where: { id },
           data: {
-            processedCount: { increment: batch.length },
+            processedCount: { increment: closing.length },
             inAppCount: { increment: inApp },
             pushCount: { increment: push },
             emailSentCount: { increment: emailOk },
@@ -338,17 +377,20 @@ export async function runBroadcast(id: string): Promise<void> {
     // Finalise — from the recipient table, not from the counters, so it is exact.
     const done = await prisma.adminBroadcast.findUnique({ where: { id }, select: { status: true, channelEmail: true, channelPush: true, channelInApp: true } });
     if (done?.status !== 'sending') return;
-    const [pending, total, emailSent, emailFailed, pushSent] = await Promise.all([
+    const [pending, total, emailSent, emailFailed, pushSent, inAppSent] = await Promise.all([
       prisma.adminBroadcastRecipient.count({ where: { broadcastId: id, status: { in: ['queued', 'processing'] } } }),
       prisma.adminBroadcastRecipient.count({ where: { broadcastId: id } }),
       prisma.adminBroadcastRecipient.count({ where: { broadcastId: id, emailStatus: 'sent' } }),
       prisma.adminBroadcastRecipient.count({ where: { broadcastId: id, emailStatus: 'failed' } }),
       prisma.adminBroadcastRecipient.count({ where: { broadcastId: id, pushSent: true } }),
+      prisma.adminBroadcastRecipient.count({ where: { broadcastId: id, inAppSent: true } }),
     ]);
     if (pending > 0) return; // never write `sent` with people still waiting
     // `failed` only when a channel was the point and not one delivery got through; partial
     // failures are still `sent`, with the failures listed per recipient.
-    const allEmailFailed = done.channelEmail && emailSent === 0 && emailFailed > 0;
+    // Email failing does NOT fail a broadcast that also reached people in-app or by push —
+    // those deliveries happened. Same rule as the push branch below.
+    const allEmailFailed = done.channelEmail && !done.channelInApp && !done.channelPush && emailSent === 0 && emailFailed > 0;
     const noPushAtAll = done.channelPush && !done.channelInApp && !done.channelEmail && pushSent === 0 && total > 0;
     await prisma.adminBroadcast.update({
       where: { id },
@@ -359,6 +401,7 @@ export async function runBroadcast(id: string): Promise<void> {
         emailSentCount: emailSent,
         emailFailedCount: emailFailed,
         pushCount: pushSent,
+        inAppCount: inAppSent,
         error: allEmailFailed ? 'لم ينجح إرسال أي بريد — راجع إعدادات SMTP'
           : noPushAtAll ? 'لم يُسلَّم أي إشعار push — تحقق من مفاتيح VAPID أو أن أحداً فعّل الإشعارات'
           : null,
@@ -389,8 +432,13 @@ export async function runBroadcast(id: string): Promise<void> {
  * mid-send. Called from the admin list route, so opening the tab after a deploy resumes
  * anything orphaned without a separate boot hook.
  */
+let lastOrphanSweep = 0;
 export async function resumeOrphanedBroadcasts(): Promise<number> {
-  const rows = await prisma.adminBroadcast.findMany({ where: { status: 'sending' }, select: { id: true } });
+  // The admin screen polls every 3s while a send runs; the sweep itself is only useful
+  // after a restart, so once every 30s is plenty and keeps the poll free.
+  if (Date.now() - lastOrphanSweep < 30_000) return 0;
+  lastOrphanSweep = Date.now();
+  const rows = await prisma.adminBroadcast.findMany({ where: { status: 'sending' }, select: { id: true }, take: 20 });
   let kicked = 0;
   for (const r of rows) {
     if (running.has(r.id)) continue;

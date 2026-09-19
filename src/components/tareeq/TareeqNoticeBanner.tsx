@@ -51,7 +51,9 @@ export default function TareeqNoticeBanner() {
   };
 
   return (
-    <div dir={isRtl ? 'rtl' : 'ltr'} className="sticky top-0 z-50 flex items-center gap-2 px-3 py-2 text-sm"
+    // In normal flow, not sticky: several pages carry their own `sticky top-0` header
+    // (saved, groups, the desktop nav) and a second sticky bar lands on top of them.
+    <div dir={isRtl ? 'rtl' : 'ltr'} className="relative z-30 flex items-center gap-2 px-3 py-2 text-sm"
       style={{ background: 'var(--tr-gold-glow)', backdropFilter: 'blur(8px)', borderBottom: '1px solid var(--tr-gold-dim)', color: 'var(--tr-text-primary)' }}>
       <span aria-hidden className="shrink-0">{k?.icon ?? '📣'}</span>
       <Link href={`/tareeq/notices/${notice.id}`} className="flex-1 min-w-0 truncate font-bold hover:underline">

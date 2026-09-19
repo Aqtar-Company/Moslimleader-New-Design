@@ -28,7 +28,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   // Drafts are visible to nobody but the admin; a member sees a notice only if it was
   // addressed to them. The test send writes no recipient row, so the admin path covers it.
   const isAdmin = user.role === 'admin';
-  const delivered = receipt && receipt.status !== 'queued';
+  // Same definition of "delivered" as the list and the banner: a claimed-but-unfinished
+  // chunk (`processing`) has not reached this person yet.
+  const delivered = receipt && (receipt.status === 'done' || receipt.status === 'failed');
   if (!isAdmin && (!delivered || broadcast.status === 'draft')) {
     return NextResponse.json({ error: 'الرسالة غير موجودة' }, { status: 404 });
   }

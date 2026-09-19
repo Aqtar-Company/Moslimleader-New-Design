@@ -38,12 +38,19 @@ export interface PushPayload {
   callId?: string;
 }
 
-export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {
+/**
+ * Returns how many of the user's devices ACCEPTED the push — 0 when VAPID is unconfigured,
+ * when the user has no subscription, or when every endpoint refused. Callers that only
+ * fire-and-forget can ignore it; the admin broadcast counts it, because "we called
+ * sendPushToUser" is not the same as "a phone buzzed", and a report that conflates the two
+ * hides exactly the misconfiguration (a VAPID key mismatch) that silences the platform.
+ */
+export async function sendPushToUser(userId: string, payload: PushPayload): Promise<number> {
   if (!vapidReady) {
     // Loudly, once per send: missing OR malformed keys mean NO background notifications at
     // all, and staying silent about it made the whole platform look like nobody had opted in.
     console.warn('[tareeq-push] VAPID is not configured — no push will be delivered');
-    return;
+    return 0;
   }
 
   const subs = await prisma.tareeqPushSubscription.findMany({
@@ -51,16 +58,17 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
     select: { id: true, endpoint: true, p256dh: true, auth: true },
   });
 
-  if (!subs.length) return;
+  if (!subs.length) return 0;
 
   const json = JSON.stringify(payload);
+  let delivered = 0;
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     subs.map(sub =>
       webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         json,
-      ).catch(async (err: { statusCode?: number; body?: string }) => {
+      ).then(() => { delivered++; }).catch(async (err: { statusCode?: number; body?: string }) => {
         // 410/404: the browser dropped the subscription — prune it.
         if (err.statusCode === 410 || err.statusCode === 404) {
           await prisma.tareeqPushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
@@ -85,4 +93,8 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
       })
     )
   );
+  // `allSettled` cannot reject, but a rejected entry would mean the .catch above itself
+  // threw — count it as undelivered rather than pretending.
+  void results;
+  return delivered;
 }

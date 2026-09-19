@@ -125,13 +125,15 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
   useEffect(() => {
     const ids = form.audience === 'selected' ? form.selected.map(u => u.id) : [];
     if (form.audience === 'selected' && ids.length === 0) { setReach({ total: 0, withPush: 0, emailVerified: 0, emailOptIn: 0 }); return; }
+    let stale = false;
     const t = setTimeout(async () => {
       try {
         const res = await fetch(`/api/admin/tareeq/broadcasts/audience?audience=${form.audience}${ids.length ? `&ids=${ids.join(',')}` : ''}`);
-        if (res.ok) setReach(await res.json());
+        // A slow answer for a previous audience must not overwrite a newer one.
+        if (res.ok && !stale) setReach(await res.json());
       } catch { /* the number is advisory */ }
     }, 300);
-    return () => clearTimeout(t);
+    return () => { stale = true; clearTimeout(t); };
   }, [form.audience, form.selected]);
 
   // ── History
@@ -536,7 +538,7 @@ function BroadcastRow({ b, open, onToggle, onChanged, onTemplate, flash }: {
             {b.status === 'draft' && <button type="button" style={S.btn('#d4a843')} disabled={busy} onClick={() => onTemplate(b)}>✏️ تعديل المسودة</button>}
             {b.status === 'draft' && <button type="button" style={S.ghost} disabled={busy} onClick={() => act('send', 'بدأ الإرسال ✓')}>📣 إرسال</button>}
             {b.status === 'sending' && <button type="button" style={S.btn('#f59e0b')} disabled={busy} onClick={() => act('cancel', 'تم إيقاف الإرسال')}>⏸ إيقاف الإرسال</button>}
-            {(b.status === 'canceled' || b.status === 'failed') && b.processedCount < b.recipientCount && <button type="button" style={S.btn('#60a5fa')} disabled={busy} onClick={() => act('send', 'بدأ استكمال الإرسال ✓')}>▶ استكمال الإرسال للباقين</button>}
+            {(b.status === 'canceled' || b.status === 'failed' || (b.status === 'sent' && b.emailFailedCount > 0)) && (b.processedCount < b.recipientCount || b.emailFailedCount > 0) && <button type="button" style={S.btn('#60a5fa')} disabled={busy} onClick={() => act('send', 'بدأ استكمال الإرسال ✓')}>▶ {b.emailFailedCount > 0 && b.processedCount >= b.recipientCount ? `إعادة محاولة الإيميل (${b.emailFailedCount})` : 'استكمال الإرسال للباقين'}</button>}
             {b.status !== 'draft' && <TemplateButton b={b} onTemplate={onTemplate} />}
             {b.status !== 'sending' && <button type="button" style={{ ...S.ghost, color: '#f87171', borderColor: '#7f1d1d' }} disabled={busy} onClick={remove}>🗑 حذف</button>}
           </div>

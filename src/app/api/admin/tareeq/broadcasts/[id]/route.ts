@@ -73,7 +73,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     where: { id: params.id },
     // `null` must CLEAR the list — switching a draft from a hand-picked list to `all` used
     // to keep the stale ids in the row.
-    data: { ...parsed.data, targetUserIds: parsed.data.targetUserIds ?? Prisma.JsonNull },
+    // `DbNull` writes SQL NULL; `JsonNull` would write the JSON literal `null` into the column.
+    data: { ...parsed.data, targetUserIds: parsed.data.targetUserIds ?? Prisma.DbNull },
     select: BROADCAST_LIST_SELECT,
   });
   return NextResponse.json({ broadcast });

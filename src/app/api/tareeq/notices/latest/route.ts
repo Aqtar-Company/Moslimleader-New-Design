@@ -21,7 +21,9 @@ export async function GET() {
       createdAt: { gte: since },
       broadcast: { kind: { in: ['announcement', 'update'] }, status: { in: ['sending', 'sent'] } },
     },
-    orderBy: { createdAt: 'desc' },
+    // `createMany` stamps a whole chunk with one `createdAt`, so the id breaks the tie and
+    // the banner picks the same notice on every request.
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     select: { broadcast: { select: { id: true, kind: true, title: true } } },
   });
   return NextResponse.json({ notice: row?.broadcast ?? null });

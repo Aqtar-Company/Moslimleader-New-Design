@@ -586,6 +586,18 @@ Books are protected from download at two levels:
     `TareeqNotifType` + `NOTIF_GROUP` (tareeq-notify.ts), the icon/label in
     `TareeqNotificationsClient.tsx`. The notif type string is what the SW/notifications screen
     switch on.
+  - **A failed email is retryable, nothing else is re-sent.** `queueBroadcast` puts rows whose
+    only failure was the mail (`status: failed` + `emailStatus: failed`) back as
+    `processing`, so the chunk treats them as leftovers: the in-app row is checked against
+    the notification table instead of written twice, the push is NOT repeated, only the mail
+    goes out again. «إعادة محاولة الإيميل» in the history triggers it. A broadcast is only
+    marked `failed` when the failing channel was the ONLY channel.
+  - **«إيقاف» is checked every 10 emails inside a chunk**, not just between chunks — a chunk
+    of 100 mails takes 3½ minutes at the throttle, and a stop must feel like a stop. Rows the
+    cut short did not reach keep their `processing` claim for the resume.
+  - `sendPushToUser` returns the number of endpoints that ACCEPTED the push (0 when VAPID is
+    unconfigured), which is what `pushCount` and the report's ✓ mean. Do not go back to
+    treating "we called it" as a delivery — that hid a VAPID key mismatch for weeks.
   - Deleting a sent broadcast cascades the recipient rows but keeps the `TareeqNotification`
     rows members already received (a delivered message stays delivered).
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.

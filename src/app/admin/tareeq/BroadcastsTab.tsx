@@ -323,6 +323,7 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
           </div>
           {form.channelEmail && (
             <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155' }}>
+              <p style={{ ...S.hint, marginTop: 0, marginBottom: 8, color: '#fbbf24' }}>⚠️ الإيميل لا يُرسل لمن لم يؤكد بريده (إلا في «أشخاص محددون»)، ولا لمن رفض الرسائل التسويقية ما لم تعلّم الرسالة كـ«خدمية». تقرير التسليم يكتب السبب لكل شخص لم يصله.</p>
               <Check label="رسالة خدمية — تصل حتى لمن ألغى اشتراك الرسائل التسويقية" checked={form.serviceMessage} onChange={v => set('serviceMessage', v)} />
               <p style={S.hint}>{form.serviceMessage
                 ? 'مناسب للتحديثات والتذكيرات والملاحظات المهمة. لا يحمل رابط إلغاء اشتراك.'
@@ -623,7 +624,8 @@ function RecipientsReport({ id, channelEmail }: { id: string; channelEmail: bool
                   <td style={{ padding: '6px', textAlign: 'center' }}>{r.status === 'queued' || r.status === 'processing' ? '⏳' : r.pushSent ? '✓' : '—'}</td>
                   {channelEmail && <td style={{ padding: '6px', textAlign: 'center', color: r.emailStatus === 'failed' ? '#f87171' : undefined }}>{emailLabel[r.emailStatus] ?? r.emailStatus}</td>}
                   <td style={{ padding: '6px', textAlign: 'center' }}>{r.readAt ? '👁' : ''}</td>
-                  <td style={{ padding: '6px', textAlign: 'start', color: '#fca5a5' }}>{r.error ?? ''}</td>
+                  {/* A skip has a REASON and is not a failure — amber, not red. */}
+                  <td style={{ padding: '6px', textAlign: 'start', color: r.emailStatus === 'failed' ? '#fca5a5' : '#fbbf24', maxWidth: 260 }}>{r.error ?? ''}</td>
                 </tr>
               ))}
             </tbody>
@@ -637,7 +639,7 @@ function RecipientsReport({ id, channelEmail }: { id: string; channelEmail: bool
           <button type="button" style={{ ...S.ghost, padding: '4px 10px', fontSize: 12 }} disabled={page >= pages} onClick={() => setPage(p => p + 1)}>التالي</button>
         </div>
       )}
-      <p style={S.hint}>«—» في عمود طريق يعني أن الشخص أوقف «إعلانات المنصة» من إعداداته. في عمود push يعني ذلك أو أنه لا يملك جهازاً مفعّلاً للإشعارات. في عمود الإيميل يعني أن بريده غير مُفعَّل أو لم يوافق على الرسائل التسويقية.</p>
+      <p style={S.hint}>«—» في عمود طريق يعني أن الشخص أوقف «إعلانات المنصة» من إعداداته، وفي عمود push يعني ذلك أو أنه لا يملك جهازاً مفعّلاً. أما الإيميل فالسبب مكتوب في عمود «ملاحظة» لكل شخص لم يصله.</p>
     </div>
   );
 }

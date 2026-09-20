@@ -598,6 +598,22 @@ Books are protected from download at two levels:
   - `sendPushToUser` returns the number of endpoints that ACCEPTED the push (0 when VAPID is
     unconfigured), which is what `pushCount` and the report's ✓ mean. Do not go back to
     treating "we called it" as a delivery — that hid a VAPID key mismatch for weeks.
+  - **«الإيميل موصلش» is almost never SMTP.** Three silent gates, in this order: the email
+    channel is OFF by default in the composer; a broad audience requires `emailVerified`;
+    and a non-service message requires `marketingOptIn`. Each skip now writes its REASON on
+    the recipient row (`AdminBroadcastRecipient.error`) and the report prints it in amber —
+    a bare «—» was indistinguishable from a bug. A **hand-picked list is exempt from the
+    verified-address rule**: the bounce risk that rule guards against is a mass send to
+    stale signups, and refusing to write to a person the admin typed the name of is just
+    broken. `computeReach` mirrors all of this, including the exemption.
+  - **The email wears طريق's identity, not the shop's** (`src/lib/tareeq-email.ts`, NOT
+    `email-template.ts`, which is the store's purple "Moslim Leader" shell). Dark header,
+    the mark from `public/Tareeq-small.png` by absolute URL, the name «طريق» repeated as
+    real text beside it so a blocked image still reads, and a signature naming إدارة طريق
+    with a reply address. The from-NAME is «طريق — مسلم ليدر»; the from-ADDRESS stays
+    `SMTP_USER`, because SPF/DKIM are published for that mailbox and inventing an
+    unauthenticated sender is the fastest route to the spam folder. `replyTo` is
+    `TAREEQ_REPLY_TO` (default `info@moslimleader.com`).
   - Deleting a sent broadcast cascades the recipient rows but keeps the `TareeqNotification`
     rows members already received (a delivered message stays delivered).
 - **Chat bubbles: copy, image zoom and the shared-post card.** Three things a chat is

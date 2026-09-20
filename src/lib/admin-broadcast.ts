@@ -41,7 +41,7 @@ import type { Prisma } from '@prisma/client';
 import { sendPushToUser } from '@/lib/tareeq-push';
 import { wantsNotif, type TareeqNotifType } from '@/lib/tareeq-notify';
 import { getTransporter } from '@/lib/smtp';
-import { renderPlainTextEmail } from '@/lib/email-template';
+import { renderTareeqEmail } from '@/lib/tareeq-email';
 import { getBaseUrl } from '@/lib/marketing-mailer';
 import { ensureMarketingToken } from '@/lib/campaign-runner';
 
@@ -91,14 +91,21 @@ export type Reach = {
   emailOptIn: number;
 };
 
-/** How many people a broadcast would reach on each channel — for the compose screen. */
+/**
+ * How many people a broadcast would reach on each channel — for the compose screen.
+ *
+ * The email numbers mirror `queueBroadcast` exactly, including the exemption for a
+ * hand-picked list (no verified-address requirement there). A reach number that promises
+ * more than the send delivers is worse than no number at all.
+ */
 export async function computeReach(audience: BroadcastAudience, targetUserIds: string[] = []): Promise<Reach> {
   const where = audienceWhere(audience, targetUserIds);
+  const verified = audience === 'selected' ? {} : { emailVerified: true };
   const [total, withPush, emailVerified, emailOptIn] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.count({ where: { ...where, tareeqPushSubscriptions: { some: {} } } }),
-    prisma.user.count({ where: { ...where, emailVerified: true } }),
-    prisma.user.count({ where: { ...where, emailVerified: true, marketingOptIn: true } }),
+    prisma.user.count({ where: { ...where, ...verified } }),
+    prisma.user.count({ where: { ...where, ...verified, marketingOptIn: true } }),
   ]);
   return { total, withPush, emailVerified, emailOptIn };
 }
@@ -167,16 +174,25 @@ export async function queueBroadcast(id: string): Promise<number> {
   });
   if (users.length === 0) throw new Error('لا يوجد مستلمون مطابقون لهذا الجمهور');
 
-  // Email is queued only for those who may receive it — a verified address, and either a
-  // service message or a marketing opt-in. The rest are `skipped`, which the report shows
-  // honestly instead of counting them as failures. Unverified addresses are exactly the
-  // typos and throwaways that bounce and hurt the transactional domain.
-  const rows = users.map(u => ({
-    broadcastId: id,
-    userId: u.id,
-    email: u.email,
-    emailStatus: b.channelEmail && u.emailVerified && (b.serviceMessage || u.marketingOptIn) ? 'queued' : 'skipped',
-  }));
+  // Who may receive the email, and — when they may not — WHY, written on the row. The
+  // report used to show a bare «—» for a skip, which is indistinguishable from a bug: the
+  // first report of "the email never arrived" was a member whose address was simply never
+  // verified, and nothing on the screen said so.
+  //
+  // A hand-picked list does NOT require a verified address. The bounce risk that rule
+  // guards against is a mass send to thousands of stale signups; when the admin has typed
+  // this person's name and chosen them, refusing to write to them is just a broken feature.
+  const requireVerified = audience !== 'selected';
+  const rows = users.map(u => {
+    let emailStatus = 'skipped';
+    let error: string | null = null;
+    if (b.channelEmail) {
+      if (requireVerified && !u.emailVerified) error = 'البريد غير مُفعَّل — لم يؤكد المستخدم بريده';
+      else if (!b.serviceMessage && !u.marketingOptIn) error = 'المستخدم لم يوافق على الرسائل التسويقية — فعّل «رسالة خدمية» لتصله';
+      else emailStatus = 'queued';
+    }
+    return { broadcastId: id, userId: u.id, email: u.email, emailStatus, error };
+  });
   for (let i = 0; i < rows.length; i += CHUNK) {
     await prisma.adminBroadcastRecipient.createMany({ data: rows.slice(i, i + CHUNK), skipDuplicates: true });
   }
@@ -457,29 +473,40 @@ async function sendBroadcastEmail(opts: { to: string; userId: string; name: stri
   const ctaUrl = b.linkUrl
     ? (b.linkUrl.startsWith('/') ? `${baseUrl}${b.linkUrl}` : b.linkUrl)
     : `${baseUrl}${broadcastNoticeUrl(b.id)}`;
-  const firstName = (opts.name || '').trim().split(/\s+/)[0] || '';
-  const html = renderPlainTextEmail({
-    bodyText: b.body,
-    firstName,
-    ctaLabel: b.linkLabel || (b.linkUrl ? 'افتح الرابط' : 'اقرأ في طريق'),
-    ctaUrl,
-  });
-  const fromName = process.env.SMTP_FROM_NAME || 'Moslim Leader';
   const fromEmail = process.env.SMTP_USER || 'orders@moslimleader.com';
 
   // Promotional messages carry the one-click unsubscribe pair Gmail/Yahoo require of bulk
-  // senders. Service messages (an outage notice, a policy change) do not offer opting out —
-  // that is what "service" means — and Gmail does not require the header on them.
+  // senders, and the matching link in the footer. Service messages (an outage notice, a
+  // policy change) do not offer opting out — that is what "service" means — and Gmail does
+  // not require the header on them.
   const headers: Record<string, string> = { 'X-Campaign': 'moslimleader-broadcast' };
+  let unsubscribeUrl: string | null = null;
   if (!b.serviceMessage) {
     const token = await ensureMarketingToken(opts.userId);
-    const unsubscribeUrl = `${baseUrl}/api/email/unsubscribe?token=${token}`;
+    unsubscribeUrl = `${baseUrl}/api/email/unsubscribe?token=${token}`;
     headers['List-Unsubscribe'] = `<${unsubscribeUrl}>, <mailto:${fromEmail}?subject=unsubscribe>`;
     headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
   }
 
+  const html = renderTareeqEmail({
+    baseUrl,
+    kindLabel: kind?.ar ?? 'رسالة',
+    kindIcon: kind?.icon ?? '📣',
+    title: personalize(b.title, opts.name),
+    bodyText: personalize(b.body, opts.name),
+    ctaLabel: b.linkLabel || (b.linkUrl ? 'افتح الرابط' : 'اقرأ في طريق'),
+    ctaUrl,
+    unsubscribeUrl,
+  });
+
   await getTransporter().sendMail({
-    from: `"${fromName}" <${fromEmail}>`,
+    // The sender NAME is طريق, not the shop — the member subscribed to a platform with its
+    // own identity, and mail dressed as the store reads as mail from a stranger. The
+    // ADDRESS stays the shop's authenticated mailbox: SPF/DKIM are published for that
+    // domain, and inventing a from-address the domain does not authenticate is the fastest
+    // way into a spam folder.
+    from: `"طريق — مسلم ليدر" <${fromEmail}>`,
+    replyTo: process.env.TAREEQ_REPLY_TO || 'info@moslimleader.com',
     to: opts.to,
     subject: `${kind?.icon ?? '📣'} ${personalize(b.title, opts.name)}`,
     html,

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import TareeqVideo from '@/components/tareeq/TareeqVideo';
+import TareeqImageViewer from '@/components/tareeq/TareeqImageViewer';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
@@ -629,6 +630,8 @@ function Inner({ groupId }: { groupId: string }) {
   const { isRtl } = useLang();
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  /** An image opened full screen from a bubble — same behaviour as the private chat. */
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   // Core state
   const [group, setGroup] = useState<GroupInfo | null>(null);
@@ -1086,7 +1089,17 @@ function Inner({ groupId }: { groupId: string }) {
                             borderRadius: grp.mine ? mineRadius : otherRadius,
                           }}>
                           {m.audioUrl && <VoiceGroupMessage url={m.audioUrl} mine={grp.mine} />}
-                          {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full max-w-xs rounded-xl object-cover" style={{ maxHeight: 220 }} />}
+                          {/* Tap opens it full screen — cropped to 220px in a bubble, a
+                              photographed page cannot be read. */}
+                          {m.imageUrl && (
+                            <img
+                              src={m.imageUrl}
+                              alt={isRtl ? 'صورة في الرسالة — اضغط للتكبير' : 'Image in message — tap to enlarge'}
+                              className="w-full max-w-xs rounded-xl object-cover cursor-zoom-in"
+                              style={{ maxHeight: 220 }}
+                              onClick={e => { e.stopPropagation(); setZoomedImage(m.imageUrl!); }}
+                            />
+                          )}
                           {m.videoUrl && <TareeqVideo src={m.videoUrl} className="w-full max-w-xs rounded-xl" style={{ maxHeight: 220 }} controls playsInline />}
                           {m.content && (
                             <p className="px-3.5 py-2.5 text-sm leading-relaxed" style={{ wordBreak: 'break-word' }} dir="auto">
@@ -1316,6 +1329,10 @@ function Inner({ groupId }: { groupId: string }) {
           onLeft={() => router.push('/tareeq/inbox')}
         />
       )}
+      {zoomedImage && (
+        <TareeqImageViewer src={zoomedImage} isRtl={isRtl} onClose={() => setZoomedImage(null)} />
+      )}
+
       {showCreateGroup && (
         <CreateGroupModal
           onClose={() => setShowCreateGroup(false)}

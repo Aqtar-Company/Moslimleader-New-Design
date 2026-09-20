@@ -600,6 +600,24 @@ Books are protected from download at two levels:
     treating "we called it" as a delivery — that hid a VAPID key mismatch for weeks.
   - Deleting a sent broadcast cascades the recipient rows but keeps the `TareeqNotification`
     rows members already received (a delivered message stays delivered).
+- **Chat bubbles: copy, image zoom and the shared-post card.** Three things a chat is
+  expected to do that طريق's did not, all in `src/app/tareeq/inbox/[conversationId]/
+  TareeqConversationClient.tsx` and mirrored in `groups/[id]/TareeqGroupClient.tsx`:
+  - **Copying text was impossible.** The bubble's long press (500ms) and `onContextMenu`
+    `preventDefault()` replaced the browser's own selection/copy menu with an action sheet
+    that offered only Reply and Delete. Both handlers now bail out when
+    `window.getSelection()` is non-empty (so a selection the reader made wins), and the
+    sheet carries «نسخ النص» as its FIRST item, with an `execCommand` fallback because
+    `navigator.clipboard` is refused in some in-app browsers. A confirmation toast is not
+    optional here — a copy has no other visible effect.
+  - **An image in a bubble did nothing when tapped.** It is capped at 220px and cropped,
+    which is precisely the state in which a photographed page cannot be read. Tapping now
+    opens `TareeqImageViewer` (the same full-screen viewer the feed uses).
+  - **The shared-post card** is an `<a href>`, but a lingering tap let the 500ms long-press
+    timer fire and drop the action sheet on top of the post that had just opened. Its
+    `onClick` cancels the pending timer, stops propagation and uses `router.push`.
+  Any new tappable thing inside a bubble must cancel `longPressRef` and
+  `stopPropagation()`, or the sheet will land on top of it.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

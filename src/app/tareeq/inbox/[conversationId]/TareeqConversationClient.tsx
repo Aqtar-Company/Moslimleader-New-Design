@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import TareeqVideo from '@/components/tareeq/TareeqVideo';
+import TareeqImageViewer from '@/components/tareeq/TareeqImageViewer';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -315,6 +316,38 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [showNotebook, setShowNotebook] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; senderName: string } | null>(null);
   const [msgActionSheet, setMsgActionSheet] = useState<{ id: string; mine: boolean; content: string; senderName: string } | null>(null);
+  /** An image opened full screen from a bubble. */
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [copiedNote, setCopiedNote] = useState(false);
+
+  /**
+   * Copy a message's text to the clipboard.
+   *
+   * `navigator.clipboard` needs a secure context and is refused by some in-app browsers, so
+   * the `execCommand` fallback stays — otherwise "copy" silently does nothing on exactly the
+   * devices most members use.
+   */
+  const copyMessageText = useCallback(async (text: string) => {
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch { ok = false; }
+    }
+    if (ok) { setCopiedNote(true); setTimeout(() => setCopiedNote(false), 1800); }
+    return ok;
+  }, []);
   const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteType, setDeleteType] = useState<'me' | 'everyone'>('me');
@@ -1166,8 +1199,16 @@ function Inner({ conversationId }: { conversationId: string }) {
                             ...(group.mine ? {} : { border: '1px solid var(--tr-border-soft)' }),
                             borderRadius: group.mine ? mineRadius : otherRadius,
                           }}
-                          onContextMenu={e => { if (m.isDeletedForEveryone) return; e.preventDefault(); setMsgActionSheet({ id: m.id, mine: group.mine, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); }}
-                          onTouchStart={() => { if (m.isDeletedForEveryone) return; longPressRef.current = setTimeout(() => { try { navigator.vibrate?.(30); } catch {} setMsgActionSheet({ id: m.id, mine: group.mine, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); }, 500); }}
+                          // Text stays selectable. The long press opens the action sheet
+                          // (which carries «نسخ النص»), but a selection the reader already
+                          // made wins — hijacking it was why copying a message was impossible.
+                          onContextMenu={e => {
+                            if (m.isDeletedForEveryone) return;
+                            if ((window.getSelection()?.toString() ?? '').length > 0) return;
+                            e.preventDefault();
+                            setMsgActionSheet({ id: m.id, mine: group.mine, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name });
+                          }}
+                          onTouchStart={() => { if (m.isDeletedForEveryone) return; longPressRef.current = setTimeout(() => { if ((window.getSelection()?.toString() ?? '').length > 0) return; try { navigator.vibrate?.(30); } catch {} setMsgActionSheet({ id: m.id, mine: group.mine, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); }, 500); }}
                           onTouchEnd={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
                           onTouchMove={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
                         >
@@ -1197,6 +1238,15 @@ function Inner({ conversationId }: { conversationId: string }) {
                           {m.sharedPostId && (
                             <a
                               href={`/tareeq/${m.sharedPostId}`}
+                              // Client-side navigation, and the pending long-press timer is
+                              // cancelled first: without that, a tap that lingered opened the
+                              // action sheet on top of the post it had just opened.
+                              onClick={e => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+                                router.push(`/tareeq/${m.sharedPostId}`);
+                              }}
                               className="block mx-2 mt-2 mb-0 rounded-2xl overflow-hidden"
                               style={{
                                 // Cards inside a coloured bubble need their own surface, or
@@ -1249,7 +1299,21 @@ function Inner({ conversationId }: { conversationId: string }) {
                               </div>
                             </a>
                           )}
-                          {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full max-w-xs rounded-xl object-cover" style={{ maxHeight: 220 }} />}
+                          {/* Tap opens it full screen — a photo cropped to 220px inside a
+                              bubble is the one state in which it cannot be read. */}
+                          {m.imageUrl && (
+                            <img
+                              src={m.imageUrl}
+                              alt={isRtl ? 'صورة في الرسالة — اضغط للتكبير' : 'Image in message — tap to enlarge'}
+                              className="w-full max-w-xs rounded-xl object-cover cursor-zoom-in"
+                              style={{ maxHeight: 220 }}
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+                                setZoomedImage(m.imageUrl!);
+                              }}
+                            />
+                          )}
                           {m.videoUrl && <TareeqVideo src={m.videoUrl} className="w-full max-w-xs rounded-xl" style={{ maxHeight: 220 }} controls playsInline />}
                           {m.audioUrl && (
                             <VoiceMessage url={m.audioUrl} mine={group.mine} />
@@ -1603,6 +1667,23 @@ function Inner({ conversationId }: { conversationId: string }) {
       )}
 
       {/* Message action sheet */}
+      {/* Full-screen image, above every sheet — see TareeqImageViewer. */}
+      {zoomedImage && (
+        <TareeqImageViewer src={zoomedImage} isRtl={isRtl} onClose={() => setZoomedImage(null)} />
+      )}
+
+      {/* "Copied" — the only confirmation a copy can give, and without it the member cannot
+          tell whether the tap did anything. */}
+      {copiedNote && (
+        <div
+          role="status"
+          className="fixed left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm font-bold"
+          style={{ bottom: 90, zIndex: 100001, background: 'var(--tr-text-primary)', color: 'var(--tr-base)', boxShadow: 'var(--tr-shadow-popup)' }}
+        >
+          {isRtl ? 'تم نسخ النص ✓' : 'Text copied ✓'}
+        </div>
+      )}
+
       {msgActionSheet && (
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center"
@@ -1653,6 +1734,22 @@ function Inner({ conversationId }: { conversationId: string }) {
             ) : (
               /* Main actions */
               <>
+                {/* Copy — first, because it is what people reach for most and exactly what
+                    the long-press menu used to take away. Hidden for a message with no text
+                    (a photo or a voice note has nothing to copy). */}
+                {!!messages.find(x => x.id === msgActionSheet.id)?.content && (
+                  <button
+                    className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
+                    style={{ color: 'var(--tr-text-primary)' }}
+                    onClick={async () => {
+                      await copyMessageText(messages.find(x => x.id === msgActionSheet.id)?.content ?? '');
+                      setMsgActionSheet(null);
+                    }}
+                  >
+                    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                    {isRtl ? 'نسخ النص' : 'Copy text'}
+                  </button>
+                )}
                 <button
                   className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
                   style={{ color: 'var(--tr-text-primary)' }}

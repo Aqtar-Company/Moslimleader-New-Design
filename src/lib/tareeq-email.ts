@@ -60,6 +60,8 @@ export interface TareeqEmailInput {
   ctaUrl?: string | null;
   /** Rendered under the signature when the message is promotional. */
   unsubscribeUrl?: string | null;
+  /** The address printed in the signature — see `tareeqContactAddress()`. */
+  contactEmail: string;
 }
 
 export function renderTareeqEmail(input: TareeqEmailInput): string {
@@ -129,7 +131,7 @@ export function renderTareeqEmail(input: TareeqEmailInput): string {
                 طريق — مساحة تربوية هادئة من مسلم ليدر.<br>
                 <a href="${baseUrl}/tareeq" style="color:#8a6a1f;text-decoration:none">moslimleader.com/tareeq</a>
                 &nbsp;·&nbsp;
-                <a href="mailto:info@moslimleader.com" style="color:#8a6a1f;text-decoration:none">info@moslimleader.com</a>
+                <a href="mailto:${encodeURI(input.contactEmail)}" style="color:#8a6a1f;text-decoration:none">${escapeHtml(input.contactEmail)}</a>
               </p>
               <p style="margin:12px 0 0;font-size:11px;color:#9ca3af">
                 وصلتك هذه الرسالة لأنك عضو في طريق. يمكنك ضبط ما يصلك من

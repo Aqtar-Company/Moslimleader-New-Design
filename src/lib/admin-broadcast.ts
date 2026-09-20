@@ -40,7 +40,7 @@ import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { sendPushToUser } from '@/lib/tareeq-push';
 import { wantsNotif, type TareeqNotifType } from '@/lib/tareeq-notify';
-import { getTransporter } from '@/lib/smtp';
+import { getTareeqTransporter, tareeqContactAddress, tareeqFromAddress } from '@/lib/smtp';
 import { renderTareeqEmail } from '@/lib/tareeq-email';
 import { getBaseUrl } from '@/lib/marketing-mailer';
 import { ensureMarketingToken } from '@/lib/campaign-runner';
@@ -473,7 +473,9 @@ async function sendBroadcastEmail(opts: { to: string; userId: string; name: stri
   const ctaUrl = b.linkUrl
     ? (b.linkUrl.startsWith('/') ? `${baseUrl}${b.linkUrl}` : b.linkUrl)
     : `${baseUrl}${broadcastNoticeUrl(b.id)}`;
-  const fromEmail = process.env.SMTP_USER || 'orders@moslimleader.com';
+  // طريق's own mailbox when one is configured, else the shop's authenticated one.
+  const fromEmail = tareeqFromAddress();
+  const contactEmail = tareeqContactAddress();
 
   // Promotional messages carry the one-click unsubscribe pair Gmail/Yahoo require of bulk
   // senders, and the matching link in the footer. Service messages (an outage notice, a
@@ -497,16 +499,17 @@ async function sendBroadcastEmail(opts: { to: string; userId: string; name: stri
     ctaLabel: b.linkLabel || (b.linkUrl ? 'افتح الرابط' : 'اقرأ في طريق'),
     ctaUrl,
     unsubscribeUrl,
+    contactEmail,
   });
 
-  await getTransporter().sendMail({
+  await getTareeqTransporter().sendMail({
     // The sender NAME is طريق, not the shop — the member subscribed to a platform with its
     // own identity, and mail dressed as the store reads as mail from a stranger. The
     // ADDRESS stays the shop's authenticated mailbox: SPF/DKIM are published for that
     // domain, and inventing a from-address the domain does not authenticate is the fastest
     // way into a spam folder.
     from: `"طريق — مسلم ليدر" <${fromEmail}>`,
-    replyTo: process.env.TAREEQ_REPLY_TO || 'info@moslimleader.com',
+    replyTo: contactEmail,
     to: opts.to,
     subject: `${kind?.icon ?? '📣'} ${personalize(b.title, opts.name)}`,
     html,

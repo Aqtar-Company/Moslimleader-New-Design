@@ -182,6 +182,17 @@ REDIS_URL=redis://127.0.0.1:6379
 # The two names differ, and getting them the wrong way round leaves both endpoints
 # answering 403 in production forever (they fail closed when NODE_ENV=production).
 CRON_SECRET=
+
+# OPTIONAL — طريق's own outgoing mailbox for admin broadcasts (src/lib/smtp.ts).
+# Set NEITHER and طريق's mail goes out from SMTP_USER, exactly as before.
+# TAREEQ_REPLY_TO alone is the safe half: it only changes the Reply-To header and the
+# address printed in the email signature. Read at runtime — no rebuild needed.
+# The PAIR below additionally changes the FROM address, and only works if that mailbox
+# really exists and this password logs into it; a From the domain cannot authenticate is
+# the fastest route to the spam folder.
+TAREEQ_REPLY_TO=
+TAREEQ_SMTP_USER=
+TAREEQ_SMTP_PASS=
 ```
 
 > `NEXT_PUBLIC_*` values are inlined at BUILD time. Changing `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
@@ -612,8 +623,16 @@ Books are protected from download at two levels:
     real text beside it so a blocked image still reads, and a signature naming إدارة طريق
     with a reply address. The from-NAME is «طريق — مسلم ليدر»; the from-ADDRESS stays
     `SMTP_USER`, because SPF/DKIM are published for that mailbox and inventing an
-    unauthenticated sender is the fastest route to the spam folder. `replyTo` is
-    `TAREEQ_REPLY_TO` (default `info@moslimleader.com`).
+    unauthenticated sender is the fastest route to the spam folder.
+  - **Giving طريق its own mailbox is opt-in and needs its own LOGIN.** `src/lib/smtp.ts`
+    has `getTareeqTransporter()` / `tareeqFromAddress()` / `tareeqContactAddress()`. Set
+    `TAREEQ_SMTP_USER` **and** `TAREEQ_SMTP_PASS` and طريق's mail is sent from that mailbox
+    over its own pooled connection (2 connections — the shop's order mail must never queue
+    behind a broadcast); set neither and nothing changes. Do NOT put a طريق address in the
+    From line while authenticated as `orders@`: Titan generally refuses it, and where it
+    does not, DMARC does. `TAREEQ_REPLY_TO` alone (no mailbox login) is the zero-risk half —
+    it sets `replyTo` and the address printed in the signature, and is read at runtime, so
+    `pm2 restart --update-env` picks it up with no rebuild.
   - Deleting a sent broadcast cascades the recipient rows but keeps the `TareeqNotification`
     rows members already received (a delivered message stays delivered).
 - **Chat bubbles: copy, image zoom and the shared-post card.** Three things a chat is

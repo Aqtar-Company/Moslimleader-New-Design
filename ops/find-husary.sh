@@ -20,42 +20,79 @@ echo
 node - <<'EOF'
 const https = require('https');
 
-function get(url) {
+// mp3quran يُعيد التوجيه (www، ونسخةُ الـAPI)، و https.get لا يتبع التوجيه من
+// تلقائه — فيعود بصفحة HTML تُفسَّر على أنها JSON فاسد. وهذا بعينه ما حدث.
+function get(url, depth = 0) {
   return new Promise((resolve, reject) => {
-    https.get(url, { timeout: 30000 }, res => {
+    if (depth > 5) return reject(new Error('too many redirects'));
+    const req = https.get(url, {
+      timeout: 30000,
+      headers: { 'User-Agent': 'curl/8', 'Accept': 'application/json' },
+    }, res => {
+      const loc = res.headers.location;
+      if (res.statusCode >= 300 && res.statusCode < 400 && loc) {
+        res.resume();
+        return resolve(get(new URL(loc, url).href, depth + 1));
+      }
       let body = '';
       res.on('data', c => body += c);
-      res.on('end', () => resolve(body));
-    }).on('error', reject).on('timeout', function () { this.destroy(); reject(new Error('timeout')); });
+      res.on('end', () => resolve({ status: res.statusCode, type: res.headers['content-type'] || '', body }));
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
   });
 }
 
+// العناوينُ تتبدّل بين إصدارات الموقع؛ نجرّبها بالترتيب ونقف عند أولِ JSON صالح.
+const ENDPOINTS = [
+  'https://mp3quran.net/api/v3/reciters?language=ar',
+  'https://www.mp3quran.net/api/v3/reciters?language=ar',
+  'https://mp3quran.net/api/v3/reciters?language=eng',
+  'https://api.mp3quran.net/api/v3/reciters?language=ar',
+  'https://mp3quran.net/api/_arabic.json',
+];
+
 (async () => {
-  try {
-    const raw = await get('https://mp3quran.net/api/v3/reciters?language=ar');
-    const data = JSON.parse(raw);
-    const list = data.reciters || [];
-    // الحصري يُكتب بصورٍ شتّى — نطابق الجذر لا الاسم كاملًا.
-    const hits = list.filter(r => /حصر|حصري|الحصري/.test(r.name || ''));
-    if (!hits.length) {
-      console.log('  لم يُعثر على الحصري في القائمة (قد تكون بنية الـAPI تغيّرت).');
-      return;
+  let list = null;
+  for (const url of ENDPOINTS) {
+    let r;
+    try { r = await get(url); }
+    catch (e) { console.log(`  ·  ${url}\n     تعذّر: ${e.message}`); continue; }
+    let data;
+    try { data = JSON.parse(r.body); }
+    catch {
+      // نطبع أولَ ما عاد به الخادم: بغيره يبقى العطلُ مجهولًا.
+      console.log(`  ·  ${url}\n     ${r.status} ${r.type} — ليس JSON: ${r.body.slice(0, 120).replace(/\s+/g, ' ')}`);
+      continue;
     }
-    for (const r of hits) {
-      console.log(`  ── ${r.name}  (id ${r.id})`);
-      for (const m of r.moshaf || []) {
-        // كل مصحفٍ له خادمُه وقائمةُ سورِه؛ الملفات باسم السورة في ثلاثة أرقام.
-        const first = String(m.surah_list || '').split(',')[0] || '1';
-        const n = String(first).padStart(3, '0');
-        console.log(`     • ${m.name}`);
-        console.log(`       عدد السور: ${m.surah_total}   |   اسمعها: ${m.server}${n}.mp3`);
-      }
-      console.log();
-    }
-    console.log('  ملاحظة: هذه ملفاتُ سورٍ كاملة، لا ملفَ لكل آية.');
-  } catch (e) {
-    console.error('  تعذّر جلب القائمة:', e.message);
+    const arr = data.reciters || data.reciter || (Array.isArray(data) ? data : null);
+    if (arr && arr.length) { console.log(`  ✅ المصدر: ${url}\n`); list = arr; break; }
+    console.log(`  ·  ${url}\n     JSON بلا قائمة قرّاء (مفاتيحه: ${Object.keys(data).join(', ')})`);
   }
+
+  if (!list) {
+    console.log();
+    console.log('  لم يُجب أيُّ عنوان بقائمةٍ صالحة. جرّب باليد وانظر ماذا يعود:');
+    console.log('    curl -sL -A curl/8 "https://mp3quran.net/api/v3/reciters?language=ar" | head -c 300');
+    return;
+  }
+
+  const hits = list.filter(r => /حصر|حصري|Husary|Hussary|Husari/i.test(r.name || ''));
+  if (!hits.length) {
+    console.log(`  لم يُعثر على الحصري بين ${list.length} قارئًا.`);
+    return;
+  }
+  for (const r of hits) {
+    console.log(`  ── ${r.name}  (id ${r.id})`);
+    for (const m of r.moshaf || []) {
+      const first = String(m.surah_list || '').split(',')[0] || '1';
+      const n = String(first).padStart(3, '0');
+      console.log(`     • ${m.name}`);
+      console.log(`       عدد السور: ${m.surah_total}   |   اسمعها: ${m.server}${n}.mp3`);
+    }
+    console.log();
+  }
+  console.log('  ملاحظة: هذه ملفاتُ سورٍ كاملة، لا ملفَ لكل آية.');
 })();
 EOF
 

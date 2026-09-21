@@ -123,8 +123,15 @@ export function ibrahimPageUrl(page: number): string {
   return IBRAHIM_BASE + path.split('/').map(encodeURIComponent).join('/');
 }
 
-/** `[["2:255", 102.48], …]` in ascending order within each page. */
-type TimingRow = [string, number];
+/**
+ * `[["2:255", 102.48], …]` — an ESTIMATED start, with the end taken from the next row.
+ * `[["2:255", 102.48, 114.9], …]` — a start and end both MEASURED from the silence around
+ * the ayah, by `ops/measure-ibrahim-timings.mjs`. A measured row carries a real gap to the
+ * next ayah; an estimated one cannot, which is the whole reason the third number exists.
+ * Both forms may appear in one file: a boundary with no detectable silence near it keeps
+ * its estimate rather than being moved to a guess.
+ */
+type TimingRow = [string, number] | [string, number, number | null];
 interface TimingsFile { pages: Record<string, TimingRow[]> }
 
 export interface AyahTiming {
@@ -132,6 +139,8 @@ export interface AyahTiming {
   start: number;
   /** null = play to the end of the file (the last ayah on its page). */
   end: number | null;
+  /** True when both edges came from a measured silence and must NOT be shifted. */
+  measured: boolean;
 }
 
 let index: Map<string, AyahTiming> | null = null;
@@ -161,11 +170,17 @@ export async function loadIbrahimTimings(): Promise<void> {
         if (!Number.isFinite(page) || !Array.isArray(rows) || rows.length === 0) continue;
         pages.add(page);
         for (let i = 0; i < rows.length; i++) {
-          const [key, start] = rows[i];
-          // The end of an ayah is the start of the next one ON THE SAME PAGE. No ayah in
-          // the mus'haf spans two pages (verified across all 604), so this is exact.
-          const end = i + 1 < rows.length ? rows[i + 1][1] : null;
-          map.set(key, { page, start, end });
+          const row = rows[i];
+          const key = row[0];
+          const start = row[1];
+          const measured = row.length > 2;
+          // A measured row states its own end. An estimated one has none, so the start of
+          // the next ayah ON THE SAME PAGE is used — no ayah in the mus'haf spans two pages
+          // (verified across all 604) — and that borrowed end is why it must be shifted.
+          const end = measured
+            ? (row[2] as number | null)
+            : (i + 1 < rows.length ? rows[i + 1][1] : null);
+          map.set(key, { page, start, end, measured });
         }
       }
       index = map;
@@ -209,6 +224,9 @@ export function ibrahimTiming(surah: number, ayah: number): AyahTiming | null {
 const ALIGNMENT_LAG = 0.15;
 
 function shifted(t: AyahTiming): { start: number; end: number | null } {
+  // A measured boundary is already at the silence. Shifting it would walk back INTO the
+  // previous ayah — the correction would become the defect.
+  if (t.measured) return { start: t.start, end: t.end };
   return {
     start: Math.max(0, t.start - ALIGNMENT_LAG),
     // null stays null: the last ayah on a page plays to the end of the file.

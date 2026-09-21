@@ -175,6 +175,32 @@ export function ibrahimTiming(surah: number, ayah: number): AyahTiming | null {
   return index?.get(`${surah}:${ayah}`) ?? null;
 }
 
+/**
+ * Every boundary in the published timings is a forced-alignment ESTIMATE, not a measured
+ * silence, and the estimate runs LATE — worst on the short light onsets: واو العطف, الفاء,
+ * the opening of a surah. Because the file also publishes `end` as the next ayah's `start`,
+ * a late estimate leaves the next ayah's first letter inside this ayah's tail, and the
+ * listener hears it twice. It is inaudible in a page-at-a-time mus'haf app, where the number
+ * only moves a highlight; it is plainly audible the moment something CUTS on it, which is
+ * what this player does.
+ *
+ * Until `Aqtar-Company/ibrahim-recitation` republishes timings snapped to real silence
+ * (`tools/snap_cuts.py`, which needs the audio and ffmpeg — as of commit 12a37ea the tool
+ * is in but `data/` is unchanged), both edges are shifted back by the same amount. Shifting
+ * BOTH is what makes this safe: the duration is preserved, so no ayah can be trimmed to
+ * nothing, and a consecutive pair still meets with no gap and no overlap. Moving only `end`
+ * — the obvious fix — eats short ayat.
+ */
+const ALIGNMENT_LAG = 0.15;
+
+function shifted(t: AyahTiming): { start: number; end: number | null } {
+  return {
+    start: Math.max(0, t.start - ALIGNMENT_LAG),
+    // null stays null: the last ayah on a page plays to the end of the file.
+    end: t.end === null ? null : Math.max(0, t.end - ALIGNMENT_LAG),
+  };
+}
+
 // ─── The one thing the player calls ─────────────────────────────────────────────────────
 
 export interface AudioSegment {
@@ -205,7 +231,8 @@ export function resolveAyahAudio(ref: AyahRef, reciterId: string): AudioSegment 
   if (reciter.source === 'page-offset') {
     const t = ibrahimTiming(ref.surah, ref.ayah);
     if (!t) return null;
-    return { url: ibrahimPageUrl(t.page), start: t.start, end: t.end, wholePage: false };
+    const { start, end } = shifted(t);
+    return { url: ibrahimPageUrl(t.page), start, end, wholePage: false };
   }
   if (reciter.source === 'everyayah') {
     // Keyed by surah+ayah, three digits each — NOT by the global number the other CDN uses.

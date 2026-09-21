@@ -653,6 +653,32 @@ Books are protected from download at two levels:
     `onClick` cancels the pending timer, stops propagation and uses `router.push`.
   Any new tappable thing inside a bubble must cancel `longPressRef` and
   `stopPropagation()`, or the sheet will land on top of it.
+- **قرآن نوري's reciters live in `src/lib/quran-reciters.ts`, and they are of TWO kinds.**
+  - **`cdn-ayah`** — one file per ayah on `cdn.islamic.network`, keyed by the global ayah
+    number (1–6236). The id is an alquran.cloud edition identifier and it is EXACT: one
+    wrong letter is a 404 on every ayah, and the only thing the player could show for that
+    was silence. That is why «فلان مش شغال» was reported twice with no error on screen.
+    **Never add or "correct" an id from memory** — run `ops/check-reciters.sh` ON THE
+    SERVER (the dev sandbox has no outbound network) and paste what it says.
+  - **`page-offset`** — تلاوة د. إبراهيم حسن, recorded one file per mus'haf page at
+    `ibrahimquran.com/quran/khatma/{page}.mp3`. An ayah is a measured slice of that file.
+    Timings come from the `Aqtar-Company/ibrahim-recitation` repo (commit `534e225`),
+    shipped as `public/quran/ibrahim-timings.json` (90KB, ~29KB gzipped) and fetched lazily
+    ONLY when that reciter is selected.
+  Three rules this design exists to enforce:
+  - **5459 of 6236 ayat are timed.** For the rest `resolveAyahAudio()` returns null and the
+    page is recited WHOLE with no highlighting, announced by a strip above the controls.
+    Do NOT estimate an offset by dividing the file by the ayah count — a guessed position
+    highlights the wrong verse, and someone memorising from this screen memorises the error.
+  - **`end: null` means "to the end of the file"** (the last ayah on its page), not zero.
+    A sliced segment has no native `ended`, so `timeupdate` is what ends it; the whole-file
+    case still uses `ended`. Both go through one `onSegmentEnd` guarded by a local flag,
+    because `timeupdate` keeps firing after the handler runs.
+  - **Pages 504 and 566 are absent from `khatma/`** and are served from the by-surah set
+    under names containing SPACES — percent-encode them (`ibrahimPageUrl()` does).
+  The player reuses its `<audio>` element while the FILE is unchanged, so ten consecutive
+  ayat out of one page file open that file once, and seeks wait for `loadedmetadata`
+  (setting `currentTime` before the duration is known silently does nothing).
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

@@ -13,6 +13,10 @@ import {
   SURAH_NAMES_AR, SURAH_NAMES_EN, TOTAL_QURAN_PAGES, SURAH_FIRST_PAGES,
   SURAH_VERSE_COUNTS, SURAH_REVELATION_TYPES,
 } from '@/lib/quran-data';
+import {
+  RECITERS, DEFAULT_RECITER_ID, getReciter, loadIbrahimTimings, ibrahimPageIsTimed,
+  resolveAyahAudio, resolvePageAudio, type AudioSegment,
+} from '@/lib/quran-reciters';
 
 type Mode = 'listen' | 'both';
 
@@ -101,14 +105,6 @@ function QcfVerseText({ page, chapterId, verseNumber, fallback }: { page: number
   );
 }
 
-const RECITERS = [
-  { id: 'ar.alafasy',           nameAr: 'مشاري العفاسي',        color: '#1a6b3a' },
-  { id: 'ar.husary',            nameAr: 'محمود خليل الحصري',    color: '#1a4a8a' },
-  { id: 'ar.abdulbasitmurattal',nameAr: 'عبدالباسط عبدالصمد',   color: '#6b1a1a' },
-  { id: 'ar.minshawi',          nameAr: 'محمد صديق المنشاوي',   color: '#5a3a00' },
-  { id: 'ar.abdurrahmansudais', nameAr: 'عبدالرحمن السديس',     color: '#2a1a6b' },
-  { id: 'ar.saoodshuraym',      nameAr: 'سعود الشريم',          color: '#004a4a' },
-];
 
 // Fixed colors for the four default wirds, so each reading-plan track reads
 // as its own distinct thing at a glance rather than four identical blue
@@ -124,9 +120,6 @@ function wirdColor(name: string, index: number): string {
   return WIRD_COLORS[name] ?? WIRD_COLOR_CYCLE[index % WIRD_COLOR_CYCLE.length];
 }
 
-function getAudioUrlForReciter(globalAyahId: number, reciterId: string): string {
-  return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${globalAyahId}.mp3`;
-}
 
 interface Props { initialPage: number; initialSurah: number; initialAyah: number; groupId?: string | null; }
 
@@ -143,6 +136,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
+  /** Set while a page with no per-ayah alignment is being recited whole. */
+  const [wholePage, setWholePage] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   // 0 = off, -1 = repeat forever, 1-5 = repeat that many extra times then advance
   const [repeatMode, setRepeatMode] = useState(0);
   const [showRepeatMenu, setShowRepeatMenu] = useState(false);
@@ -153,7 +149,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const [repeatProgress, setRepeatProgress] = useState(0);
 
   // New UI state
-  const [reciterId, setReciterId] = useState('ar.alafasy');
+  const [reciterId, setReciterId] = useState(DEFAULT_RECITER_ID);
   const [showReciterPicker, setShowReciterPicker] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [surahFilter, setSurahFilter] = useState('');
@@ -191,6 +187,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const repeatDoneRef = useRef(0); // how many repeats of the CURRENT verse already played
   const pageRef     = useRef(initialPage);
   const audioRef    = useRef<HTMLAudioElement | null>(null);
+  // Where the CURRENT ayah sits inside the file that is playing. For a per-ayah reciter
+  // that is the whole file (0 → null); for a page-recorded one it is a measured slice.
+  const segStartRef = useRef(0);
+  const segEndRef   = useRef<number | null>(null);
+  const wholePageRef = useRef(false);
+  // Consecutive audio failures. One is a hiccup and is skipped past; a run of them means
+  // the reciter is not reachable at all, and saying so beats silence — an unreachable
+  // reciter used to look exactly like a working one that had nothing to say.
+  const errorStreakRef = useRef(0);
   const saveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Latest pending save payload, kept in sync so it can be flushed immediately
   // (leaving the page, backgrounding the tab) instead of lost when the 3s debounce
@@ -367,19 +372,73 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // ── Audio engine ──────────────────────────────────────────────────────────
 
   const playFromRef = useCallback(() => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     const verse = versesRef.current[currentRef.current];
     if (!verse) return;
+    const reciter = getReciter(reciterId);
 
-    const audio = new Audio(getAudioUrlForReciter(verse.id, reciterId));
-    audioRef.current = audio;
+    // Where is this ayah? For most reciters: its own file. For a page-recorded one: a
+    // measured slice of the page's file, or nothing at all if that page is recorded but
+    // not yet aligned — in which case the page is recited WHOLE rather than guessing an
+    // offset, because a guessed offset highlights the wrong verse.
+    let seg: AudioSegment | null = resolveAyahAudio(
+      { globalId: verse.id, surah: verse.chapter_id, ayah: verse.verse_number, page: verse.page_number },
+      reciterId,
+    );
+    if (!seg && reciter.source === 'page-offset' && !ibrahimPageIsTimed(pageRef.current)) {
+      seg = resolvePageAudio(pageRef.current, reciterId);
+    }
 
-    audio.ontimeupdate = () => {
-      if (!isMountedRef.current) return;
-      if (audio.duration) setAudioProgress(audio.currentTime / audio.duration);
+    /** Move past whatever could not be played, exactly as an error would. */
+    const skipAhead = () => {
+      if (!playingRef.current) return;
+      const next = currentRef.current + 1;
+      if (next < versesRef.current.length) {
+        repeatDoneRef.current = 0;
+        setRepeatProgress(0);
+        currentRef.current = next;
+        setCurrentIdx(next);
+        playFromRef();
+        return;
+      }
+      const nextPage = pageRef.current + 1;
+      if (nextPage <= TOTAL_QURAN_PAGES) {
+        bumpDailyWardCounter();
+        pageRef.current = nextPage;
+        setPage(nextPage);
+      } else {
+        playingRef.current = false;
+        setIsPlaying(false);
+      }
     };
 
-    audio.onended = () => {
+    if (!seg) { skipAhead(); return; }
+
+    wholePageRef.current = seg.wholePage;
+    setWholePage(seg.wholePage);
+    segStartRef.current = seg.start;
+    segEndRef.current = seg.end;
+
+    // Reuse the element when the FILE has not changed. A page-recorded reciter plays ten
+    // consecutive ayat out of one file; building a new element each time would re-open
+    // that file ten times.
+    const absolute = new URL(seg.url, window.location.href).href;
+    let audio = audioRef.current;
+    if (!audio || audio.src !== absolute) {
+      audio?.pause();
+      audio = new Audio(seg.url);
+      audioRef.current = audio;
+    } else {
+      audio.pause();
+    }
+    const el = audio;
+
+    // One finish per segment. `timeupdate` keeps firing after the handler runs, and the
+    // native `ended` can arrive on top of it.
+    let segDone = false;
+
+    const onSegmentEnd = () => {
+      if (segDone) return;
+      segDone = true;
       if (!isMountedRef.current) return;
       setAudioProgress(0);
       if (!playingRef.current) return;
@@ -391,9 +450,13 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         playFromRef();
         return;
       }
-      repeatDoneRef.current = 0; // moving to a new verse — reset the count
+      repeatDoneRef.current = 0; // moving on — reset the count
       setRepeatProgress(0);
-      const next = currentRef.current + 1;
+
+      // A whole-page segment IS the page: there is no next ayah inside it to advance to.
+      const next = segEndRef.current === null && wholePageRef.current
+        ? versesRef.current.length
+        : currentRef.current + 1;
       if (next < versesRef.current.length) {
         currentRef.current = next;
         setCurrentIdx(next);
@@ -415,54 +478,62 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       }
     };
 
-    audio.onerror = () => {
+    el.ontimeupdate = () => {
       if (!isMountedRef.current) return;
-      const next = currentRef.current + 1;
-      if (next < versesRef.current.length && playingRef.current) {
-        // Skip to next verse on this page
-        repeatDoneRef.current = 0;
-        setRepeatProgress(0);
-        currentRef.current = next;
-        setCurrentIdx(next);
-        playFromRef();
-      } else if (playingRef.current) {
-        // Last verse errored — advance to next page instead of stopping
-        const nextPage = pageRef.current + 1;
-        if (nextPage <= TOTAL_QURAN_PAGES) {
-          bumpDailyWardCounter();
-          pageRef.current = nextPage;
-          setPage(nextPage);
-        } else {
-          playingRef.current = false;
-          setIsPlaying(false);
-        }
-      }
+      const start = segStartRef.current;
+      const end = segEndRef.current;
+      const finish = end ?? (el.duration || 0);
+      const span = finish > start ? finish - start : 0;
+      if (span > 0) setAudioProgress(Math.min(1, Math.max(0, (el.currentTime - start) / span)));
+      // A sliced segment has no `ended` of its own — this is what ends it.
+      if (end !== null && el.currentTime >= end) { el.pause(); onSegmentEnd(); }
     };
 
-    // A rapid string of automatic replays (page-turn, verse-advance, or a
-    // multi-repeat) can occasionally have a single .play() call rejected by
-    // the browser (buffering hiccup, brief network stall) even though
-    // playback is legitimately still active — retrying once before giving up
-    // means a one-off glitch skips a beat instead of silently halting
-    // playback altogether ("stopped instead of continuing").
+    el.onended = onSegmentEnd;
+
+    el.onerror = () => {
+      if (!isMountedRef.current) return;
+      errorStreakRef.current += 1;
+      // Three in a row is not a hiccup. Stop and name it, instead of skipping through the
+      // whole mus'haf in silence.
+      if (errorStreakRef.current >= 3) {
+        playingRef.current = false;
+        setIsPlaying(false);
+        setAudioError(`تعذّر تشغيل تلاوة ${reciter.nameAr}. جرّب قارئاً آخر أو تحقّق من اتصالك.`);
+        return;
+      }
+      skipAhead();
+    };
+
     const attemptPlay = (retried = false) => {
-      audio.play().catch(() => {
+      el.play().then(() => {
+        errorStreakRef.current = 0;
+        setAudioError(null);
+      }).catch(() => {
         if (!isMountedRef.current || !playingRef.current) return;
+        // A rapid string of automatic replays (page-turn, verse-advance, or a
+        // multi-repeat) can occasionally have a single .play() call rejected by the
+        // browser (buffering hiccup, brief network stall) even though playback is
+        // legitimately still active — retrying once before giving up means a one-off
+        // glitch skips a beat instead of silently halting playback altogether.
         if (!retried) { setTimeout(() => attemptPlay(true), 300); return; }
-        const next = currentRef.current + 1;
-        if (next < versesRef.current.length) {
-          repeatDoneRef.current = 0;
-          setRepeatProgress(0);
-          currentRef.current = next;
-          setCurrentIdx(next);
-          playFromRef();
-        } else {
-          playingRef.current = false;
-          setIsPlaying(false);
-        }
+        skipAhead();
       });
     };
-    attemptPlay();
+
+    // Seeking before the browser knows the file's duration silently does nothing, so a
+    // sliced segment waits for metadata. A file that starts at 0 does not have to.
+    const seekThenPlay = () => {
+      if (seg!.start > 0) { try { el.currentTime = seg!.start; } catch { /* seek refused */ } }
+      else if (el.currentTime !== 0) { try { el.currentTime = 0; } catch { /* seek refused */ } }
+      attemptPlay();
+    };
+    if (seg.start > 0 && el.readyState < 1 /* HAVE_METADATA */) {
+      el.addEventListener('loadedmetadata', seekThenPlay, { once: true });
+      el.load();
+    } else {
+      seekThenPlay();
+    }
   }, [reciterId]);
 
   function togglePlay() {
@@ -546,6 +617,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     setMode(m);
     localStorage.setItem('khatmati-mode', m);
   }
+
+  // A page-recorded reciter cannot place a single ayah until its timings are indexed.
+  // Fetched once, only for the reciter that needs them (~29KB gzipped), and never for
+  // anyone who never selects that reciter.
+  useEffect(() => {
+    errorStreakRef.current = 0;
+    setAudioError(null);
+    setWholePage(false);
+    wholePageRef.current = false;
+    if (getReciter(reciterId).source === 'page-offset') void loadIbrahimTimings();
+  }, [reciterId]);
 
   // Debounced word/verse text search — fires 300ms after typing stops so
   // every keystroke doesn't trigger its own request.
@@ -1017,14 +1099,14 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                     }}>
                       <div style={{
                         width: 22, height: 22, borderRadius: '50%',
-                        background: RECITERS.find(x => x.id === reciterId)?.color ?? '#1a4a8a',
+                        background: getReciter(reciterId).color,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 10, color: '#fff', fontWeight: 700,
                       }}>
-                        {(RECITERS.find(x => x.id === reciterId)?.nameAr ?? 'م')[0]}
+                        {getReciter(reciterId).nameAr[0]}
                       </div>
                       <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontFamily: qFont }}>
-                        {RECITERS.find(x => x.id === reciterId)?.nameAr ?? ''}
+                        {getReciter(reciterId).nameAr}
                       </span>
                       <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -1220,7 +1302,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
                     {/* Reciter button */}
                     {(() => {
-                      const r = RECITERS.find(x => x.id === reciterId) ?? RECITERS[0];
+                      const r = getReciter(reciterId);
                       return (
                         <button onClick={() => setShowReciterPicker(true)}
                           className="w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-black transition active:scale-90 shrink-0"
@@ -1305,7 +1387,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             )}
             {/* Reciter button */}
             {(() => {
-              const r = RECITERS.find(x => x.id === reciterId) ?? RECITERS[0];
+              const r = getReciter(reciterId);
               return (
                 <button onClick={() => setShowReciterPicker(true)}
                   className="w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-black transition active:scale-90 shrink-0"
@@ -1314,6 +1396,24 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                 </button>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Why the audio is doing something other than reciting this ayah. Silence with no
+          explanation is exactly the bug being fixed here, so both cases speak. */}
+      {(audioError || wholePage) && !headerHidden && (
+        <div dir="rtl" style={{
+          position: 'fixed', insetInlineStart: 0, insetInlineEnd: 0, bottom: 96, zIndex: 60,
+          display: 'flex', justifyContent: 'center', padding: '0 14px', pointerEvents: 'none',
+        }}>
+          <div style={{
+            maxWidth: 480, width: '100%', padding: '9px 14px', borderRadius: 12, fontSize: 12.5,
+            lineHeight: 1.7, textAlign: 'center', pointerEvents: 'auto',
+            background: audioError ? 'rgba(185,28,28,0.94)' : 'rgba(30,41,59,0.92)',
+            color: '#fff', boxShadow: '0 6px 20px rgba(0,0,0,0.28)', backdropFilter: 'blur(6px)',
+          }}>
+            {audioError ?? 'هذا الوجه يُتلى كاملاً — لم تُحاذَ آياته بعد، فلا يُظلَّل شيء منها.'}
           </div>
         </div>
       )}
@@ -1339,8 +1439,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                   }}>
                     {r.nameAr[0]}
                   </div>
-                  <span style={{ fontSize: 14, fontWeight: reciterId === r.id ? 700 : 500, color: reciterId === r.id ? '#2563eb' : 'var(--tr-text-primary)', fontFamily: qFont }}>
-                    {r.nameAr}
+                  {/* The style has to show: the list carries the same reciter twice
+                      (مرتل and مجود), and two identical rows are a coin toss. */}
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: reciterId === r.id ? 700 : 500, color: reciterId === r.id ? '#2563eb' : 'var(--tr-text-primary)', fontFamily: qFont }}>
+                      {r.nameAr}
+                    </span>
+                    {r.styleAr && (
+                      <span style={{ fontSize: 11, color: 'var(--tr-text-muted)' }}>{r.styleAr}</span>
+                    )}
                   </span>
                   {reciterId === r.id && (
                     <svg style={{ marginRight: 'auto' }} width={18} height={18} viewBox="0 0 24 24" fill="#2563eb">

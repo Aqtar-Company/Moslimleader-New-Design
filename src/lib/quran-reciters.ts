@@ -1,0 +1,200 @@
+/**
+ * The reciters offered in قرآن نوري, and how each one's audio is located.
+ *
+ * ## Two kinds of source, one interface
+ *
+ * Every reciter but one is distributed the way the islamic.network CDN distributes them:
+ * **one file per ayah**, named by the ayah's global number (1–6236). Playing an ayah is
+ * opening its file, and the file ending is the ayah ending.
+ *
+ * تلاوة د. إبراهيم حسن is not distributed that way. It was recorded **one file per
+ * mus'haf page** (604 of them), and playing a single ayah means seeking into that page's
+ * file and stopping at a measured offset. The timings come from the
+ * `Aqtar-Company/ibrahim-recitation` repository (data/ayah-timings.json, commit 534e225),
+ * shipped here as `public/quran/ibrahim-timings.json`.
+ *
+ * `resolveAyahAudio()` hides that difference: it hands the player a URL, a start and an
+ * end, and a per-ayah reciter simply comes back with start 0 and end null.
+ *
+ * ## What the caller must handle
+ *
+ * - **`null` means "this ayah cannot be played on its own."** 5459 of 6236 ayat are timed;
+ *   the rest are recorded but not yet aligned. Do NOT estimate an offset by dividing the
+ *   file by the ayah count — a guessed position highlights the wrong verse, and someone
+ *   memorising from this screen would memorise the mistake. Play the page whole instead
+ *   (`resolvePageAudio()`), or stay silent.
+ * - **`end: null` means "to the end of the file."** It is the last ayah on its page. It is
+ *   not zero, and it is not a number to invent.
+ */
+
+export interface Reciter {
+  id: string;
+  nameAr: string;
+  /** Distinguishes مرتل from مجود etc. — shown under the name in the picker. */
+  styleAr?: string;
+  color: string;
+  /**
+   * `cdn-ayah`: one file per ayah on cdn.islamic.network, keyed by global ayah number.
+   * `page-offset`: one file per mus'haf page; an ayah is a measured slice of it.
+   */
+  source: 'cdn-ayah' | 'page-offset';
+}
+
+/**
+ * The `cdn-ayah` ids are alquran.cloud edition identifiers and they are EXACT — a wrong
+ * spelling is a 404 on every ayah, which the player can only show as silence. Verify any
+ * new id against the CDN before adding it here; `ops/check-reciters.sh` does that.
+ */
+export const RECITERS: Reciter[] = [
+  { id: 'ar.alafasy',            nameAr: 'مشاري العفاسي',       styleAr: 'مرتل', color: '#1a6b3a', source: 'cdn-ayah' },
+  { id: 'ibrahim.hassan',        nameAr: 'د. إبراهيم حسن',      styleAr: 'مرتل', color: '#8a5a00', source: 'page-offset' },
+  { id: 'ar.husary',             nameAr: 'محمود خليل الحصري',   styleAr: 'مرتل', color: '#1a4a8a', source: 'cdn-ayah' },
+  { id: 'ar.husarymujawwad',     nameAr: 'محمود خليل الحصري',   styleAr: 'مجود', color: '#123a6b', source: 'cdn-ayah' },
+  { id: 'ar.abdulbasitmurattal', nameAr: 'عبدالباسط عبدالصمد',  styleAr: 'مرتل', color: '#6b1a1a', source: 'cdn-ayah' },
+  { id: 'ar.minshawi',           nameAr: 'محمد صديق المنشاوي',  styleAr: 'مرتل', color: '#5a3a00', source: 'cdn-ayah' },
+  { id: 'ar.abdurrahmansudais',  nameAr: 'عبدالرحمن السديس',    styleAr: 'مرتل', color: '#2a1a6b', source: 'cdn-ayah' },
+  { id: 'ar.saoodshuraym',       nameAr: 'سعود الشريم',         styleAr: 'مرتل', color: '#004a4a', source: 'cdn-ayah' },
+];
+
+export const DEFAULT_RECITER_ID = 'ar.alafasy';
+
+export function getReciter(id: string): Reciter {
+  return RECITERS.find(r => r.id === id) ?? RECITERS[0];
+}
+
+// ─── إبراهيم حسن: page files + measured offsets ─────────────────────────────────────────
+
+const IBRAHIM_BASE = 'https://ibrahimquran.com/quran/';
+
+/**
+ * Two pages are absent from the `khatma/` set and present in the by-surah set. Their
+ * replacements are named with SPACES, which must be percent-encoded or the request 404s.
+ * (From MISSING.md in the recitation repository.)
+ */
+const IBRAHIM_PAGE_FALLBACK: Record<number, string> = {
+  504: 'pages/46 Page 3.mp3',
+  566: 'pages/68 Page 3.mp3',
+};
+
+export function ibrahimPageUrl(page: number): string {
+  const path = IBRAHIM_PAGE_FALLBACK[page] ?? `khatma/${page}.mp3`;
+  return IBRAHIM_BASE + path.split('/').map(encodeURIComponent).join('/');
+}
+
+/** `[["2:255", 102.48], …]` in ascending order within each page. */
+type TimingRow = [string, number];
+interface TimingsFile { pages: Record<string, TimingRow[]> }
+
+export interface AyahTiming {
+  page: number;
+  start: number;
+  /** null = play to the end of the file (the last ayah on its page). */
+  end: number | null;
+}
+
+let index: Map<string, AyahTiming> | null = null;
+let timedPages: Set<number> | null = null;
+let inFlight: Promise<void> | null = null;
+
+/**
+ * Fetches and indexes the timings once per session. Safe to call on every play: after the
+ * first call it resolves immediately, and concurrent callers share one request.
+ *
+ * Never throws. A failed fetch leaves the index empty, which makes every lookup return
+ * null — the player then falls back to reciting the page whole, which is the correct
+ * behaviour for an unaligned page anyway.
+ */
+export async function loadIbrahimTimings(): Promise<void> {
+  if (index) return;
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    try {
+      const res = await fetch('/quran/ibrahim-timings.json');
+      if (!res.ok) throw new Error(`timings ${res.status}`);
+      const data = (await res.json()) as TimingsFile;
+      const map = new Map<string, AyahTiming>();
+      const pages = new Set<number>();
+      for (const [pageStr, rows] of Object.entries(data.pages ?? {})) {
+        const page = Number(pageStr);
+        if (!Number.isFinite(page) || !Array.isArray(rows) || rows.length === 0) continue;
+        pages.add(page);
+        for (let i = 0; i < rows.length; i++) {
+          const [key, start] = rows[i];
+          // The end of an ayah is the start of the next one ON THE SAME PAGE. No ayah in
+          // the mus'haf spans two pages (verified across all 604), so this is exact.
+          const end = i + 1 < rows.length ? rows[i + 1][1] : null;
+          map.set(key, { page, start, end });
+        }
+      }
+      index = map;
+      timedPages = pages;
+    } catch (err) {
+      console.warn('[quran-reciters] could not load إبراهيم حسن timings', err);
+      index = new Map();
+      timedPages = new Set();
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
+}
+
+/** True once a page is known to have per-ayah timings. Call after `loadIbrahimTimings()`. */
+export function ibrahimPageIsTimed(page: number): boolean {
+  return timedPages?.has(page) ?? false;
+}
+
+export function ibrahimTiming(surah: number, ayah: number): AyahTiming | null {
+  return index?.get(`${surah}:${ayah}`) ?? null;
+}
+
+// ─── The one thing the player calls ─────────────────────────────────────────────────────
+
+export interface AudioSegment {
+  url: string;
+  /** Seconds into the file where this ayah begins. 0 for a per-ayah file. */
+  start: number;
+  /** Seconds where it ends, or null for "to the end of the file". */
+  end: number | null;
+  /** True when the segment is a whole page, not one ayah — no per-ayah highlighting. */
+  wholePage: boolean;
+}
+
+export interface AyahRef {
+  /** Global ayah number, 1–6236 — what the per-ayah CDN is keyed by. */
+  globalId: number;
+  surah: number;
+  ayah: number;
+  page: number;
+}
+
+/**
+ * Where to find one ayah for one reciter, or null when that reciter cannot play this ayah
+ * on its own (an unaligned page in إبراهيم حسن's recitation). A null answer is an
+ * instruction to fall back to `resolvePageAudio()`, not an error.
+ */
+export function resolveAyahAudio(ref: AyahRef, reciterId: string): AudioSegment | null {
+  const reciter = getReciter(reciterId);
+  if (reciter.source === 'page-offset') {
+    const t = ibrahimTiming(ref.surah, ref.ayah);
+    if (!t) return null;
+    return { url: ibrahimPageUrl(t.page), start: t.start, end: t.end, wholePage: false };
+  }
+  return {
+    url: `https://cdn.islamic.network/quran/audio/128/${reciter.id}/${ref.globalId}.mp3`,
+    start: 0,
+    end: null,
+    wholePage: false,
+  };
+}
+
+/**
+ * The whole page as one segment — the fallback for a reciter recorded by page whose page
+ * has no per-ayah alignment yet. Returns null for per-ayah reciters, which have no such
+ * thing as a page file.
+ */
+export function resolvePageAudio(page: number, reciterId: string): AudioSegment | null {
+  const reciter = getReciter(reciterId);
+  if (reciter.source !== 'page-offset') return null;
+  return { url: ibrahimPageUrl(page), start: 0, end: null, wholePage: true };
+}

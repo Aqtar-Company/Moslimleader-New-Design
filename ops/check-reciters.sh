@@ -97,6 +97,25 @@ for d in Husary_128kbps Husary_64kbps Husary_Mujawwad_64kbps Husary_Muallim_128k
 done
 
 echo
+echo "═══ كشفٌ عن كل تلاوات الحصري المتاحة على everyayah ═══"
+echo "  (بدل تخمين أسماء المجلدات: نقرأ فهرس الخادم نفسه)"
+IDX=$(curl -s --max-time 30 "https://everyayah.com/data/" 2>/dev/null \
+      | grep -oiE 'href="[^"]*(husary|hussary|husari|hosary)[^"]*"' \
+      | sed 's/href="//; s/"$//; s#/$##' | sort -u)
+if [ -n "$IDX" ]; then
+  for d in $IDX; do
+    c=$(probe "https://everyayah.com/data/$d/002255.mp3")
+    if ok_code "$c"; then printf '  ✅ %-30s\n     https://everyayah.com/data/%s/002255.mp3\n' "$d" "$d"
+    else printf '  ·  %-30s %s\n' "$d" "$c"; fi
+  done
+else
+  echo "  (تعذّر قراءة الفهرس — الخادم قد يمنع عرضه)"
+fi
+echo
+echo "  ملاحظة: لو لم يكن فيها تسجيلُ الإذاعة الذي تريده، فالطريق الأوثق أن"
+echo "  نستضيفه بأنفسنا كما نستضيف تلاوة د. إبراهيم — عندها لا يحكمنا خادمٌ غيرنا."
+
+echo
 echo "═══ ملف التوقيتات على موقعنا ═══"
 c=$(probe "https://moslimleader.com/quran/ibrahim-timings.json")
 if ok_code "$c"; then echo "  ✅ /quran/ibrahim-timings.json $c"

@@ -687,6 +687,67 @@ Books are protected from download at two levels:
   The player reuses its `<audio>` element while the FILE is unchanged, so ten consecutive
   ayat out of one page file open that file once, and seeks wait for `loadedmetadata`
   (setting `currentTime` before the duration is known silently does nothing).
+- **قرآن نوري plays a page-recorded reciter by letting the FILE RUN, not by cutting each ayah.**
+  تلاوة د. إبراهيم حسن is one continuous file per mus'haf page. The player used to pause,
+  seek and restart on every ayah boundary even while reading straight through that one
+  file, and paid twice for a boundary it never needed to touch: a seam in a recitation
+  recorded without one, and the NEXT ayah's first letter left in the previous ayah's tail —
+  reported as «بيكرر أول حرف مرتين» in سورة الطور, and true of all 4924 boundaries, not
+  that one. The cause is in the data: every `start` in `ayah-timings.json` is a
+  forced-alignment ESTIMATE that runs late (worst on واو العطف, الفاء and a surah's
+  opening), and the file publishes each `end` as the next ayah's `start`, so there is no
+  gap to absorb the error.
+  - A continuous reading now runs the file uncut and only moves the highlight, comparing
+    the clock against the measured boundaries (`pageRunRef` + `boundariesRef` in
+    `QuranReader.tsx`). This is why the same numbers sound right in a mus'haf app: there
+    the number moves a highlight and nothing cuts.
+  - Slicing is kept for the only two cases that need a cut — repeating an ayah, and
+    starting at one the reader tapped. `ALIGNMENT_LAG = 0.15` in `quran-reciters.ts` shifts
+    BOTH edges back for those. Shifting both preserves the duration, so no short ayah is
+    trimmed to nothing; moving only `end` (the obvious fix) eats the shortest ayat.
+  - A run also requires EVERY ayah of the page to be timed — a missing boundary would
+    strand the highlight while the recitation moved on, so such a page is sliced. And
+    turning repeat on mid-run re-enters `playFromRef` at once, because a run has no
+    per-ayah end at which to notice it.
+- **No Quran audio is stored by us. The browser fetches each page from `ibrahimquran.com`.**
+  Nothing of this recitation is in the repo or on the server — `public/quran/` holds only
+  the 90KB timings file. That is deliberate WHILE the audio is still being revised: a
+  corrected file is live for every listener the moment it is replaced there, with nothing
+  to copy or deploy. `NEXT_PUBLIC_IBRAHIM_AUDIO_BASE` switches the player to our own R2
+  when that settles (build-time value — `pm2 restart` will not pick it up).
+  - **What that arrangement cannot do is notice.** The per-ayah offsets are measured against
+    those exact bytes, so replacing a page's audio moves every boundary on it. No request
+    fails and nothing is logged — the highlight simply lands on the wrong verse, and whoever
+    memorises from that screen memorises the error.
+  - `ops/ibrahim-audio-sync.mjs` is what notices: it records each page's size/Last-Modified/
+    ETag by HEAD alone (3.6 GB must never be downloaded to be checked) and on the next run
+    names the pages that changed — exactly the pages whose timings must be re-measured with
+    `tools/snap_cuts.py` in `Aqtar-Company/ibrahim-recitation`. Its state lives in
+    `/var/lib/moslimleader`, OUTSIDE the working tree, because a deploy's `git reset` would
+    otherwise lose it and every page would read as new. Cron: `17 4 * * *`. `--mirror`
+    copies changed pages to R2 under `quran/ibrahim/`.
+  - **The upstream repo publishes the rule that causes this**, and as of commit `12a37ea`
+    its `data/` is UNCHANGED — only the tool and the docs were corrected. So every consumer
+    of that repository still carries the defect, and a fix there reaches nobody
+    automatically: a copied JSON is a static copy. Ours is `public/quran/ibrahim-timings.json`
+    from `534e225`.
+- **The reciters that answer 403 are gone for good, and `Husary_128kbps` is NOT the Egyptian
+  Radio master.** Checked by ear 2026-09-21 against every per-ayah Husary that exists —
+  everyayah (5 sets), `verses.quran.com` (404 on all three names; quran.com's own API
+  resolves its «محمود خليل الحصري» to `everyayah/Husary_64kbps`, i.e. the same recording
+  most apps serve), `islamic.network/ar.husary`, and mp3quran's `husr/` (حفص عن عاصم مرتل,
+  whole-surah files). None was it. The picker therefore carries the plain label «مرتل» and
+  does not claim الإذاعة المصرية — a name that promises what the audio does not keep is its
+  own bug. `ops/husary-ayah-candidates.sh` reprints the whole comparison.
+- **طريق sends its own mail from `tareeq@moslimleader.com`.** `TAREEQ_SMTP_USER` +
+  `TAREEQ_SMTP_PASS` are set and verified. When that login failed with `535 5.7.8` the
+  cause was neither the password nor the mailbox: `.env` held the variable TWICE, and the
+  two readers disagree — `ops/check-tareeq-mail.sh` prints the FIRST match (`grep | head -1`)
+  while the Node parser uses the LAST. The printed length was right and the connection used
+  the wrong line. **Rewrite such a line by filtering the old ones out first**
+  (`grep -vE '^(VAR1|VAR2)=' .env > .env.new`), never by appending, and check the count.
+  `ops/try-tareeq-login.sh` separates a bad password from a mangled file by prompting for it
+  instead of reading the file.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

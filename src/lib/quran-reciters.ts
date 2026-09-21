@@ -63,11 +63,12 @@ export interface Reciter {
 export const RECITERS: Reciter[] = [
   { id: 'ar.alafasy',         nameAr: 'مشاري العفاسي',       styleAr: 'مرتل', color: '#1a6b3a', source: 'cdn-ayah' },
   { id: 'ibrahim.hassan',     nameAr: 'د. إبراهيم حسن',      styleAr: 'مرتل', color: '#8a5a00', source: 'page-offset' },
-  // نسخةُ الإذاعة المصرية المرتّلة، من everyayah لا من islamic.network — الأخيرُ
-  // لا يحمل منه إلا مرتّلًا واحدًا ومجوّدًا، ولم يكن المطلوب. لم يُقارَن بالسماع
-  // من هنا (لا صوت في بيئة التطوير)، فإن لم يكن هو: البدائل المتاحة والمجرَّبة
-  // هي Husary_64kbps (النسخة نفسها بجودة أقل) و ar.husary على islamic.network.
-  { id: 'husary.radio',       nameAr: 'محمود خليل الحصري',   styleAr: 'مرتل — الإذاعة المصرية', color: '#1a4a8a', source: 'everyayah', dir: 'Husary_128kbps' },
+  // ليست نسخةَ الإذاعة المصرية — قُورنت بالسماع (2026-09-21) بتسجيل الإذاعة
+  // المنشور على mp3quran (husr/، حفص عن عاصم مرتّل) فتبيّن أنها غيرُه. وهي
+  // مع ذلك تلاوةٌ صحيحةٌ للحصري بحفص، وهي الوحيدةُ منه الموزَّعةُ بملفٍ لكل
+  // آية، فبقيت باسمٍ لا يَعِد بما لا تفي به. تسجيلُ الإذاعة موزَّعٌ بملفٍ لكل
+  // سورةٍ كاملة، ولا يصلح لمصحفٍ يُقرأ وجهًا وجهًا بغير محاذاةٍ تُصنع له.
+  { id: 'husary.radio',       nameAr: 'محمود خليل الحصري',   styleAr: 'مرتل', color: '#1a4a8a', source: 'everyayah', dir: 'Husary_128kbps' },
   { id: 'ar.minshawi',        nameAr: 'محمد صديق المنشاوي',  styleAr: 'مرتل', color: '#5a3a00', source: 'cdn-ayah' },
   { id: 'ar.mahermuaiqly',    nameAr: 'ماهر المعيقلي',       styleAr: 'مرتل', color: '#2a1a6b', source: 'cdn-ayah' },
   { id: 'ar.shaatree',        nameAr: 'أبو بكر الشاطري',     styleAr: 'مرتل', color: '#004a4a', source: 'cdn-ayah' },

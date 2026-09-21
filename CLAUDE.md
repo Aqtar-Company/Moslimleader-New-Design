@@ -663,6 +663,11 @@ Books are protected from download at two levels:
     عبدالصمد, السديس (both spellings), سعود الشريم, المنشاوي مجود, هاني الرفاعي and
     أيمن سويد all answer 403 and were REMOVED — a name in the picker that plays nothing is
     the bug that was reported twice, and the player could only show it as silence.
+  - **`everyayah`** — one file per ayah on `everyayah.com`, keyed by **surah+ayah, three
+    digits each** (`002255.mp3`), NOT by the global number the other CDN uses. It exists
+    because a different host carries different masters of the same reciter:
+    islamic.network has exactly one Husary murattal and one mujawwad, and neither was the
+    Egyptian Radio recording that was asked for. `Husary_128kbps` there is that recording.
   - **`page-offset`** — تلاوة د. إبراهيم حسن, recorded one file per mus'haf page at
     `ibrahimquran.com/quran/khatma/{page}.mp3`. An ayah is a measured slice of that file.
     Timings come from the `Aqtar-Company/ibrahim-recitation` repo (commit `534e225`),

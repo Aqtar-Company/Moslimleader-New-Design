@@ -56,6 +56,16 @@ if [ -n "$FAILED" ]; then
 fi
 
 echo
+echo "═══ القرّاء المُعرَّفون على everyayah (مفتاحه سورة+آية) ═══"
+EA="https://everyayah.com/data"
+for d in Husary_128kbps; do
+  c1=$(probe "$EA/$d/001001.mp3")
+  c2=$(probe "$EA/$d/002255.mp3")
+  if ok_code "$c1" && ok_code "$c2"; then printf '  ✅ %-26s %s %s\n' "$d" "$c1" "$c2"
+  else printf '  ❌ %-26s %s %s\n' "$d" "$c1" "$c2"; fi
+done
+
+echo
 echo "═══ تلاوة د. إبراهيم حسن (ملفٌ لكل وجه) ═══"
 for page in 1 42 604; do
   c=$(probe "$IBRAHIM/khatma/$page.mp3")
@@ -80,7 +90,6 @@ for id in ar.husary ar.husarymujawwad ar.husarymuallim ar.husary128 ar.mahmoudkh
   else printf '     ·  %-28s %s\n' "$id" "$c"; fi
 done
 echo "  ── على everyayah.com (مفتاحه سورة 3 أرقام + آية 3 أرقام — 002255 = آية الكرسي):"
-EA="https://everyayah.com/data"
 for d in Husary_128kbps Husary_64kbps Husary_Mujawwad_64kbps Husary_Muallim_128kbps Husary_Mujawwad_128kbps; do
   c=$(probe "$EA/$d/002255.mp3")
   if ok_code "$c"; then printf '     ✅ %-28s %s\n        %s/%s/002255.mp3\n' "$d" "$c" "$EA" "$d"

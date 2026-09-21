@@ -34,10 +34,15 @@ export interface Reciter {
   styleAr?: string;
   color: string;
   /**
-   * `cdn-ayah`: one file per ayah on cdn.islamic.network, keyed by global ayah number.
+   * `cdn-ayah`:  one file per ayah on cdn.islamic.network, keyed by GLOBAL ayah number.
+   * `everyayah`: one file per ayah on everyayah.com, keyed by SURAH+AYAH, zero-padded to
+   *              three digits each (2:255 → `002255.mp3`). A different host carries
+   *              different masters of the same reciter, which is the only reason to use it.
    * `page-offset`: one file per mus'haf page; an ayah is a measured slice of it.
    */
-  source: 'cdn-ayah' | 'page-offset';
+  source: 'cdn-ayah' | 'everyayah' | 'page-offset';
+  /** Required for `everyayah`: the directory under everyayah.com/data/. */
+  dir?: string;
 }
 
 /**
@@ -58,10 +63,11 @@ export interface Reciter {
 export const RECITERS: Reciter[] = [
   { id: 'ar.alafasy',         nameAr: 'مشاري العفاسي',       styleAr: 'مرتل', color: '#1a6b3a', source: 'cdn-ayah' },
   { id: 'ibrahim.hassan',     nameAr: 'د. إبراهيم حسن',      styleAr: 'مرتل', color: '#8a5a00', source: 'page-offset' },
-  // مؤقّت: صاحبُ الموقع يريد تسجيل الإذاعة المصرية بدل هذا. لم يُحدَّد بعدُ أيُّ
-  // نسخةٍ على أيِّ خادمٍ هي، ويُحدَّد بالسماع لا بالتخمين — انظر قسم الحصري في
-  // ops/check-reciters.sh. حذفُه قبل إيجاد البديل يترك المصحف بلا الحصري أصلًا.
-  { id: 'ar.husary',          nameAr: 'محمود خليل الحصري',   styleAr: 'مرتل', color: '#1a4a8a', source: 'cdn-ayah' },
+  // نسخةُ الإذاعة المصرية المرتّلة، من everyayah لا من islamic.network — الأخيرُ
+  // لا يحمل منه إلا مرتّلًا واحدًا ومجوّدًا، ولم يكن المطلوب. لم يُقارَن بالسماع
+  // من هنا (لا صوت في بيئة التطوير)، فإن لم يكن هو: البدائل المتاحة والمجرَّبة
+  // هي Husary_64kbps (النسخة نفسها بجودة أقل) و ar.husary على islamic.network.
+  { id: 'husary.radio',       nameAr: 'محمود خليل الحصري',   styleAr: 'مرتل — الإذاعة المصرية', color: '#1a4a8a', source: 'everyayah', dir: 'Husary_128kbps' },
   { id: 'ar.minshawi',        nameAr: 'محمد صديق المنشاوي',  styleAr: 'مرتل', color: '#5a3a00', source: 'cdn-ayah' },
   { id: 'ar.mahermuaiqly',    nameAr: 'ماهر المعيقلي',       styleAr: 'مرتل', color: '#2a1a6b', source: 'cdn-ayah' },
   { id: 'ar.shaatree',        nameAr: 'أبو بكر الشاطري',     styleAr: 'مرتل', color: '#004a4a', source: 'cdn-ayah' },
@@ -194,6 +200,16 @@ export function resolveAyahAudio(ref: AyahRef, reciterId: string): AudioSegment 
     const t = ibrahimTiming(ref.surah, ref.ayah);
     if (!t) return null;
     return { url: ibrahimPageUrl(t.page), start: t.start, end: t.end, wholePage: false };
+  }
+  if (reciter.source === 'everyayah') {
+    // Keyed by surah+ayah, three digits each — NOT by the global number the other CDN uses.
+    const pad = (n: number) => String(n).padStart(3, '0');
+    return {
+      url: `https://everyayah.com/data/${reciter.dir}/${pad(ref.surah)}${pad(ref.ayah)}.mp3`,
+      start: 0,
+      end: null,
+      wholePage: false,
+    };
   }
   return {
     url: `https://cdn.islamic.network/quran/audio/128/${reciter.id}/${ref.globalId}.mp3`,

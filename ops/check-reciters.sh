@@ -101,7 +101,7 @@ echo "═══ كشفٌ عن كل تلاوات الحصري المتاحة عل
 echo "  (بدل تخمين أسماء المجلدات: نقرأ فهرس الخادم نفسه)"
 IDX=$(curl -s --max-time 30 "https://everyayah.com/data/" 2>/dev/null \
       | grep -oiE 'href="[^"]*(husary|hussary|husari|hosary)[^"]*"' \
-      | sed 's/href="//; s/"$//; s#/$##' | sort -u)
+      | sed 's/href="//; s/"$//; s#/$##; s#^.*/data/##' | sort -u)
 if [ -n "$IDX" ]; then
   for d in $IDX; do
     c=$(probe "https://everyayah.com/data/$d/002255.mp3")

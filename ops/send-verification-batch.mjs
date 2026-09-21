@@ -37,6 +37,20 @@
 
 import { PrismaClient } from '@prisma/client';
 import crypto from 'node:crypto';
+
+/**
+ * Kept in step with src/lib/real-email.ts, which the app itself uses. A bare node script
+ * cannot import the TypeScript module, and duplicating four lines is better than shipping
+ * a build step for a script whose whole job is to be run by hand on the server.
+ */
+function isSyntheticEmail(email) {
+  if (!email || !email.includes('@')) return true;
+  const [local, domain] = email.trim().toLowerCase().split('@');
+  if (!local || !domain) return true;
+  if (domain.endsWith('.local') || domain.endsWith('.invalid') || domain === 'localhost') return true;
+  if (['imported.local', 'guest.moslimleader.com', 'placeholder.local', 'noemail.local'].includes(domain)) return true;
+  return ['manual-', 'guest-', 'imported-', 'nouser-'].some(p => local.startsWith(p));
+}
 import nodemailer from 'nodemailer';
 
 const prisma = new PrismaClient();
@@ -95,7 +109,7 @@ try {
   })).map(o => o.userId);
 
   // Never re-ask someone whose token is still live — that is the same mail twice.
-  const targets = await prisma.user.findMany({
+  const candidates = await prisma.user.findMany({
     where: {
       id: { in: delivered },
       emailVerified: false,
@@ -103,10 +117,24 @@ try {
     },
     select: { id: true, name: true, email: true },
     orderBy: { createdAt: 'desc' },
-    ...(LIMIT ? { take: LIMIT } : {}),
   });
 
-  console.log(`مؤهَّلون (وصلتهم شحنة، وبلا رمزٍ حيّ): ${targets.length}`);
+  // THE filter. A manual or guest order carries an address the shop invented from a phone
+  // number — manual-01xxxxxxxxx@imported.local — and `.local` never resolves. Those rows
+  // look exactly like real customers: a name, an order, a delivered parcel. Selecting on
+  // "a parcel reached them" picks up thousands of them and every message bounces at once,
+  // which is the precise harm this whole campaign is shaped to avoid.
+  const synthetic = candidates.filter(u => isSyntheticEmail(u.email));
+  const real = candidates.filter(u => !isSyntheticEmail(u.email));
+  const targets = LIMIT ? real.slice(0, LIMIT) : real;
+
+  console.log(`وصلتهم شحنة وبلا رمزٍ حيّ:        ${candidates.length}`);
+  console.log(`  منها عناوينُ نظامٍ لا تصلح للبريد: ${synthetic.length}  ← مستبعَدة`);
+  console.log(`  عناوينُ بريدٍ حقيقية:            ${real.length}`);
+  if (!real.length) {
+    console.log('\n  ⚠️  لا عنوان حقيقيًا واحدًا في هذه المجموعة. «وصلته شحنة» هنا يعني');
+    console.log('     أن الطلب سُجّل يدويًا بهاتفٍ لا ببريد — فالطرد وصل بالهاتف.');
+  }
   if (LIMIT) console.log(`الحد المطلوب لهذه الدفعة: ${LIMIT}`);
   console.log(`الموقع: ${SITE}`);
 

@@ -20,6 +20,21 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
+/**
+ * Kept in step with src/lib/real-email.ts. A manual or guest order needs a User row and a
+ * row needs an email, so the shop invents one from the phone number. Counting those as
+ * members who could be mailed is how a list of 2142 reads as an audience when most of it
+ * is a key column.
+ */
+function isSyntheticEmail(email) {
+  if (!email || !email.includes('@')) return true;
+  const [local, domain] = email.trim().toLowerCase().split('@');
+  if (!local || !domain) return true;
+  if (domain.endsWith('.local') || domain.endsWith('.invalid') || domain === 'localhost') return true;
+  if (['imported.local', 'guest.moslimleader.com', 'placeholder.local', 'noemail.local'].includes(domain)) return true;
+  return ['manual-', 'guest-', 'imported-', 'nouser-'].some(p => local.startsWith(p));
+}
+
 const pct = (n, of) => of ? `${(n / of * 100).toFixed(1)}%` : '—';
 const bar = (n, of, width = 28) => {
   const filled = of ? Math.round((n / of) * width) : 0;
@@ -34,7 +49,38 @@ try {
     prisma.user.count({ where: { emailVerified: true, marketingOptIn: true } }),
   ]);
 
-  console.log('═══ من يمكن مراسلته اليوم ═══\n');
+  // Before any percentage: how much of this list is an address at all.
+  const everyone = await prisma.user.findMany({ select: { email: true, emailVerified: true, marketingOptIn: true } });
+  const fake = everyone.filter(u => isSyntheticEmail(u.email));
+  const realUsers = everyone.filter(u => !isSyntheticEmail(u.email));
+  const byDomain = {};
+  for (const u of fake) {
+    const d = (u.email || '').split('@')[1] || '(بلا عنوان)';
+    byDomain[d] = (byDomain[d] ?? 0) + 1;
+  }
+
+  console.log('═══ أولًا: كم منها عنوانٌ أصلًا ═══\n');
+  console.log(`  صفوفٌ في الجدول            ${String(everyone.length).padStart(5)}`);
+  console.log(`  عناوينُ نظامٍ لا تصل        ${String(fake.length).padStart(5)}  ${pct(fake.length, everyone.length)}`);
+  for (const [d, n] of Object.entries(byDomain).sort((a, b) => b[1] - a[1]).slice(0, 6)) {
+    console.log(`      @${d.padEnd(28)} ${String(n).padStart(5)}`);
+  }
+  console.log(`  عناوينُ بريدٍ حقيقية        ${String(realUsers.length).padStart(5)}  ${pct(realUsers.length, everyone.length)}  ← القائمة الحقيقية`);
+  console.log('\n  طلبٌ سُجّل يدويًا أو شراءُ ضيفٍ يحتاج صفَّ مستخدم، والصفُّ يحتاج بريدًا،');
+  console.log('  فيُولَّد من رقم الهاتف. هو مفتاحٌ لا عنوان، و.local لا يُسلَّم إليه أبدًا.');
+  console.log('  والنِّسَبُ التالية تُحسب على القائمة الحقيقية، لا على الجدول كله.\n');
+
+  const realVerified = realUsers.filter(u => u.emailVerified).length;
+  const realOptIn = realUsers.filter(u => u.marketingOptIn).length;
+  const realBoth = realUsers.filter(u => u.emailVerified && u.marketingOptIn).length;
+  console.log('═══ من يمكن مراسلته اليوم (من العناوين الحقيقية) ═══\n');
+  console.log(`  عناوين حقيقية            ${String(realUsers.length).padStart(5)}  ${bar(realUsers.length, realUsers.length)}`);
+  console.log(`  منها موثَّق               ${String(realVerified).padStart(5)}  ${bar(realVerified, realUsers.length)}  ${pct(realVerified, realUsers.length)}`);
+  console.log(`  منها وافق على التسويق    ${String(realOptIn).padStart(5)}  ${bar(realOptIn, realUsers.length)}  ${pct(realOptIn, realUsers.length)}`);
+  console.log(`  الاثنان معًا             ${String(realBoth).padStart(5)}  ${bar(realBoth, realUsers.length)}  ${pct(realBoth, realUsers.length)}`);
+  console.log('');
+
+  console.log('═══ وللمقارنة: نفس الأرقام على الجدول كله ═══\n');
   console.log(`  الأعضاء                 ${String(total).padStart(5)}  ${bar(total, total)}`);
   console.log(`  عنوانه موثَّق            ${String(verified).padStart(5)}  ${bar(verified, total)}  ${pct(verified, total)}`);
   console.log(`  وافق على التسويق        ${String(optIn).padStart(5)}  ${bar(optIn, total)}  ${pct(optIn, total)}`);

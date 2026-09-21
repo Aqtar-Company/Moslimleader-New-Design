@@ -83,11 +83,50 @@ export default function NotificationsPage() {
       <div dir="rtl" style={{ padding: '32px 24px', maxWidth: 720, margin: '0 auto' }}>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ color: C.text, fontSize: 24, fontWeight: 700, margin: 0 }}>
-            🔔 إرسال إشعارات
+            🔔 إشعار متصفّح فوري
           </h1>
           <p style={{ color: C.muted, marginTop: 6, fontSize: 14 }}>
-            أرسل إشعارات فورية لمستخدمي المنصة
+            إشعار واحد يظهر على الأجهزة التي فعّلت الإشعارات — لا يُحفَظ، ولا يظهر داخل
+            التطبيق، ولا يُرسل إيميلًا.
           </p>
+        </div>
+
+        {/*
+          Two screens in this project appear to do the same thing, and this is the one that
+          does less. It sends a push and keeps NO record: no AdminBroadcast row, no in-app
+          notification, no email, and nothing at all for a member who never enabled browser
+          notifications — while still reporting success. An admin looking for "send a message
+          to the members" finds this one first, sends from it, and then cannot find the
+          message anywhere, because there is nothing to find. That happened, and the search
+          for the cause began in SMTP, which this screen never touches.
+
+          So the difference is stated here rather than left to be discovered.
+        */}
+        <div
+          style={{
+            background: '#3b1d08',
+            border: '1px solid #f59e0b66',
+            borderRadius: 10,
+            padding: '14px 18px',
+            marginBottom: 20,
+            color: '#fde68a',
+            fontSize: 13.5,
+            lineHeight: 1.85,
+          }}
+        >
+          <strong style={{ color: C.gold }}>هذه ليست شاشة «إعلام المستخدمين».</strong>
+          <br />
+          لإرسال رسالة كاملة — تُحفَظ في السجل، وتظهر داخل التطبيق، وتُرسَل بالإيميل، ومعها
+          تقرير بمن وصلته ومن لم تصله ولماذا — استخدم{' '}
+          <a
+            href="/admin/tareeq"
+            style={{ color: C.gold, fontWeight: 700, textDecoration: 'underline' }}
+          >
+            لوحة إدارة طريق ← تبويب «📣 الرسائل»
+          </a>
+          .
+          <br />
+          وما يُرسَل من هنا لا يُسجَّل في أي مكان، فلا يمكن تتبّعه بعد إرساله.
         </div>
 
         {/* Info banner */}

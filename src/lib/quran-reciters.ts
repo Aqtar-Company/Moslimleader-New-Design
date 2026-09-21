@@ -91,7 +91,22 @@ export function getReciter(id: string): Reciter {
 
 // ─── إبراهيم حسن: page files + measured offsets ─────────────────────────────────────────
 
-const IBRAHIM_BASE = 'https://ibrahimquran.com/quran/';
+/**
+ * Where the page files are served from. It is the reciter's own host by default: nothing of
+ * this recitation is stored by us, and the browser fetches each page straight from them.
+ *
+ * That is the right default WHILE the audio is still being revised — a corrected file is
+ * live for every listener the moment it is replaced there, with nothing to copy. The cost
+ * is that an outage, a moved path or hotlink protection takes قرآن نوري down with it, and
+ * that a replaced file silently invalidates that page's measured timings (see
+ * `ops/ibrahim-audio-sync.mjs`, which is what notices).
+ *
+ * Set NEXT_PUBLIC_IBRAHIM_AUDIO_BASE to serve them from our own R2 instead. It is read at
+ * BUILD time, like every NEXT_PUBLIC_ value, so changing it needs `npm run build` — a
+ * `pm2 restart` alone will not pick it up.
+ */
+const IBRAHIM_BASE = (process.env.NEXT_PUBLIC_IBRAHIM_AUDIO_BASE || 'https://ibrahimquran.com/quran/')
+  .replace(/\/*$/, '/');
 
 /**
  * Two pages are absent from the `khatma/` set and present in the by-surah set. Their

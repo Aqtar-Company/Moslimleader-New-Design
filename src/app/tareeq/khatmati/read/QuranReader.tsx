@@ -15,7 +15,7 @@ import {
 } from '@/lib/quran-data';
 import {
   RECITERS, DEFAULT_RECITER_ID, getReciter, loadIbrahimTimings, ibrahimPageIsTimed,
-  resolveAyahAudio, resolvePageAudio, type AudioSegment,
+  resolveAyahAudio, resolvePageAudio, ibrahimAyahStart, type AudioSegment,
 } from '@/lib/quran-reciters';
 
 type Mode = 'listen' | 'both';
@@ -192,6 +192,14 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const segStartRef = useRef(0);
   const segEndRef   = useRef<number | null>(null);
   const wholePageRef = useRef(false);
+  // True while the page's file is being let RUN, uncut, with the highlight moving as its
+  // measured boundaries pass. This is the normal state for a page-recorded reciter reading
+  // continuously: cutting on every ayah is what made the next ayah's first letter audible
+  // at the end of the previous one, and it put a seam in a recitation recorded without one.
+  // Slicing is kept for the two cases that need it — repeating an ayah, and starting at one.
+  const pageRunRef = useRef(false);
+  /** `{ idx, start }` per ayah of the current page, ascending. Empty when not running. */
+  const boundariesRef = useRef<{ idx: number; start: number }[]>([]);
   // Consecutive audio failures. One is a hiccup and is skipped past; a run of them means
   // the reciter is not reachable at all, and saying so beats silence — an unreachable
   // reciter used to look exactly like a working one that had nothing to say.
@@ -371,6 +379,21 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
   // ── Audio engine ──────────────────────────────────────────────────────────
 
+  /**
+   * Every ayah of the current page with its position in the page's file. Returns an empty
+   * array the moment one ayah has no timing — a partial list would strand the highlight.
+   */
+  const collectBoundaries = useCallback(() => {
+    const out: { idx: number; start: number }[] = [];
+    const vs = versesRef.current;
+    for (let i = 0; i < vs.length; i++) {
+      const at = ibrahimAyahStart(vs[i].chapter_id, vs[i].verse_number);
+      if (at === null) return [];
+      out.push({ idx: i, start: at });
+    }
+    return out;
+  }, []);
+
   const playFromRef = useCallback(() => {
     const verse = versesRef.current[currentRef.current];
     if (!verse) return;
@@ -413,6 +436,19 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
     if (!seg) { skipAhead(); return; }
 
+    // Let the file run instead of cutting it, whenever nothing needs a cut. A repeat needs
+    // one (the ayah has to come round again) and so does starting mid-page (the seek), but
+    // a plain continuous reading needs none — and every cut costs a seam and risks the
+    // first letter of the next ayah, because the boundary is an estimate.
+    //
+    // It also needs EVERY ayah of the page to be timed: the highlight is driven by
+    // comparing the clock to those boundaries, and one missing boundary would leave the
+    // highlight stuck while the recitation moved on. A page with a gap is sliced instead.
+    const canRun = reciter.source === 'page-offset' && repeatModeRef.current === 0 && !seg.wholePage;
+    boundariesRef.current = canRun ? collectBoundaries() : [];
+    pageRunRef.current = boundariesRef.current.length > 0;
+    if (pageRunRef.current) seg = { ...seg, end: null };
+
     wholePageRef.current = seg.wholePage;
     setWholePage(seg.wholePage);
     segStartRef.current = seg.start;
@@ -454,7 +490,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       setRepeatProgress(0);
 
       // A whole-page segment IS the page: there is no next ayah inside it to advance to.
-      const next = segEndRef.current === null && wholePageRef.current
+      // A whole-page segment IS the page, and so is an uncut run through it: in both the
+      // file ending means the page ended, and there is no next ayah inside it to advance to.
+      const next = segEndRef.current === null && (wholePageRef.current || pageRunRef.current)
         ? versesRef.current.length
         : currentRef.current + 1;
       if (next < versesRef.current.length) {
@@ -480,6 +518,23 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
     el.ontimeupdate = () => {
       if (!isMountedRef.current) return;
+      // An uncut run: a tick never ends anything. All it does is move the highlight onto
+      // the last ayah whose measured start has gone by.
+      if (pageRunRef.current) {
+        const bs = boundariesRef.current;
+        let hit = 0;
+        for (let i = 0; i < bs.length; i++) { if (el.currentTime >= bs[i].start) hit = i; else break; }
+        const at = bs[hit];
+        if (at && at.idx !== currentRef.current) {
+          currentRef.current = at.idx;
+          setCurrentIdx(at.idx);
+        }
+        const from = at ? at.start : 0;
+        const to = bs[hit + 1]?.start ?? (el.duration || 0);
+        const span = to > from ? to - from : 0;
+        if (span > 0) setAudioProgress(Math.min(1, Math.max(0, (el.currentTime - from) / span)));
+        return;
+      }
       const start = segStartRef.current;
       const end = segEndRef.current;
       const finish = end ?? (el.duration || 0);
@@ -534,7 +589,13 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     } else {
       seekThenPlay();
     }
-  }, [reciterId]);
+  }, [reciterId, collectBoundaries]);
+
+  // Turning repeat on during an uncut run must take effect at once. A run has no per-ayah
+  // end to notice it at, so without this the repeat would begin at the end of the page.
+  useEffect(() => {
+    if (repeatMode !== 0 && pageRunRef.current && playingRef.current) playFromRef();
+  }, [repeatMode, playFromRef]);
 
   function togglePlay() {
     if (isPlaying) {
@@ -626,6 +687,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     setAudioError(null);
     setWholePage(false);
     wholePageRef.current = false;
+    pageRunRef.current = false;
+    boundariesRef.current = [];
     if (getReciter(reciterId).source === 'page-offset') void loadIbrahimTimings();
   }, [reciterId]);
 

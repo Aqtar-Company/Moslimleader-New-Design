@@ -201,6 +201,17 @@ function shifted(t: AyahTiming): { start: number; end: number | null } {
   };
 }
 
+/**
+ * The playable start of one ayah inside its page file, shifted exactly as
+ * `resolveAyahAudio` shifts it. A player that lets the page file run UNCUT and only moves
+ * the highlight needs these positions and nothing else — that is the reading mode this
+ * recitation was recorded for, and the one in which a boundary estimate cannot be heard.
+ */
+export function ibrahimAyahStart(surah: number, ayah: number): number | null {
+  const t = ibrahimTiming(surah, ayah);
+  return t ? shifted(t).start : null;
+}
+
 // ─── The one thing the player calls ─────────────────────────────────────────────────────
 
 export interface AudioSegment {

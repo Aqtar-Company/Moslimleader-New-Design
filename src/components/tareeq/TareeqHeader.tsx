@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
 import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
+import { notificationHref } from '@/lib/tareeq-notif-link';
 
 interface Props {
   onCreateClick: () => void;
@@ -94,6 +95,35 @@ function NotifIcon({ type }: { type: string }) {
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" style={{ color: '#d4a853' }}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
       </svg>
+    </div>
+  );
+  // An official message from إدارة طريق wears طريق's mark, not the generic envelope the
+  // default branch draws. It is the one notification a member has no other way to tell
+  // apart from an ordinary one, and «رسالة من إدارة طريق» beside a mail icon reads as
+  // just another piece of mail.
+  if (type.startsWith('admin_')) return (
+    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: '#111827', border: '1px solid rgba(212,168,83,0.55)' }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/Tareeq-small.png"
+        alt=""
+        width={18}
+        height={18}
+        style={{ objectFit: 'contain' }}
+        // A missing or blocked image must not leave an empty circle: fall back to the
+        // kind's own glyph, which still says more than an envelope does.
+        onError={e => {
+          const el = e.currentTarget;
+          el.style.display = 'none';
+          const parent = el.parentElement;
+          if (parent && !parent.dataset.fallback) {
+            parent.dataset.fallback = '1';
+            parent.textContent = type === 'admin_update' ? '🔄'
+              : type === 'admin_reminder' ? '⏰'
+              : type === 'admin_note' ? '📝' : '📣';
+          }
+        }}
+      />
     </div>
   );
   /* default / message */
@@ -702,9 +732,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   }}
                   onClick={() => {
                     setShowMobileNotifPanel(false);
-                    if (n.type === 'follow' && n.actorId) router.push(`/tareeq/u/${n.actorId}`);
-                    else if (n.postId) router.push(`/tareeq/${n.postId}`);
-                    else router.push('/tareeq/notifications');
+                    // The list of notifications is the fallback when one leads nowhere.
+                    router.push(notificationHref(n) ?? '/tareeq/notifications');
                   }}
                 >
                   <NotifIcon type={n.type} />
@@ -1054,7 +1083,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                           const newNotifs = allNotifs.filter(n => !n.read);
                           const earlierNotifs = allNotifs.filter(n => n.read);
                           const renderNotif = (n: Notification) => (
-                            <button key={n.id} onClick={() => { setShowNotifPanel(false); if (n.postId) router.push(`/tareeq/${n.postId}`); }}
+                            <button key={n.id} onClick={() => { setShowNotifPanel(false); const href = notificationHref(n); if (href) router.push(href); }}
                               className="w-full flex items-start gap-3 px-4 py-3 text-start transition"
                               style={{ background: n.read ? 'transparent' : 'rgba(212,168,83,0.04)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
                               <NotifIcon type={n.type} />
@@ -1338,7 +1367,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                         const newNotifs = allNotifs.filter(n => !n.read);
                         const earlierNotifs = allNotifs.filter(n => n.read);
                         const renderNotif = (n: Notification) => (
-                          <button key={n.id} onClick={() => { setShowNotifPanel(false); if (n.type === 'follow' && n.actorId) router.push(`/tareeq/u/${n.actorId}`); else if (n.postId) router.push(`/tareeq/${n.postId}`); }}
+                          <button key={n.id} onClick={() => { setShowNotifPanel(false); if (n.type === 'follow' && n.actorId) router.push(`/tareeq/u/${n.actorId}`); else { const href = notificationHref(n); if (href) router.push(href); } }}
                             className="w-full flex items-start gap-3 px-4 py-3 text-start transition"
                             style={{ background: n.read ? 'transparent' : 'rgba(212,168,83,0.04)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
                             <NotifIcon type={n.type} />

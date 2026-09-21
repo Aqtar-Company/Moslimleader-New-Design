@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { notificationHref } from '@/lib/tareeq-notif-link';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -380,23 +381,8 @@ function Inner() {
   }, [user, refresh]);
 
   function handleClick(n: TareeqNotif) {
-    if (n.type === 'message' && n.postId) {
-      router.push(`/tareeq/inbox/${n.postId}`);
-    } else if (n.type === 'message') {
-      router.push('/tareeq/inbox');
-    } else if (n.type === 'follow' && n.actorId) {
-      router.push(`/tareeq/u/${n.actorId}`);
-    } else if (n.type.startsWith('admin_') && n.postId) {
-      router.push(`/tareeq/notices/${n.postId}`);
-    } else if (n.type === 'perk_new') {
-      router.push('/membership');
-    } else if (n.type === 'product_new' && n.postId) {
-      router.push(`/shop/${n.postId}`);
-    } else if (n.type === 'product_new') {
-      router.push('/shop');
-    } else if (n.postId) {
-      router.push(`/tareeq/${n.postId}`);
-    }
+    const href = notificationHref(n);
+    if (href) router.push(href);
   }
 
   return (

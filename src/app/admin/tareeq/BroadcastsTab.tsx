@@ -332,6 +332,19 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
               <p style={S.hint}>الإيميل يُرسل بمعدل ~30 رسالة في الدقيقة (حد Titan)؛ ألف مستلم ≈ 35 دقيقة في الخلفية، والموقع لا يتأثر.</p>
             </div>
           )}
+          {/*
+            The email box is off by default, deliberately: a broadcast that mails 2000
+            people should be an act, not an oversight. But "off" said nothing, and twice a
+            message was sent, arrived in-app and push, and the absence of the mail was then
+            hunted through SMTP, the mailbox password and the DNS records — none of which
+            this switch touches. So the state is stated where the switch is.
+          */}
+          {!form.channelEmail && (form.channelInApp || form.channelPush) && (
+            <p style={{ ...S.hint, color: '#94a3b8', marginTop: 8 }}>
+              ✉️ <b style={{ color: '#fbbf24' }}>الإيميل مغلق</b> — لن يصل بريد لأحد. افتح
+              «بريد إلكتروني» فوق إن أردت إرساله.
+            </p>
+          )}
           {!form.channelInApp && !form.channelPush && !form.channelEmail && <p style={{ ...S.hint, color: '#f87171' }}>اختر قناة واحدة على الأقل</p>}
         </div>
 
@@ -382,6 +395,12 @@ export default function BroadcastsTab({ flash }: { flash: (t: string) => void })
               العدد: <b style={{ color: '#f1f5f9' }}>{reach?.total ?? '…'}</b> شخص<br />
               القنوات: {[form.channelInApp && 'داخل طريق', form.channelPush && 'push', form.channelEmail && `إيميل (${emailReach ?? '…'})`].filter(Boolean).join(' · ')}
             </p>
+            {!form.channelEmail && (
+              <p style={{ fontSize: 12.5, color: '#fbbf24', background: '#3b1d08', border: '1px solid #f59e0b55', borderRadius: 8, padding: '8px 11px', margin: '0 0 10px', lineHeight: 1.75 }}>
+                ✉️ <b>بدون إيميل.</b> الرسالة ستظهر داخل طريق وكإشعار فقط. للإرسال بالبريد،
+                ارجع وافتح خانة «بريد إلكتروني».
+              </p>
+            )}
             <p style={{ fontSize: 12, color: '#f59e0b', margin: '0 0 12px' }}>لا يمكن استرجاع الرسائل التي وصلت بالفعل. يمكنك إيقاف الإرسال في منتصفه من السجل.</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" autoFocus style={S.ghost} onClick={() => setConfirmSend(false)}>رجوع</button>

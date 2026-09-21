@@ -748,6 +748,26 @@ Books are protected from download at two levels:
   (`grep -vE '^(VAR1|VAR2)=' .env > .env.new`), never by appending, and check the count.
   `ops/try-tareeq-login.sh` separates a bad password from a mangled file by prompting for it
   instead of reading the file.
+- **96% of the `User` table is not a mailing list — it is phone numbers.** Measured
+  2026-09-21: of 2142 rows, **2056 hold an address the shop invented** —
+  `manual-01xxxxxxxxx@imported.local` (2043) and `guest-…@guest.moslimleader.com` (13). A
+  manually entered order and a guest checkout each need a User row, a row needs an email,
+  so one is generated from the phone number. It is a key column. `.local` is a reserved TLD
+  and never resolves.
+  - **Every list that gets mailed must pass through `isSyntheticEmail` (`src/lib/real-email.ts`)
+    first**, and never through a clever behavioural criterion instead. The criterion tried
+    here was "holds a DELIVERED order, so a human read a confirmation at that address" —
+    which selected 1777 of these rows, because those parcels were delivered against a PHONE.
+    Sending would have bounced every message at once, which is the exact harm the staged
+    batches existed to prevent. It was stopped by hand at the first batch.
+  - **The real numbers are healthy, and the alarming ones were an artefact of the row
+    count.** Of the 86 genuine addresses: 69 verified (**80%**) and 22 opted into marketing
+    (**26%**). Read against 2142 those become 3.2% and 1.0%, which reads as a broken
+    verification flow. It is not broken. Compute every such ratio against the real
+    addresses — `ops/check-email-reach.mjs` prints the split before anything else.
+  - So طريق's email audience is **86 people**, and it grows with signups, not with a
+    cleanup campaign. The other 2056 are reachable by phone, and that is a different
+    channel, not a worse address.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

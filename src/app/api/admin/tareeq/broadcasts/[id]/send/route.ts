@@ -1,21 +1,16 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requireBroadcastAdmin } from '@/lib/admin-broadcast-auth';
 import { prisma } from '@/lib/prisma';
 import { logActionSafe } from '@/lib/audit-log';
 import { BROADCAST_LIST_SELECT, queueBroadcast, runBroadcast } from '@/lib/admin-broadcast';
 
-async function requireAdmin() {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return null;
-  return user;
-}
 
 // POST /api/admin/tareeq/broadcasts/[id]/send — start delivering a draft.
 // Also the RESUME action: a broadcast that stopped half-way (process restart, SMTP outage)
 // has `queued` recipient rows left, and this queues the newcomers and continues from there.
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  const admin = await requireAdmin();
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const existing = await prisma.adminBroadcast.findUnique({ where: { id: params.id }, select: { status: true, kind: true, audience: true, title: true } });

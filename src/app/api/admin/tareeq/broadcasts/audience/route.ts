@@ -1,19 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requireBroadcastAdmin } from '@/lib/admin-broadcast-auth';
 import { computeReach, isBroadcastAudience } from '@/lib/admin-broadcast';
 
-async function requireAdmin() {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return null;
-  return user;
-}
 
 // GET /api/admin/tareeq/broadcasts/audience?audience=all|tareeq|shop|selected&ids=a,b,c
 // Live reach for the compose screen: how many people, how many with a push device, how
 // many opted in to promotional email.
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin();
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const url = new URL(req.url);

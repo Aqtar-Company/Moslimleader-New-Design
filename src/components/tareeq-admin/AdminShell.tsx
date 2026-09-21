@@ -56,7 +56,11 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'سجل الأحداث', href: '/tareeq-admin/audit',         icon: '📋', permission: 'audit.view' },
   { label: 'الميزات',     href: '/tareeq-admin/features',      icon: '🚀', permission: 'features.manage' },
   { label: 'الإعدادات',   href: '/tareeq-admin/settings',      icon: '⚙️', permission: 'settings.manage' },
-  { label: 'الإشعارات',   href: '/tareeq-admin/notifications', icon: '🔔', permission: 'notifications.send' },
+  // Both send to members, and the difference matters: «إعلام المستخدمين» writes a record
+  // and can use email, «إشعار فوري» is a push that is kept nowhere. It sits first because
+  // it is what is wanted nearly every time.
+  { label: 'إعلام المستخدمين', href: '/tareeq-admin/broadcasts',    icon: '📣', permission: 'notifications.send' },
+  { label: 'إشعار فوري',   href: '/tareeq-admin/notifications', icon: '🔔', permission: 'notifications.send' },
   { label: 'الدعم',       href: '/tareeq-admin/support',       icon: '💬', permission: 'support.view' },
   { label: 'صحة النظام',  href: '/tareeq-admin/health',        icon: '❤️', permission: 'health.view' },
   { label: 'الأدمنز',     href: '/tareeq-admin/admins',        icon: '👑', permission: 'roles.manage' },

@@ -1,21 +1,16 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requireBroadcastAdmin } from '@/lib/admin-broadcast-auth';
 import { prisma } from '@/lib/prisma';
 import { logActionSafe } from '@/lib/audit-log';
 import { Prisma } from '@prisma/client';
 import { BROADCAST_LIST_SELECT, parseBroadcastInput } from '@/lib/admin-broadcast';
 
-async function requireAdmin() {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return null;
-  return user;
-}
 
 // GET /api/admin/tareeq/broadcasts/[id]?recipients=failed|all&page=1
 // The broadcast plus a page of its recipients — the per-person delivery report.
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const admin = await requireAdmin();
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const broadcast = await prisma.adminBroadcast.findUnique({ where: { id: params.id }, select: BROADCAST_LIST_SELECT });
@@ -57,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 // PATCH /api/admin/tareeq/broadcasts/[id] — edit a DRAFT. Anything already sent is history.
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const admin = await requireAdmin();
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const existing = await prisma.adminBroadcast.findUnique({ where: { id: params.id }, select: { status: true } });
@@ -84,8 +79,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // Drafts vanish. A sent broadcast is deleted together with its recipient rows (cascade),
 // but the in-app notifications members already received stay — a message that was
 // delivered was delivered; the record of it should not disappear from their screens.
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const admin = await requireAdmin();
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const existing = await prisma.adminBroadcast.findUnique({ where: { id: params.id }, select: { status: true, title: true, kind: true } });

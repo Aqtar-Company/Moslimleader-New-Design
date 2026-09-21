@@ -1,20 +1,15 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requireBroadcastAdmin } from '@/lib/admin-broadcast-auth';
 import { sendBroadcastTest } from '@/lib/admin-broadcast';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logActionSafe } from '@/lib/audit-log';
 
-async function requireAdmin() {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return null;
-  return user;
-}
 
 // POST /api/admin/tareeq/broadcasts/[id]/test — deliver the message to the admin only, on
 // the channels the message has enabled. No recipient rows, no counters: a rehearsal.
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  const admin = await requireAdmin();
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   // A stuck click handler must not storm the admin's own devices and inbox.
   if (!checkRateLimit(`broadcast-test:${admin.userId}`, 10, 15 * 60 * 1000).allowed) {

@@ -1,22 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requireBroadcastAdmin } from '@/lib/admin-broadcast-auth';
 import { prisma } from '@/lib/prisma';
 import { logActionSafe } from '@/lib/audit-log';
 import { BROADCAST_LIST_SELECT } from '@/lib/admin-broadcast';
 
-async function requireAdmin() {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return null;
-  return user;
-}
 
 // POST /api/admin/tareeq/broadcasts/[id]/cancel — stop a running send.
 // The runner re-reads the status before every chunk of 100, so at most one more chunk goes
 // out after this returns. Rows still `queued` stay queued: "send" on a canceled broadcast
 // resumes them, so a pause is possible as well as a stop.
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  const admin = await requireAdmin();
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const existing = await prisma.adminBroadcast.findUnique({ where: { id: params.id }, select: { status: true, title: true } });

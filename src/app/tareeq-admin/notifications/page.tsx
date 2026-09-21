@@ -119,10 +119,10 @@ export default function NotificationsPage() {
           لإرسال رسالة كاملة — تُحفَظ في السجل، وتظهر داخل التطبيق، وتُرسَل بالإيميل، ومعها
           تقرير بمن وصلته ومن لم تصله ولماذا — استخدم{' '}
           <a
-            href="/admin/tareeq"
+            href="/tareeq-admin/broadcasts"
             style={{ color: C.gold, fontWeight: 700, textDecoration: 'underline' }}
           >
-            لوحة إدارة طريق ← تبويب «📣 الرسائل»
+            «📣 إعلام المستخدمين» في القائمة على اليمين
           </a>
           .
           <br />

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
+import { requireBroadcastAdmin } from '@/lib/admin-broadcast-auth';
 import { prisma } from '@/lib/prisma';
 
 async function requireAdmin() {
@@ -10,7 +11,10 @@ async function requireAdmin() {
 }
 
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin();
+  // GET also serves the broadcast composer's recipient search, which now runs in the
+  // /tareeq-admin panel too — so reading accepts either admin identity. PATCH below keeps
+  // the shop guard: widening a read is not a reason to widen a write.
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const url = new URL(req.url);

@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requireBroadcastAdmin } from '@/lib/admin-broadcast-auth';
 import { prisma } from '@/lib/prisma';
 import { logActionSafe } from '@/lib/audit-log';
 import {
@@ -17,15 +17,10 @@ const STATUSES = new Set(['draft', 'sending', 'sent', 'failed', 'canceled']);
  * console. Sending is a super-admin action for the same reason campaign sends are — it
  * reaches every member and costs SMTP reputation.
  */
-async function requireAdmin() {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return null;
-  return user;
-}
 
 // GET /api/admin/tareeq/broadcasts?page=1&status=sent
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin();
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const url = new URL(req.url);
@@ -55,7 +50,7 @@ export async function GET(req: NextRequest) {
 // POST /api/admin/tareeq/broadcasts — body: compose fields + { send?: boolean }
 // `send: false` (or omitted) saves a draft; `send: true` saves and starts delivery.
 export async function POST(req: NextRequest) {
-  const admin = await requireAdmin();
+  const admin = await requireBroadcastAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;

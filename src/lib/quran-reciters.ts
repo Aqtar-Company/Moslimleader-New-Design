@@ -77,7 +77,12 @@ export const RECITERS: Reciter[] = [
   { id: 'ar.muhammadjibreel', nameAr: 'محمد جبريل',          styleAr: 'مرتل', color: '#6b4a1a', source: 'cdn-ayah' },
 ];
 
-export const DEFAULT_RECITER_ID = 'ar.alafasy';
+/**
+ * تلاوة د. إبراهيم حسن — the platform's own recitation, so it is what a member hears
+ * unless they choose otherwise. Nothing persists the choice yet, so this is what every
+ * session starts on.
+ */
+export const DEFAULT_RECITER_ID = 'ibrahim.hassan';
 
 export function getReciter(id: string): Reciter {
   return RECITERS.find(r => r.id === id) ?? RECITERS[0];

@@ -128,7 +128,6 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   // toggle used to only live client-side with no durable signal a reminder job could
   // read, and no way to reflect the real state across devices/reinstalls.
   const [reminderOn, setReminderOn]           = useState(!!p?.dailyReminder);
-  const [sharing, setSharing]                 = useState(false);
   const [lanternLit, setLanternLit]           = useState(false);
   const [showBlessing, setShowBlessing]       = useState(false);
   const [dailyProgress, setDailyProgress]     = useState(0); // pages read today
@@ -240,57 +239,6 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
     } catch {
       setReminderOn(!next);
     }
-  }
-
-  async function handleShare() {
-    if (!p || sharing) return;
-    setSharing(true);
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = 900; canvas.height = 900;
-      const ctx = canvas.getContext('2d')!;
-      const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => {
-        const img = new window.Image(); img.onload = () => res(img); img.onerror = rej; img.src = src;
-      });
-      const [lanternImg, logoImg] = await Promise.all([
-        loadImg(`/${pctLevel}-light.png`),
-        loadImg('/Tareeq-small.png').catch(() => null),
-      ]);
-      const grad = ctx.createLinearGradient(0, 0, 0, 900);
-      grad.addColorStop(0, '#0a1e3d'); grad.addColorStop(0.55, '#05101f'); grad.addColorStop(1, '#071422');
-      ctx.fillStyle = grad; ctx.fillRect(0, 0, 900, 900);
-      ctx.beginPath(); ctx.arc(450, 360, 220, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,204,51,0.18)'; ctx.lineWidth = 3; ctx.stroke();
-      const pctNum = Math.round((p.currentPage / TOTAL_QURAN_PAGES) * 100);
-      ctx.beginPath();
-      ctx.arc(450, 360, 220, -Math.PI / 2, -Math.PI / 2 + (pctNum / 100) * Math.PI * 2);
-      ctx.strokeStyle = '#FFCC00'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.stroke();
-      ctx.drawImage(lanternImg, 450 - 95, 360 - 95, 190, 190);
-      ctx.font = 'bold 72px sans-serif'; ctx.fillStyle = '#FFCC00';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`${pctNum}%`, 450, 470);
-      ctx.font = 'bold 40px Cairo,sans-serif'; ctx.fillStyle = '#F0EDE4';
-      ctx.fillText('نُوري · ختمتك', 450, 540);
-      ctx.font = '32px sans-serif'; ctx.fillStyle = 'rgba(240,237,228,0.5)';
-      ctx.fillText(`صفحة ${p.currentPage} / ${TOTAL_QURAN_PAGES}   ·   ${p.sirajStreak} يوم`, 450, 600);
-      if (logoImg) {
-        const lw = 140; const lh = Math.round(lw * logoImg.height / Math.max(logoImg.width, 1));
-        ctx.drawImage(logoImg, 450 - lw / 2, 830 - lh / 2, lw, lh);
-      } else {
-        ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,204,51,0.4)';
-        ctx.fillText('moslimleader.com', 450, 860);
-      }
-      const blob = await new Promise<Blob>((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
-      const file = new File([blob], 'nuri-progress.png', { type: 'image/png' });
-      if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'ختمتي على نُوري' });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'nuri-progress.png'; a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
-    } catch { /* user cancelled */ }
-    setSharing(false);
   }
 
   const state       = sirajState(p?.lastReadDate ?? null, localToday);
@@ -458,24 +406,23 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               borderRadius: 18,
               overflow: 'hidden',
             }}>
-              {/* Surah + page row (tappable → surah picker) */}
-              <button
-                onClick={() => setShowSurahPicker(true)}
+              {/* Where you are — a line of text, not a control. Choosing a surah lives in
+                  the settings sheet («انتقل إلى سورة»); the home card is one button. */}
+              <div
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  width: '100%', padding: '11px 16px 8px', background: 'none', border: 'none', cursor: 'pointer',
+                  width: '100%', padding: '11px 16px 8px',
                 }}
               >
                 <span style={{ fontSize: 13, fontWeight: 800, color: NURI_YELLOW }}>
                   {p ? (isRtl ? `${surahNameAr} — الآية ${p.currentAyah}` : `${surahNameEn} — Ayah ${p.currentAyah}`) : (isRtl ? 'ابدأ رحلتك' : 'Start your journey')}
-                  {p && <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={TEXT_MUT} strokeWidth={2.5} style={{ marginInlineStart: 4, flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>}
                 </span>
                 {p && (
                   <span style={{ fontSize: 11, color: TEXT_MUT }}>
                     {isRtl ? `صفحة ${page} / ${TOTAL_QURAN_PAGES}` : `Page ${page} / ${TOTAL_QURAN_PAGES}`}
                   </span>
                 )}
-              </button>
+              </div>
 
               {/* Progress bar */}
               {p && (
@@ -486,9 +433,10 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                 </div>
               )}
 
-              {/* Action row: CTA + share */}
+              {/* One action. The share button that used to sit beside it is gone: the home
+                  card is the door into the mus'haf, and a second control next to that door
+                  is a second decision to make before reading. */}
               <div style={{ display: 'flex', gap: 0, borderTop: '1px solid rgba(255,204,51,0.12)' }}>
-                {/* Main CTA */}
                 <button
                   onClick={() => router.push(`/tareeq/khatmati/read?page=${page}&surah=${p?.currentSurah ?? 1}&ayah=${p?.currentAyah ?? 1}`)}
                   style={{
@@ -506,25 +454,6 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                     : (isRtl ? 'ابدأ رحلتك الآن' : 'Start Your Journey')}
                 </button>
 
-                {/* Share divider + button */}
-                {p && (
-                  <button
-                    onClick={handleShare}
-                    disabled={sharing}
-                    style={{
-                      width: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'rgba(255,204,51,0.5)', color: '#080E1C',
-                      borderInlineStart: '1px solid rgba(0,0,0,0.12)',
-                      border: 'none', cursor: 'pointer', opacity: sharing ? 0.6 : 1,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-                      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                    </svg>
-                  </button>
-                )}
               </div>
             </div>
           ) : (

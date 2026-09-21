@@ -41,19 +41,34 @@ export interface Reciter {
 }
 
 /**
- * The `cdn-ayah` ids are alquran.cloud edition identifiers and they are EXACT — a wrong
- * spelling is a 404 on every ayah, which the player can only show as silence. Verify any
- * new id against the CDN before adding it here; `ops/check-reciters.sh` does that.
+ * The `cdn-ayah` ids are alquran.cloud edition identifiers. Verify every one against the
+ * CDN before adding it — `ops/check-reciters.sh`, run ON THE SERVER — and read the status
+ * code, because the two failures mean opposite things:
+ *
+ * - **404** — the id is misspelt. Fix the spelling.
+ * - **403** — the id is right and the CDN REFUSES to serve that recitation. No spelling
+ *   fixes it. Verified 2026-09-21: `ar.abdulbasitmurattal`, `ar.abdurrahmansudais` (and
+ *   `ar.abdurrahmaansudais`), `ar.saoodshuraym`, `ar.minshawimujawwad`, `ar.hanirifai`,
+ *   `ar.aymanswoaid` and `ar.abdulsamad` all answer 403. They were removed rather than
+ *   left in the picker as names that play nothing — do not add them back without a fresh
+ *   green run of the script.
+ *
+ * Every entry below returned 206 on two different ayat on 2026-09-21.
  */
 export const RECITERS: Reciter[] = [
-  { id: 'ar.alafasy',            nameAr: 'مشاري العفاسي',       styleAr: 'مرتل', color: '#1a6b3a', source: 'cdn-ayah' },
-  { id: 'ibrahim.hassan',        nameAr: 'د. إبراهيم حسن',      styleAr: 'مرتل', color: '#8a5a00', source: 'page-offset' },
-  { id: 'ar.husary',             nameAr: 'محمود خليل الحصري',   styleAr: 'مرتل', color: '#1a4a8a', source: 'cdn-ayah' },
-  { id: 'ar.husarymujawwad',     nameAr: 'محمود خليل الحصري',   styleAr: 'مجود', color: '#123a6b', source: 'cdn-ayah' },
-  { id: 'ar.abdulbasitmurattal', nameAr: 'عبدالباسط عبدالصمد',  styleAr: 'مرتل', color: '#6b1a1a', source: 'cdn-ayah' },
-  { id: 'ar.minshawi',           nameAr: 'محمد صديق المنشاوي',  styleAr: 'مرتل', color: '#5a3a00', source: 'cdn-ayah' },
-  { id: 'ar.abdurrahmansudais',  nameAr: 'عبدالرحمن السديس',    styleAr: 'مرتل', color: '#2a1a6b', source: 'cdn-ayah' },
-  { id: 'ar.saoodshuraym',       nameAr: 'سعود الشريم',         styleAr: 'مرتل', color: '#004a4a', source: 'cdn-ayah' },
+  { id: 'ar.alafasy',         nameAr: 'مشاري العفاسي',       styleAr: 'مرتل', color: '#1a6b3a', source: 'cdn-ayah' },
+  { id: 'ibrahim.hassan',     nameAr: 'د. إبراهيم حسن',      styleAr: 'مرتل', color: '#8a5a00', source: 'page-offset' },
+  // مؤقّت: صاحبُ الموقع يريد تسجيل الإذاعة المصرية بدل هذا. لم يُحدَّد بعدُ أيُّ
+  // نسخةٍ على أيِّ خادمٍ هي، ويُحدَّد بالسماع لا بالتخمين — انظر قسم الحصري في
+  // ops/check-reciters.sh. حذفُه قبل إيجاد البديل يترك المصحف بلا الحصري أصلًا.
+  { id: 'ar.husary',          nameAr: 'محمود خليل الحصري',   styleAr: 'مرتل', color: '#1a4a8a', source: 'cdn-ayah' },
+  { id: 'ar.minshawi',        nameAr: 'محمد صديق المنشاوي',  styleAr: 'مرتل', color: '#5a3a00', source: 'cdn-ayah' },
+  { id: 'ar.mahermuaiqly',    nameAr: 'ماهر المعيقلي',       styleAr: 'مرتل', color: '#2a1a6b', source: 'cdn-ayah' },
+  { id: 'ar.shaatree',        nameAr: 'أبو بكر الشاطري',     styleAr: 'مرتل', color: '#004a4a', source: 'cdn-ayah' },
+  { id: 'ar.ahmedajamy',      nameAr: 'أحمد العجمي',         styleAr: 'مرتل', color: '#6b1a1a', source: 'cdn-ayah' },
+  { id: 'ar.hudhaify',        nameAr: 'علي الحذيفي',         styleAr: 'مرتل', color: '#4a2a6b', source: 'cdn-ayah' },
+  { id: 'ar.muhammadayyoub',  nameAr: 'محمد أيوب',           styleAr: 'مرتل', color: '#1a5a5a', source: 'cdn-ayah' },
+  { id: 'ar.muhammadjibreel', nameAr: 'محمد جبريل',          styleAr: 'مرتل', color: '#6b4a1a', source: 'cdn-ayah' },
 ];
 
 export const DEFAULT_RECITER_ID = 'ar.alafasy';

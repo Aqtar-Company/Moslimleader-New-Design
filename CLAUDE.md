@@ -655,11 +655,14 @@ Books are protected from download at two levels:
   `stopPropagation()`, or the sheet will land on top of it.
 - **قرآن نوري's reciters live in `src/lib/quran-reciters.ts`, and they are of TWO kinds.**
   - **`cdn-ayah`** — one file per ayah on `cdn.islamic.network`, keyed by the global ayah
-    number (1–6236). The id is an alquran.cloud edition identifier and it is EXACT: one
-    wrong letter is a 404 on every ayah, and the only thing the player could show for that
-    was silence. That is why «فلان مش شغال» was reported twice with no error on screen.
-    **Never add or "correct" an id from memory** — run `ops/check-reciters.sh` ON THE
-    SERVER (the dev sandbox has no outbound network) and paste what it says.
+    number (1–6236). The id is an alquran.cloud edition identifier. **Never add or
+    "correct" one from memory** — run `ops/check-reciters.sh` ON THE SERVER (the dev
+    sandbox has no outbound network) and read the code, because the two failures mean
+    opposite things: **404** is a misspelt id, **403** is a correct id whose recitation the
+    CDN refuses to serve, and no spelling fixes that. Verified 2026-09-21: عبدالباسط
+    عبدالصمد, السديس (both spellings), سعود الشريم, المنشاوي مجود, هاني الرفاعي and
+    أيمن سويد all answer 403 and were REMOVED — a name in the picker that plays nothing is
+    the bug that was reported twice, and the player could only show it as silence.
   - **`page-offset`** — تلاوة د. إبراهيم حسن, recorded one file per mus'haf page at
     `ibrahimquran.com/quran/khatma/{page}.mp3`. An ayah is a measured slice of that file.
     Timings come from the `Aqtar-Company/ibrahim-recitation` repo (commit `534e225`),

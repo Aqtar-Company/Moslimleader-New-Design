@@ -24,12 +24,14 @@ ok_code() { [ "$1" = "200" ] || [ "$1" = "206" ]; }
 
 echo "═══ القرّاء المُعرَّفون في التطبيق (ملفٌ لكل آية) ═══"
 # المعرّفات كما في src/lib/quran-reciters.ts
-CONFIGURED="ar.alafasy ar.husary ar.husarymujawwad ar.abdulbasitmurattal ar.minshawi ar.abdurrahmansudais ar.saoodshuraym"
+CONFIGURED="ar.alafasy ar.husary ar.husarymujawwad ar.minshawi ar.mahermuaiqly ar.shaatree ar.ahmedajamy ar.hudhaify ar.muhammadayyoub ar.muhammadjibreel"
 FAILED=""
 for id in $CONFIGURED; do
   # الآية 1 (الفاتحة) والآية 262 (منتصف البقرة) — ملفٌ واحدٌ ناجحٌ قد يكون صدفة.
   c1=$(probe "$CDN/$id/1.mp3")
   c2=$(probe "$CDN/$id/262.mp3")
+  # 403 ≠ 404: 403 يعني أن المعرّف صحيح وأن الـCDN يرفض خدمة هذه التلاوة، ولا
+  # يُصلحه تصحيحُ إملاء. أما 404 فيعني معرّفًا مكتوبًا خطأً.
   if ok_code "$c1" && ok_code "$c2"; then
     printf '  ✅ %-26s %s %s\n' "$id" "$c1" "$c2"
   else
@@ -66,6 +68,23 @@ for pair in "504|pages/46%20Page%203.mp3" "566|pages/68%20Page%203.mp3"; do
   cm=$(probe "$IBRAHIM/khatma/$page.mp3")
   ca=$(probe "$IBRAHIM/$alt")
   printf '     %s: khatma=%s  بديل=%s %s\n' "$page" "$cm" "$ca" "$(ok_code "$ca" && echo '✅' || echo '❌')"
+done
+
+echo
+echo "═══ بحثٌ عن تلاوة الحصري المرتّلة (نسخة الإذاعة المصرية) ═══"
+echo "  افتح الروابط الناجحة في المتصفّح واسمعها، وقل لي أيُّها هي."
+echo "  ── على cdn.islamic.network (مفتاحه رقم الآية بين 6236):"
+for id in ar.husary ar.husarymujawwad ar.husarymuallim ar.husary128 ar.mahmoudkhalilalhussary; do
+  c=$(probe "$CDN/$id/262.mp3")
+  if ok_code "$c"; then printf '     ✅ %-28s %s\n        %s/%s/262.mp3\n' "$id" "$c" "$CDN" "$id"
+  else printf '     ·  %-28s %s\n' "$id" "$c"; fi
+done
+echo "  ── على everyayah.com (مفتاحه سورة 3 أرقام + آية 3 أرقام — 002255 = آية الكرسي):"
+EA="https://everyayah.com/data"
+for d in Husary_128kbps Husary_64kbps Husary_Mujawwad_64kbps Husary_Muallim_128kbps Husary_Mujawwad_128kbps; do
+  c=$(probe "$EA/$d/002255.mp3")
+  if ok_code "$c"; then printf '     ✅ %-28s %s\n        %s/%s/002255.mp3\n' "$d" "$c" "$EA" "$d"
+  else printf '     ·  %-28s %s\n' "$d" "$c"; fi
 done
 
 echo

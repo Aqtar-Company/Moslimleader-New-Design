@@ -56,9 +56,14 @@ if [ ! -f .next/BUILD_ID ]; then
   say_note "PM2 سيدخل في حلقة انهيار بعد أي ريبوت. العلاج: npm run build"
 else
   BUILD_TS=$(stat -c %Y .next/BUILD_ID 2>/dev/null || stat -f %m .next/BUILD_ID)
-  COMMIT_TS=$(git log -1 --format=%ct 2>/dev/null)
-  printf '  آخر كوميت : %s\n' "$(date -d "@$COMMIT_TS" '+%Y-%m-%d %H:%M' 2>/dev/null || date -r "$COMMIT_TS" '+%Y-%m-%d %H:%M')"
-  printf '  آخر بيلد  : %s\n' "$(date -d "@$BUILD_TS" '+%Y-%m-%d %H:%M' 2>/dev/null || date -r "$BUILD_TS" '+%Y-%m-%d %H:%M')"
+  # The last commit that can CHANGE the build, not simply the last commit. An ops script,
+  # a README or a note in CLAUDE.md is newer than the build by definition the moment it is
+  # pulled, and reporting that as "the site is serving stale code" is a false alarm that
+  # teaches people to ignore the check — which is worse than not having it.
+  COMMIT_TS=$(git log -1 --format=%ct -- src prisma public package.json package-lock.json next.config.mjs tsconfig.json 2>/dev/null)
+  [ -z "$COMMIT_TS" ] && COMMIT_TS=$(git log -1 --format=%ct 2>/dev/null)
+  printf '  آخر كوميت يمسّ البيلد : %s\n' "$(date -d "@$COMMIT_TS" '+%Y-%m-%d %H:%M' 2>/dev/null || date -r "$COMMIT_TS" '+%Y-%m-%d %H:%M')"
+  printf '  آخر بيلد              : %s\n' "$(date -d "@$BUILD_TS" '+%Y-%m-%d %H:%M' 2>/dev/null || date -r "$BUILD_TS" '+%Y-%m-%d %H:%M')"
   if [ "$BUILD_TS" -ge "$COMMIT_TS" ]; then say_ok "البيلد أحدث من الكوميت"
   else
     say_bad "البيلد أقدم من الكود — الملفات جديدة والمبني قديم"
@@ -120,6 +125,23 @@ elif [ $RC -eq 2 ]; then
 else
   say_bad "تعذّر الفحص (RC=$RC):"
   echo "$DIFF" | head -4 | sed 's/^/       /'
+fi
+
+echo
+echo "═══ ٦. الذاكرة ═══"
+MEM_MB=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')
+if [ -n "$MEM_MB" ]; then
+  printf '  ذاكرة الجهاز : %s ميجا\n' "$MEM_MB"
+  # `tsc` and `next build` both need more than node's default heap on a tree this size.
+  # The type check in the deploy block died of exactly this, silently, because its exit
+  # code was swallowed by the pipe it was written into.
+  if [ "$MEM_MB" -lt 3000 ]; then
+    say_note "ابنِ دائماً بـ NODE_OPTIONS=\"--max-old-space-size=4096\" على هذا الحجم"
+  fi
+  case "${NODE_OPTIONS:-}" in
+    *max-old-space-size*) say_ok "NODE_OPTIONS مضبوط: ${NODE_OPTIONS}" ;;
+    *) say_note "NODE_OPTIONS غير مضبوط في هذه الجلسة — مرّره في أمر البناء نفسه" ;;
+  esac
 fi
 
 echo

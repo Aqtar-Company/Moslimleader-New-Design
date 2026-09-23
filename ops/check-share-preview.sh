@@ -9,11 +9,27 @@
 # النصف الخطأ.
 
 set -u
+# Default to the newest published post. Requiring an id meant hunting for one, and a
+# placeholder in the instructions gets pasted literally — `<...>` is redirection to bash,
+# so the command died on a syntax error before the script ever ran.
 ID="${1:-}"
 if [ -z "$ID" ]; then
-  echo "استعمال: bash ops/check-share-preview.sh <post-id>"
-  echo "المعرّف هو ما بعد /tareeq/ في رابط المنشور."
-  exit 1
+  echo "لم يُعطَ معرّف — سأفحص أحدث منشور."
+  ID=$(node -e "
+    const { PrismaClient } = require('@prisma/client');
+    const p = new PrismaClient();
+    p.tareeqPost.findFirst({
+      where: { isHidden: false, isDraft: false },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    }).then(r => { if (r) console.log(r.id); }).finally(() => p.\$disconnect());
+  " 2>/dev/null)
+  if [ -z "$ID" ]; then
+    echo "تعذّر إيجاد منشور. مرّر المعرّف يدوياً: bash ops/check-share-preview.sh POST_ID"
+    exit 1
+  fi
+  echo "المنشور: $ID"
+  echo
 fi
 URL="https://moslimleader.com/tareeq/$ID"
 

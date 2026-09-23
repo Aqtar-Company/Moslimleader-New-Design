@@ -53,7 +53,33 @@ export default function TareeqShareSheet({
   const postUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/tareeq/${post.id}`
     : `/tareeq/${post.id}`;
-  const quote = (post.title || post.content || '').trim().slice(0, 160);
+/**
+ * A quote for a share message, with anything that looks like a LINK taken out of it.
+ *
+ * WhatsApp (and Telegram, and Facebook's composer) previews the FIRST link in a message.
+ * A post whose text began «ibrahimQuran.com» was shared as
+ *
+ *     ibrahimQuran.com
+ *     https://moslimleader.com/tareeq/<id>
+ *
+ * so the first link was somebody else's domain: WhatsApp linkified that, tried to preview
+ * that, and our post got no card at all. Pasting the bare URL by hand worked, which is
+ * exactly the difference — that message has one link and it is ours.
+ *
+ * A quote is worth keeping, so the links come out of it rather than the quote being
+ * dropped. Bare domains are stripped too, not only `http://` ones, because WhatsApp
+ * linkifies `something.com` on sight.
+ */
+function stripLinks(text: string): string {
+  return text
+    .replace(/https?:\/\/\S+/gi, ' ')
+    // A bare domain: a label, a dot, a 2+ letter TLD, and no space in between.
+    .replace(/\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/\S*)?/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+  const quote = stripLinks((post.title || post.content || '').trim()).slice(0, 160);
 
   const [note, setNote] = useState('');
   const [posting, setPosting] = useState(false);
@@ -232,11 +258,13 @@ export default function TareeqShareSheet({
 
   async function nativeShare() {
     if (!('share' in navigator)) return;
-    await navigator.share({
-      title: post.title || (isRtl ? 'علامة على طريق' : 'A mark on Tareeq'),
-      text: quote,
-      url: postUrl,
-    }).catch(() => { /* cancelled */ });
+    // `url` alone when there is no quote left: a message that is only our link is the one
+    // WhatsApp reliably previews.
+    await navigator.share(
+      quote
+        ? { title: stripLinks(post.title || '') || (isRtl ? 'علامة على طريق' : 'A mark on Tareeq'), text: quote, url: postUrl }
+        : { url: postUrl },
+    ).catch(() => { /* cancelled */ });
   }
 
   const enc = encodeURIComponent;
@@ -261,7 +289,10 @@ export default function TareeqShareSheet({
           <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0012.04 2zm5.8 14.14c-.25.69-1.44 1.32-1.98 1.37-.53.05-1.02.24-3.44-.72-2.9-1.14-4.74-4.1-4.88-4.29-.14-.19-1.16-1.55-1.16-2.96s.74-2.1 1-2.39c.26-.29.57-.36.76-.36h.54c.18 0 .42-.07.65.5.25.6.83 2.06.9 2.21.07.14.12.31.02.5-.09.19-.14.31-.28.48-.14.17-.3.37-.42.5-.14.14-.29.29-.12.57.16.29.73 1.2 1.56 1.95 1.08.96 1.98 1.25 2.27 1.4.28.14.45.12.62-.07.17-.19.71-.83.9-1.12.19-.29.38-.24.64-.14.26.09 1.65.78 1.94.92.28.14.47.21.54.33.07.12.07.69-.18 1.38z" />
         </svg>
       ),
-      onClick: () => openPopup(`https://api.whatsapp.com/send?text=${enc(quote)}%20${enc(postUrl)}`, 'wa-share'),
+      onClick: () => openPopup(
+        `https://api.whatsapp.com/send?text=${quote ? enc(quote) + '%20' : ''}${enc(postUrl)}`,
+        'wa-share',
+      ),
     },
     {
       key: 'telegram',

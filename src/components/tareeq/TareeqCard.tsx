@@ -1078,6 +1078,60 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     );
   }
 
+  /**
+   * The author row, on DESKTOP, at the top of a media card.
+   *
+   * A text post opens with its author; an image or gallery post opened with the picture
+   * and put the author underneath it, so a column of mixed posts had the name sometimes
+   * above and sometimes below the thing it belongs to — and next to a card whose media is
+   * itself a screenshot of a page, it is genuinely unclear who posted what. Mobile keeps
+   * the media full-bleed with the author over it, which is the right shape for a phone;
+   * this is the desktop column only.
+   *
+   * It is deliberately the text card's header markup — same avatar size, same type scale,
+   * same category pill at the end — because the point is one pattern, not a second one.
+   */
+  function DesktopAuthorHeader() {
+    return (
+      <div className="hidden lg:block px-4 pt-4 pb-3">
+        <div className="flex items-center gap-3">
+          {post.userId
+            ? <Link href={`/tareeq/u/${post.userId}`} className="shrink-0" onClick={e => e.stopPropagation()}>
+                {post.user?.avatarUrl
+                  ? <TareeqAvatarImg src={post.user.avatarUrl} ownerGender={post.user.tareeqGender} ownerId={post.user.id} name={post.authorName} className="w-11 h-11 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
+                  : <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+                }
+              </Link>
+            : (post.user?.avatarUrl
+                ? <TareeqAvatarImg src={post.user.avatarUrl} ownerGender={post.user.tareeqGender} ownerId={post.user.id} name={post.authorName} className="w-11 h-11 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+                : <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+              )
+          }
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              {post.userId
+                ? <Link href={`/tareeq/u/${post.userId}`} className="text-[15px] font-semibold truncate hover:underline" style={{ color: 'var(--tr-text-primary)' }} onClick={e => e.stopPropagation()}>{post.authorName}</Link>
+                : <p className="text-[15px] font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
+              }
+              {isOfficial && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0" style={{ background: 'rgba(59,130,246,0.13)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.28)' }}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.491 4.491 0 01-3.497-1.307 4.491 4.491 0 01-1.307-3.497A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd"/></svg>
+                  {isRtl ? 'رسمي' : 'Official'}
+                </span>
+              )}
+            </div>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(post.createdAt, isRtl)}</p>
+          </div>
+          {catLabel && (
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0" style={{ color: accentHex, background: `${accentHex}14`, border: `1px solid ${accentHex}30` }}>
+              {catIcon} {catLabel}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   /* ── MULTI-IMAGE GALLERY CARD ──────────────────────────────────── */
   if (isGallery) {
     const shown = allImages.slice(0, 4);
@@ -1138,15 +1192,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
           aria-label={post.title || post.content.slice(0, 80)}
         >
+          <DesktopAuthorHeader />
+
           {/* Gallery grid — links to post */}
           <Link href={`/tareeq/${post.id}`} className="block overflow-hidden relative" onClick={handlePostLinkClick}>
-            {/* Category badge — frosted on mobile (readable over any image), light on desktop */}
+            {/* Category badge — mobile only; on desktop the pill lives in the header. */}
             {catLabel && (
-              <div className="absolute top-3 start-3 z-10 pointer-events-none">
+              <div className="absolute top-3 start-3 z-10 pointer-events-none lg:hidden">
                 <span className="lg:hidden text-[11px] font-bold px-2.5 py-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', border: `1px solid ${accentHex}70` }}>
-                  {catIcon} {catLabel}
-                </span>
-                <span className="hidden lg:inline text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: accentHex, background: 'rgba(255,255,255,0.95)', border: `1px solid ${accentHex}35` }}>
                   {catIcon} {catLabel}
                 </span>
               </div>
@@ -1163,9 +1216,10 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             <GalleryGrid />
           </Link>
 
-          {/* Author + caption strip */}
-          <div className="px-4 pt-3.5 pb-2">
-            <div className="flex items-center gap-2.5 mb-2">
+          {/* Author + caption strip. The author half is mobile-only now — on desktop the
+              name sits above the media in DesktopAuthorHeader. */}
+          <div className="px-4 pt-3.5 pb-2 lg:pt-3">
+            <div className="flex items-center gap-2.5 mb-2 lg:hidden">
               {post.userId
                 ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="shrink-0">
                     {post.user?.avatarUrl
@@ -1274,6 +1328,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
           aria-label={post.title || post.content.slice(0, 80)}
         >
+          <DesktopAuthorHeader />
+
           {/* Image container: portrait on mobile, landscape on desktop */}
           <div className="relative aspect-[3/4] lg:aspect-auto lg:h-[320px] overflow-hidden">
             {/* Inner clip — keeps image + overlays within bounds without clipping side icons */}
@@ -1290,11 +1346,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
               {/* Category badge — mobile: left side (end-4), desktop: left side (start-4) */}
               {catLabel && (
-                <div className="absolute top-4 end-4 lg:start-4 lg:end-auto z-10 pointer-events-none">
+                <div className="absolute top-4 end-4 z-10 pointer-events-none lg:hidden">
                   <span className="lg:hidden text-[11px] font-bold px-3 py-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', border: `1px solid ${accentHex}70` }}>
-                    {catIcon} {catLabel}
-                  </span>
-                  <span className="hidden lg:inline text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: accentHex, background: 'rgba(255,255,255,0.95)', border: `1px solid ${accentHex}35` }}>
                     {catIcon} {catLabel}
                   </span>
                 </div>
@@ -1414,30 +1467,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </div>
           </div>{/* close image container */}
 
-          {/* ── DESKTOP ONLY: author + text ── */}
+          {/* ── DESKTOP ONLY: caption + actions (the author is above the picture) ── */}
           <div className="hidden lg:block">
-            <div className="px-4 pt-3.5 pb-2">
-              <div className="flex items-center gap-2.5 mb-2.5">
-                {post.userId
-                  ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="shrink-0">
-                      {post.user?.avatarUrl
-                        ? <TareeqAvatarImg src={post.user.avatarUrl} ownerGender={post.user.tareeqGender} ownerId={post.user.id} name={post.authorName} className="w-9 h-9 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
-                        : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
-                      }
-                    </Link>
-                  : (post.user?.avatarUrl
-                      ? <TareeqAvatarImg src={post.user.avatarUrl} ownerGender={post.user.tareeqGender} ownerId={post.user.id} name={post.authorName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
-                      : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
-                    )
-                }
-                <div className="flex-1 min-w-0">
-                  {post.userId
-                    ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="text-sm font-semibold truncate block hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</Link>
-                    : <p className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
-                  }
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(post.createdAt, isRtl)}</p>
-                </div>
-              </div>
+            <div className="px-4 pt-3 pb-2">
               <Link href={`/tareeq/${post.id}`} className="block" onClick={handlePostLinkClick}>
                 {post.title && <h3 className="font-extrabold text-sm leading-snug mb-1.5 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
                 {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{snippet}</p>}

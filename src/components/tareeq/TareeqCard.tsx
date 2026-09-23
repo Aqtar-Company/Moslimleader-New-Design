@@ -9,6 +9,7 @@ import TareeqShareSheet from '@/components/tareeq/TareeqShareSheet';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqReactionPicker from '@/components/tareeq/TareeqReactionPicker';
+import { renderRichText } from '@/lib/tareeq-rich-text';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX, TAREEQ_REACTIONS, reactionEmojiFor } from '@/lib/tareeq-constants';
 import { savePostOffline, removePostOffline, isPostSavedOffline } from '@/lib/tareeq-idb';
 import type { TareeqCategoryKey, TareeqReactionType } from '@/lib/tareeq-constants';
@@ -58,42 +59,6 @@ function extractFirstNonVideoUrl(text: string): string | null {
   return matches.find(u => !VIDEO_PLATFORMS_RE.test(u)) ?? null;
 }
 
-function renderRichText(text: string): React.ReactNode {
-  const regex = /(\*\*([^*\n]+?)\*\*|\*([^*\n]+?)\*|#[\w؀-ۿݐ-ݿ]{2,}|https?:\/\/[^\s<>"']+)/g;
-  const segments: React.ReactNode[] = [];
-  let last = 0; let key = 0; let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > last) segments.push(text.slice(last, match.index));
-    const m = match[0];
-    if (m.startsWith('**')) {
-      segments.push(<strong key={key++} style={{ fontWeight: 700, color: 'inherit' }}>{match[2]}</strong>);
-    } else if (m.startsWith('*')) {
-      segments.push(<em key={key++}>{match[3]}</em>);
-    } else if (m.startsWith('#')) {
-      segments.push(<span key={key++} style={{ color: 'var(--tr-gold)', fontWeight: 600 }}>{m}</span>);
-    } else {
-      // A real anchor, not a teal-coloured span. Sharing a post puts its permalink in the
-      // body of another post, and until this was an <a> the only way back to the original
-      // was the link-preview card — which renders nothing at all when the preview fetch
-      // fails, leaving an unclickable string.
-      segments.push(
-        <a
-          key={key++}
-          href={m}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-          style={{ color: 'var(--tr-teal)', wordBreak: 'break-all', textDecoration: 'underline', textUnderlineOffset: 2 }}
-        >
-          {m}
-        </a>,
-      );
-    }
-    last = match.index + m.length;
-  }
-  if (last < text.length) segments.push(text.slice(last));
-  return segments.length ? segments : text;
-}
 
 /**
  * Facebook video embed.
@@ -750,7 +715,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   ) : (
                     <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>—</p>
                   )}
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(displayMentions(c.content))}</p>
                   <div className="flex items-center gap-3 mt-1 relative">
                     {(() => {
                       const mine = inlineCommentReacts[c.id]?.reaction ?? null;
@@ -1313,7 +1278,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-white text-[11px] font-semibold">{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</p>
-                              <p className="text-white/85 text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
+                              <p className="text-white/85 text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>{renderRichText(displayMentions(c.content))}</p>
                             </div>
                           </div>
                         ))

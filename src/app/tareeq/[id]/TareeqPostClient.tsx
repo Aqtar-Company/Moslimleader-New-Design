@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { renderRichText } from '@/lib/tareeq-rich-text';
 import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect } from 'react';
@@ -438,7 +439,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   <h1 className="font-black text-xl sm:text-2xl mb-4 leading-snug" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h1>
                 )}
                 <div className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--tr-text-secondary)' }}>
-                  {post.content}
+                  {renderRichText(post.content)}
                 </div>
                 {/* The shared original, under its own author. Same component the feed card
                     uses, so the two can't drift. */}
@@ -749,7 +750,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                           )}
                         </div>
                       </div>
-                      <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{displayMentions(c.content)}</p>
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{renderRichText(displayMentions(c.content))}</p>
                       {/* Same reaction set as a post, and the same gesture: tap to open,
                           tap a face to choose, tap it again to take it back. A lone star
                           here read as a rating and could say only one thing. */}

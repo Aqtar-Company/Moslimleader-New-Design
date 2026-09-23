@@ -1,4 +1,5 @@
 'use client';
+import { renderRichText } from '@/lib/tareeq-rich-text';
 import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -641,7 +642,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                     {/* Content */}
                     <div style={{ padding: '0 16px 14px' }}>
                       {post.title && <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--tr-text-primary)', margin: '0 0 8px', lineHeight: 1.4 }}>{post.title}</h2>}
-                      <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--tr-text-secondary)', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{post.content}</p>
+                      <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--tr-text-secondary)', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(post.content)}</p>
                       {post.postUpdate && (
                         <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'var(--tr-gold-glow)', border: '1px solid rgba(212,168,83,0.3)' }}>
                           <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--tr-gold)', margin: '0 0 4px' }}>{isRtl ? 'تحديث ★' : 'Update ★'}</p>
@@ -731,7 +732,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                     </div>
                                   </div>
                                 ) : (
-                                  <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
+                                  <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{renderRichText(displayMentions(c.content))}</p>
                                 )}
 
                                 {confirmDeleteComment === c.id && (
@@ -843,7 +844,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{r.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
                                     <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(r.createdAt, isRtl)}</span>
                                   </div>
-                                  <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{displayMentions(r.content)}</p>
+                                  <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{renderRichText(displayMentions(r.content))}</p>
                                 </div>
                               </div>
                             ))}
@@ -1058,7 +1059,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                   </h2>
                 )}
                 <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--tr-text-secondary)', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {post.content}
+                  {renderRichText(post.content)}
                 </p>
 
                 {post.postUpdate && (
@@ -1178,7 +1179,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                             </div>
                           ) : (
                             <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
-                              {displayMentions(c.content)}
+                              {renderRichText(displayMentions(c.content))}
                             </p>
                           )}
 
@@ -1298,7 +1299,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{r.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
                               <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(r.createdAt, isRtl)}</span>
                             </div>
-                            <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{displayMentions(r.content)}</p>
+                            <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{renderRichText(displayMentions(r.content))}</p>
                           </div>
                         </div>
                       ))}

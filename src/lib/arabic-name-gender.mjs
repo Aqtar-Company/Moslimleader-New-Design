@@ -24,9 +24,25 @@
  * Reading gender off a profile picture means face analysis, which means sending members'
  * faces to a third party. On a platform whose point is not showing those faces, that is a
  * worse trade than any convenience it buys.
+ *
+ * ## Why this file is plain JavaScript and not TypeScript
+ *
+ * `ops/infer-gender-from-names.mjs` is the only thing that runs it in bulk, and a bare
+ * `node` script cannot import a `.ts` module. That script used to carry its own copy of
+ * the rules, and the copy drifted: its first line was `if (!/^[\u0600-\u06FF]/.test(full))
+ * return null`, so every Latin-script name — Marwa Ali, Esraa Mohammed, Mostafa Orabi —
+ * was reported as «غير محسوم» while the lists below sat right there containing them. It
+ * also never stripped an honorific and never checked `ORG_WORDS`. Reading the lists out of
+ * the source with a regex was the previous attempt at one copy and it kept only the DATA,
+ * not the rules, which is precisely where the drift was.
+ *
+ * So: `.mjs`, typed with JSDoc (`allowJs` is on), imported by the app and by the ops script
+ * from the same path. Do not add a second implementation anywhere.
  */
 
-export type NameGuess = { gender: 'male' | 'female' | 'org'; reason: string } | null;
+/**
+ * @typedef {{ gender: 'male' | 'female' | 'org', reason: string } | null} NameGuess
+ */
 
 /**
  * Unambiguous male given names. This is the RISKY direction, so a name belongs here only
@@ -123,7 +139,8 @@ const FEMALE_LATIN = new Set([
 const MALE_PREFIX = ['عبد', 'ابو', 'أبو'];
 const FEMALE_PREFIX = ['ام ', 'أم '];
 
-function normalise(s: string): string {
+/** @param {string} s @returns {string} */
+function normalise(s) {
   return s
     .replace(/[ً-ْـ]/g, '')            // harakat and tatweel
     .replace(/[إأآٱ]/g, 'ا')
@@ -139,7 +156,11 @@ function normalise(s: string): string {
  * daughter's entry — «فاطمة محمد» is a woman, and matching «محمد» anywhere would call her
  * a man, which is the error this whole file is arranged to avoid.
  */
-export function guessGenderFromName(rawName: string | null | undefined): NameGuess {
+/**
+ * @param {string | null | undefined} rawName
+ * @returns {NameGuess}
+ */
+export function guessGenderFromName(rawName) {
   if (!rawName) return null;
   const full = normalise(rawName);
   if (!full) return null;

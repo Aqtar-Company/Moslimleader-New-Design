@@ -76,7 +76,7 @@ interface Props {
  * prefixes that are not a URL yet.
  */
 function ComposerLinkPreview({ url, isRtl }: { url: string; isRtl: boolean }) {
-  const [data, setData] = useState<{ title: string | null; description: string | null; image: string | null; domain: string } | null>(null);
+  const [data, setData] = useState<{ title: string | null; description: string | null; image: string | null; domain: string; reason?: string } | null>(null);
   const [state, setState] = useState<'idle' | 'loading' | 'empty'>('idle');
 
   useEffect(() => {
@@ -88,7 +88,11 @@ function ComposerLinkPreview({ url, isRtl }: { url: string; isRtl: boolean }) {
         .then(r => (r.ok ? r.json() : null))
         .then(d => {
           if (cancelled) return;
-          if (d && (d.title || d.image)) { setData(d); setState('idle'); }
+          // A domain alone is enough to draw the card. Requiring a title or an image meant
+          // a page that publishes neither — and a page we were blocked from reading, which
+          // looked identical — left «جارٍ قراءة الرابط…» and then a blank where a card had
+          // been. The author is left unable to tell whether the link is even valid.
+          if (d && d.domain) { setData(d); setState('idle'); }
           else setState('empty');
         })
         .catch(() => { if (!cancelled) setState('empty'); });
@@ -105,16 +109,28 @@ function ComposerLinkPreview({ url, isRtl }: { url: string; isRtl: boolean }) {
       </div>
     );
   }
+  const bare = !data.title && !data.image;
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}>
       {data.image && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={data.image} alt="" style={{ display: 'block', width: '100%', maxHeight: 200, objectFit: 'cover' }} />
+        <img
+          src={data.image}
+          alt=""
+          style={{ display: 'block', width: '100%', maxHeight: 200, objectFit: 'cover' }}
+          // An og:image that 404s left a broken-image glyph inside the card.
+          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
       )}
       <div className="px-3.5 py-2.5">
         <p className="text-[10.5px] font-bold mb-0.5" style={{ color: 'var(--tr-text-muted)' }}>{data.domain}</p>
         {data.title && <p className="text-[13px] font-bold leading-snug" style={{ color: 'var(--tr-text-primary)' }}>{data.title}</p>}
         {data.description && <p className="text-[11.5px] leading-relaxed mt-0.5 line-clamp-2" style={{ color: 'var(--tr-text-muted)' }}>{data.description}</p>}
+        {bare && (
+          <p className="text-[12px] leading-snug break-all" style={{ color: 'var(--tr-text-primary)' }} dir="ltr">
+            {url.replace(/^https?:\/\//, '')}
+          </p>
+        )}
       </div>
     </div>
   );

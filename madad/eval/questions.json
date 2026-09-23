@@ -1,0 +1,19 @@
+[
+  {"q": "ما هو البسط؟", "expect_lesson": "grade-4/math/fractions", "must_include": ["فوق"]},
+  {"q": "يعني ايه المقام", "expect_lesson": "grade-4/math/fractions", "must_include": ["تحت"]},
+  {"q": "كم يساوي 2/7 + 3/7 ؟", "expect_lesson": "grade-4/math/fractions", "must_include": ["5/7"]},
+  {"q": "ما هي الكسور المتكافئة؟", "expect_lesson": "grade-4/math/fractions"},
+  {"q": "أيهما أكبر 5/8 أم 3/8؟", "expect_lesson": "grade-4/math/fractions", "must_include": ["5/8"]},
+  {"q": "ما هي دورة الماء؟", "expect_lesson": "grade-4/science/water-cycle"},
+  {"q": "ازاي السحاب بيتكون", "expect_lesson": "grade-4/science/water-cycle", "must_include": ["تكاثف"]},
+  {"q": "ما هو التبخر", "expect_lesson": "grade-4/science/water-cycle"},
+  {"q": "كيف يصنع النبات غذاءه؟", "expect_lesson": "grade-5/science/photosynthesis"},
+  {"q": "ما هي الثغور؟", "expect_lesson": "grade-5/science/photosynthesis"},
+  {"q": "ليه ورق الشجر لونه أخضر", "expect_lesson": "grade-5/science/photosynthesis", "must_include": ["الكلوروفيل"]},
+  {"q": "ما هو المبتدأ والخبر؟", "expect_lesson": "grade-4/arabic/nominal-sentence"},
+  {"q": "ما علامة رفع الخبر؟", "expect_lesson": "grade-4/arabic/nominal-sentence", "must_include": ["الضمة"]},
+  {"q": "ما عاصمة اليابان؟", "expect": "refuse"},
+  {"q": "اشرح لي نظرية النسبية", "expect": "refuse"},
+  {"q": "من هو أفضل لاعب كرة قدم؟", "expect": "refuse"},
+  {"q": "كم عدد كواكب المجموعة الشمسية؟", "expect": "refuse"}
+]

@@ -26,7 +26,7 @@
  * worse trade than any convenience it buys.
  */
 
-export type NameGuess = { gender: 'male' | 'female'; reason: string } | null;
+export type NameGuess = { gender: 'male' | 'female' | 'org'; reason: string } | null;
 
 /**
  * Unambiguous male given names. This is the RISKY direction, so a name belongs here only
@@ -65,6 +65,61 @@ const FEMALE = new Set([
 ]);
 
 /** Prefixes that settle it without a list. */
+/**
+ * Words that open the name of an INSTITUTION, not a person.
+ *
+ * Read off the first run's output: «مكتبة دار المستقبل» and «شركه ناصر العشي» were both
+ * called female by the ة-suffix rule, because مكتبة and شركة end in one. Excluding them
+ * would have been the wrong repair — they are not people of unknown gender, they are
+ * organisations, and that is a kind of its own now with both rules switched off.
+ */
+const ORG_WORDS = [
+  'مكتبة', 'مكتبه', 'شركة', 'شركه', 'مؤسسة', 'مؤسسه', 'جمعية', 'جمعيه', 'مدرسة', 'مدرسه',
+  'اكاديمية', 'اكاديميه', 'معهد', 'مركز', 'عيادة', 'عياده', 'صيدلية', 'صيدليه', 'مستشفى',
+  'مطبعة', 'مطبعه', 'دار', 'متجر', 'محل', 'معرض', 'وقف', 'مجموعة', 'مجموعه', 'فريق',
+  'قناة', 'قناه', 'موقع', 'تطبيق', 'ادارة', 'اداره', 'جامعة', 'جامعه', 'روضة', 'حضانة',
+];
+
+/**
+ * Titles people write in front of a name. Left in place, «أ.أسماء» is one unrecognised
+ * word and the account goes unclassified for the sake of two characters.
+ */
+const HONORIFICS = [
+  'ا.', 'أ.', 'د.', 'م.', 'ح.', 'ط.', 'الاستاذ', 'الاستاذة', 'الشيخ', 'الشيخة', 'الدكتور',
+  'الدكتورة', 'المهندس', 'المهندسة', 'استاذ', 'استاذة', 'شيخ', 'دكتور', 'دكتورة', 'مهندس',
+];
+
+/**
+ * The same names in Latin letters. The first run left 900 accounts unclassified and a good
+ * share were «Mohamed Emad», «Marwa Ali», «Mariam Metawe3» — names this file knows well in
+ * Arabic. Transliteration varies too much to derive, so the common spellings are listed,
+ * and the same asymmetry holds: the male list is names never given to a woman.
+ */
+const MALE_LATIN = new Set([
+  'mohamed', 'mohammed', 'muhammad', 'mohammad', 'ahmed', 'ahmad', 'mahmoud', 'mahmood',
+  'mostafa', 'moustafa', 'mustafa', 'ibrahim', 'ebrahim', 'ali', 'omar', 'othman', 'osman',
+  'hassan', 'hasan', 'hussein', 'hussain', 'khaled', 'khalid', 'said', 'sayed', 'sami',
+  'yasser', 'yaser', 'waleed', 'walid', 'tarek', 'tarik', 'hesham', 'hisham', 'sherif',
+  'islam', 'eslam', 'karim', 'kareem', 'mazen', 'ziad', 'anas', 'bilal', 'hamza', 'adam',
+  'youssef', 'yousef', 'yusuf', 'moussa', 'musa', 'yehia', 'yahya', 'ayman', 'ashraf',
+  'amr', 'marwan', 'moataz', 'nader', 'hany', 'hani', 'wael', 'seif', 'saif', 'fares',
+  'akram', 'anwar', 'gamal', 'kamal', 'fathy', 'sabry', 'essam', 'adel', 'atef', 'nabil',
+  'magdy', 'maher', 'ramy', 'rami', 'sameh', 'tamer', 'basem', 'bassem', 'hatem', 'fady',
+  'abdullah', 'abdelrahman', 'abdulrahman', 'abdelaziz', 'abdo', 'mohab', 'moamen',
+]);
+const FEMALE_LATIN = new Set([
+  'fatma', 'fatima', 'fatema', 'mariam', 'maryam', 'marium', 'aisha', 'aysha', 'khadija',
+  'zeinab', 'zainab', 'asmaa', 'asma', 'hagar', 'hajar', 'sara', 'sarah', 'nour', 'noura',
+  'nourhan', 'nada', 'dina', 'donia', 'dunia', 'rania', 'reham', 'shaimaa', 'shimaa',
+  'shereen', 'shirin', 'salma', 'sama', 'malak', 'heba', 'hiba', 'hoda', 'huda', 'hind',
+  'yasmin', 'yasmine', 'jana', 'habiba', 'rahma', 'rowan', 'reem', 'sondos', 'shorouk',
+  'safaa', 'abeer', 'ghada', 'farah', 'laila', 'layla', 'marwa', 'mennah', 'manar', 'maha',
+  'nadia', 'noha', 'nayra', 'wafaa', 'walaa', 'yara', 'eman', 'iman', 'amira', 'engy',
+  'esraa', 'israa', 'alaa', 'basma', 'tasneem', 'hanan', 'doaa', 'rasha', 'sahar', 'souad',
+  'samar', 'samira', 'sabah', 'aya', 'aia', 'rana', 'raneem', 'amal', 'mai', 'may', 'menna',
+  'yosra', 'yusra', 'nermeen', 'nermin', 'dalia', 'hala', 'hanaa', 'mona', 'nahla',
+]);
+
 const MALE_PREFIX = ['عبد', 'ابو', 'أبو'];
 const FEMALE_PREFIX = ['ام ', 'أم '];
 
@@ -89,13 +144,29 @@ export function guessGenderFromName(rawName: string | null | undefined): NameGue
   const full = normalise(rawName);
   if (!full) return null;
 
-  // A synthetic row («اوردر هدية»), a business, or a Latin-script name is not a person's
-  // Arabic given name and is left alone.
-  if (!/^[؀-ۿ]/.test(full)) return null;
+  // Strip a title so the name behind it can be read.
+  let stripped = full;
+  for (const h of HONORIFICS) {
+    if (stripped.startsWith(h)) { stripped = stripped.slice(h.length).trim(); break; }
+  }
+  const words = stripped.split(' ').filter(Boolean);
+  const first = words[0] ?? '';
+  if (!first) return null;
 
-  const first = full.split(' ')[0];
+  // An institution, before anything else: «مكتبة» and «شركة» end in ة and were being read
+  // as women by the suffix rule.
+  if (ORG_WORDS.includes(first)) return { gender: 'org', reason: 'اسم جهة' };
 
-  if (FEMALE_PREFIX.some(p => full.startsWith(p))) return { gender: 'female', reason: 'أم …' };
+  // A Latin-script name is still a name — read it from the transliteration lists.
+  if (!/^[\u0600-\u06FF]/.test(first)) {
+    const lat = first.toLowerCase().replace(/[^a-z]/g, '');
+    if (!lat) return null;
+    if (FEMALE_LATIN.has(lat)) return { gender: 'female', reason: 'اسم بحروف لاتينية' };
+    if (MALE_LATIN.has(lat)) return { gender: 'male', reason: 'اسم بحروف لاتينية' };
+    return null;
+  }
+
+  if (FEMALE_PREFIX.some(p => stripped.startsWith(p))) return { gender: 'female', reason: 'أم …' };
   if (MALE_PREFIX.some(p => first.startsWith(p)) && first.length > 4) {
     return { gender: 'male', reason: 'عبد… / أبو…' };
   }

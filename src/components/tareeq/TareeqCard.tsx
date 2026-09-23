@@ -316,9 +316,9 @@ export function SharedOriginalCard({ original, isRtl }: { original: SharedOrigin
         {original.content && (
           <p
             className="px-3 pt-1 pb-2.5 text-[12.5px] leading-relaxed"
-            style={{ color: 'var(--tr-text-secondary)', display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 4, overflow: 'hidden' }}
+            style={{ color: 'var(--tr-text-secondary)', display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 4, overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
           >
-            {displayMentions(original.content)}
+            {displayMentions(original.content.replace(/\n{2,}/g, '\n'))}
           </p>
         )}
         {!original.content && !original.title && !original.imageUrl && !original.videoUrl && (
@@ -520,7 +520,18 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   // between them: a 219-character body was rendered cut to 200 characters while `isLong`
   // (>220) said it was short enough to need no "read more" — so the tail, which for a
   // shared post is the permalink itself, was simply unreachable.
-  const snippet   = post.summary || post.content.slice(0, SNIPPET_LEN);
+  /**
+   * The card's excerpt, with the author's line breaks kept.
+   *
+   * The three places that render it had no `white-space: pre-wrap`, so a post written as a
+   * list — «تحديث موقع القرآن» then a line per feature — collapsed into one running
+   * paragraph in the feed while the post page showed it correctly. The author's structure
+   * IS part of the text, and losing it is what makes a list read as a run-on sentence.
+   *
+   * Runs of blank lines are collapsed to one: the excerpt is clamped to two or three lines,
+   * and an empty line would spend one of them saying nothing.
+   */
+  const snippet   = (post.summary || post.content.slice(0, SNIPPET_LEN)).replace(/\n{2,}/g, '\n');
   // Safe cast from Prisma JsonValue (string[] at runtime, but typed loosely)
   const parsedImageUrls: string[] | null = Array.isArray(post.imageUrls)
     ? (post.imageUrls as unknown[]).filter((u): u is string => typeof u === 'string')
@@ -1171,7 +1182,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             {(post.title || snippet) && (
               <Link href={`/tareeq/${post.id}`} className="block" onClick={handlePostLinkClick}>
                 {post.title && <h3 className="font-extrabold text-sm leading-snug mb-1 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
-                {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
+                {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{snippet}</p>}
               </Link>
             )}
           </div>
@@ -1277,7 +1288,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               {/* ── MOBILE ONLY: bottom text overlay (no author — moved to right column) ── */}
               {(post.title || snippet) && (
                 <div className="absolute bottom-0 inset-x-0 z-10 px-4 pb-4 pt-2 pointer-events-none lg:hidden">
-                  <p className="text-white/90 text-xs leading-relaxed line-clamp-2" style={{ paddingRight: 72 }}>
+                  <p className="text-white/90 text-xs leading-relaxed line-clamp-2" style={{ paddingRight: 72, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {post.title ? <strong>{post.title} — </strong> : null}{snippet}
                   </p>
                 </div>
@@ -1414,7 +1425,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               </div>
               <Link href={`/tareeq/${post.id}`} className="block" onClick={handlePostLinkClick}>
                 {post.title && <h3 className="font-extrabold text-sm leading-snug mb-1.5 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
-                {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
+                {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{snippet}</p>}
               </Link>
             </div>
             <SocialSummary />

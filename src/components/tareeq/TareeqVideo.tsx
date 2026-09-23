@@ -125,9 +125,15 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
               left: '50%',
               transform: 'translate(-50%, -50%)',
               // Relative to the box on small players, capped on big ones.
-              width: 'min(72px, 40%)',
-              height: 'min(72px, 40%)',
+              //
+              // ONE dimension only. Setting both to a percentage resolved them against
+              // DIFFERENT axes — 40% of the width and 40% of the height — so on any video
+              // that is not square the circle came out an ellipse, and `aspectRatio` could
+              // not correct it because both sides were already stated. The height is left
+              // to the aspect ratio, and `maxHeight` keeps it inside a very short player.
+              width: 'min(72px, 22%)',
               aspectRatio: '1',
+              maxHeight: '44%',
               borderRadius: '50%',
               border: '2px solid rgba(255,255,255,0.55)',
               background: 'rgba(0,0,0,0.55)',

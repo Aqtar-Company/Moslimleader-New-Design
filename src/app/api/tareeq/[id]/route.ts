@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         take: 100,
         select: {
           id: true, content: true, createdAt: true, userId: true,
-          user: { select: { id: true, name: true } },
+          user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
         },
       },
     },

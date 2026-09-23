@@ -1,4 +1,5 @@
 'use client';
+import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect } from 'react';
 import TareeqVideo from '@/components/tareeq/TareeqVideo';
@@ -19,7 +20,7 @@ import { timeAgo } from '@/lib/tareeq-utils';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { displayMentions } from '@/lib/tareeq-mentions';
 
-interface Comment { id: string; content: string; createdAt: string; userId: string; user: { id: string; name: string } | null; }
+interface Comment { id: string; content: string; createdAt: string; userId: string; user: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } | null; }
 interface Post {
   id: string; title: string | null; content: string; summary: string | null;
   category: string | null; tags: string[] | null; imageUrl: string | null; imageAlt?: string | null; videoUrl: string | null;
@@ -696,10 +697,15 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 const isPinned = c.id === pinnedCommentId;
                 return (
                   <div key={c.id} className="flex gap-3 group">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{ background: isPinned ? 'rgba(212,168,83,0.18)' : 'var(--tr-overlay)', color: isPinned ? 'var(--tr-gold)' : 'var(--tr-text-secondary)', border: isPinned ? '1.5px solid rgba(212,168,83,0.4)' : 'none' }}>
-                      {c.user?.name.charAt(0) ?? '?'}
-                    </div>
+                    <TareeqAvatarImg
+                      src={c.user?.avatarUrl}
+                      name={c.user?.name ?? '?'}
+                      ownerGender={c.user?.tareeqGender}
+                      ownerId={c.user?.id}
+                      className="w-8 h-8 rounded-full object-cover flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden"
+                      style={{ border: isPinned ? '1.5px solid rgba(212,168,83,0.4)' : 'none' }}
+                      fallbackStyle={{ background: isPinned ? 'rgba(212,168,83,0.18)' : 'var(--tr-overlay)', color: isPinned ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}
+                    />
                     <div className="flex-1 rounded-xl px-4 py-3"
                       style={{ background: isPinned ? 'rgba(212,168,83,0.06)' : 'var(--tr-raised)', border: isPinned ? '1px solid rgba(212,168,83,0.22)' : 'none' }}>
                       <div className="flex items-center gap-2 mb-1 flex-wrap">

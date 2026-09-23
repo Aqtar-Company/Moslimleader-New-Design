@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true, content: true, createdAt: true, editedAt: true, userId: true, parentId: true,
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
       _count: { select: { replies: true, reactions: true } },
     },
   });
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       },
       select: {
         id: true, content: true, createdAt: true, editedAt: true, userId: true, parentId: true,
-        user: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
       },
     }),
     // Only increment commentCount for top-level comments

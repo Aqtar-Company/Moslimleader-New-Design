@@ -446,7 +446,34 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [showReport, setShowReport] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [isSavedOffline, setIsSavedOffline] = useState(false);
-  const [inlineComments, setInlineComments] = useState<Array<{ id: string; content: string; createdAt: string; userId: string | null; user: { id: string; name: string } | null; replyCount?: number; parentId?: string | null }>>([]);
+  // Inline comments in the feed card had neither a picture nor a reaction — the feed is
+  // where most comments are actually read, and it was the one comment surface left out
+  // when the rest were unified.
+  const [inlineCommentReacts, setInlineCommentReacts] = useState<Record<string, { reaction: string | null; counts: Record<string, number> }>>({});
+  const [inlineCommentPicker, setInlineCommentPicker] = useState<string | null>(null);
+
+  async function reactInlineComment(commentId: string, type: ReactionType) {
+    setInlineCommentPicker(null);
+    const prev = inlineCommentReacts[commentId] ?? { reaction: null, counts: {} };
+    const same = prev.reaction === type;
+    const counts = { ...prev.counts };
+    if (prev.reaction) counts[prev.reaction] = Math.max(0, (counts[prev.reaction] ?? 1) - 1);
+    if (!same) counts[type] = (counts[type] ?? 0) + 1;
+    setInlineCommentReacts(s2 => ({ ...s2, [commentId]: { reaction: same ? null : type, counts } }));
+    try {
+      const res = await fetch(`/api/tareeq/comments/${commentId}/react`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ type }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const d = await res.json();
+      setInlineCommentReacts(s2 => ({ ...s2, [commentId]: { reaction: d.reaction ?? null, counts: d.counts ?? {} } }));
+    } catch {
+      setInlineCommentReacts(s2 => ({ ...s2, [commentId]: prev }));
+    }
+  }
+
+  const [inlineComments, setInlineComments] = useState<Array<{ id: string; content: string; createdAt: string; userId: string | null; user: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } | null; replyCount?: number; parentId?: string | null }>>([]);
   const [inlineCommentsLoading, setInlineCommentsLoading] = useState(false);
   const [inlineLoaded, setInlineLoaded] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
@@ -558,7 +585,18 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         setInlineCommentsLoading(true);
         fetch(`/api/tareeq/${post.id}/comments`)
           .then(r => r.json())
-          .then(d => setInlineComments(d.comments ?? []))
+          .then(d => {
+            const list = d.comments ?? [];
+            setInlineComments(list);
+            // One request per comment, same as the post page — the counts are needed to
+            // render the row at all, and the list is short (inline shows a handful).
+            for (const c of list) {
+              fetch(`/api/tareeq/comments/${c.id}/react`, { credentials: 'include' })
+                .then(r => (r.ok ? r.json() : null))
+                .then(d2 => { if (d2) setInlineCommentReacts(s2 => ({ ...s2, [c.id]: { reaction: d2.reaction ?? null, counts: d2.counts ?? {} } })); })
+                .catch(() => {});
+            }
+          })
           .catch(() => {})
           .finally(() => setInlineCommentsLoading(false));
       }
@@ -664,19 +702,64 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           {inlineComments.map(c => (
             <div key={c.id}>
               <div className="flex gap-2.5 py-2" style={{ borderBottom: (c.replyCount ?? 0) > 0 || showRepliesFor.has(c.id) ? 'none' : '1px solid var(--tr-border-subtle)' }}>
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold-dim, rgba(212,168,83,0.3))' }}>
-                  {(c.user?.name ?? '?').charAt(0)}
-                </div>
+                <TareeqAvatarImg
+                  src={c.user?.avatarUrl}
+                  name={c.user?.name ?? '?'}
+                  ownerGender={c.user?.tareeqGender}
+                  ownerId={c.user?.id}
+                  className="w-7 h-7 rounded-full object-cover overflow-hidden text-[10px] font-black shrink-0"
+                  style={{ border: '1.5px solid var(--tr-gold-dim, rgba(212,168,83,0.3))' }}
+                  fallbackStyle={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? '—'}</p>
                   <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
-                  <button
-                    className="text-[11px] font-semibold mt-1"
-                    style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', margin: '-4px -8px' }}
-                    onClick={() => { setReplyingTo({ id: c.id, name: c.user?.name ?? '' }); setTimeout(() => commentInputRef.current?.focus(), 30); }}
-                  >
-                    {isRtl ? 'رد' : 'Reply'}
-                  </button>
+                  <div className="flex items-center gap-3 mt-1 relative">
+                    {(() => {
+                      const mine = inlineCommentReacts[c.id]?.reaction ?? null;
+                      const counts = inlineCommentReacts[c.id]?.counts ?? {};
+                      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+                      const chosen = mine ? REACTIONS.find(r => r.type === mine) : null;
+                      const top = Object.entries(counts).filter(([, n]) => n > 0)
+                        .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            className="text-[11px] font-bold"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: chosen ? chosen.color : 'var(--tr-text-muted)' }}
+                            onClick={() => setInlineCommentPicker(inlineCommentPicker === c.id ? null : c.id)}
+                          >
+                            {chosen
+                              ? <span style={{ fontSize: 13, lineHeight: 1 }}>{reactionEmoji(mine)} {isRtl ? chosen.labelAr : chosen.labelEn}</span>
+                              : (isRtl ? 'تفاعل' : 'React')}
+                          </button>
+                          {total > 0 && (
+                            <span className="flex items-center gap-1" style={{ fontSize: 11, color: 'var(--tr-text-muted)' }}>
+                              <span style={{ letterSpacing: -2 }}>{top.map(t => reactionEmoji(t)).join('')}</span>
+                              <span className="font-semibold">{total}</span>
+                            </span>
+                          )}
+                          {inlineCommentPicker === c.id && (
+                            <TareeqReactionPicker
+                              currentReaction={mine}
+                              onReact={t => reactInlineComment(c.id, t)}
+                              onClose={() => setInlineCommentPicker(null)}
+                              isRtl={isRtl}
+                              compact
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
+                    <button
+                      className="text-[11px] font-semibold"
+                      style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', margin: '-4px -8px' }}
+                      onClick={() => { setReplyingTo({ id: c.id, name: c.user?.name ?? '' }); setTimeout(() => commentInputRef.current?.focus(), 30); }}
+                    >
+                      {isRtl ? 'رد' : 'Reply'}
+                    </button>
+                  </div>
                 </div>
               </div>
               {/* Replies */}

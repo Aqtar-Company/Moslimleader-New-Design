@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect } from 'react';
 import TareeqVideo from '@/components/tareeq/TareeqVideo';
 import { useRouter } from 'next/navigation';
@@ -24,7 +25,7 @@ interface Post {
   category: string | null; tags: string[] | null; imageUrl: string | null; imageAlt?: string | null; videoUrl: string | null;
   authorName: string;
   likeCount: number; commentCount: number; viewCount: number; createdAt: string;
-  userId: string | null; user: { id: string; name: string; avatarUrl?: string | null } | null;
+  userId: string | null; user: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } | null;
   comments: Comment[];
   pinnedCommentId?: string | null;
   postUpdate?: string | null;
@@ -44,6 +45,7 @@ const REACTIONS = TAREEQ_REACTIONS;
 type ReactionType = typeof REACTIONS[number]['type'];
 
 export default function TareeqPostClient({ post, userLiked = false, userBookmarked = false, userReaction = null, userSubscribed = false }: { post: Post; userLiked?: boolean; userBookmarked?: boolean; userReaction?: string | null; userSubscribed?: boolean }) {
+  const { veilStyle } = useTareeqViewer();
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
@@ -339,7 +341,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
             {/* Author row */}
             <div className="flex items-center gap-3 mb-6">
               {post.user?.avatarUrl ? (
-                <img src={post.user.avatarUrl} alt={post.authorName} className="w-10 h-10 rounded-full object-cover" />
+                <img src={post.user.avatarUrl} alt={post.authorName} className="w-10 h-10 rounded-full object-cover" style={{ ...veilStyle(post.user.tareeqGender, post.user.id) }} />
               ) : (
                 <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold-bright)' }}>
                   {post.authorName.charAt(0)}
@@ -836,7 +838,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 }
 
 function ViewersPopover({ postId, isRtl, onClose }: { postId: string; isRtl: boolean; onClose: () => void }) {
-  const [data, setData] = useState<{ viewCount: number; viewers: { id: string; name: string; avatarUrl?: string | null }[] } | null>(null);
+  const { veilStyle } = useTareeqViewer();
+  const [data, setData] = useState<{ viewCount: number; viewers: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null }[] } | null>(null);
 
   useEffect(() => {
     fetch(`/api/tareeq/${postId}/views`, { credentials: 'include' })
@@ -867,7 +870,7 @@ function ViewersPopover({ postId, isRtl, onClose }: { postId: string; isRtl: boo
             {data.viewers.map(v => (
               <div key={v.id} className="flex items-center gap-2.5 px-4 py-2">
                 {v.avatarUrl
-                  ? <img src={v.avatarUrl} alt={v.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                  ? <img src={v.avatarUrl} alt={v.name} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ ...veilStyle(v.tareeqGender, v.id) }} />
                   : <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>{v.name.charAt(0)}</div>
                 }
                 <span className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{v.name}</span>

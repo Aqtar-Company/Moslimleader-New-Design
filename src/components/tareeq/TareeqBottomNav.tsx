@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -76,6 +77,7 @@ interface ContactsSheetProps {
 }
 
 function ContactsSheet({ onClose, onStartCall }: ContactsSheetProps) {
+  const { veilStyle } = useTareeqViewer();
   const { isRtl } = useLang();
   const [contacts, setContacts] = useState<CallParty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ function ContactsSheet({ onClose, onStartCall }: ContactsSheetProps) {
     fetch('/api/tareeq/conversations', { credentials: 'include' })
       .then(r => r.ok ? r.json() : { conversations: [] })
       .then(d => {
-        const list: CallParty[] = (d.conversations ?? []).map((c: { otherUser: { id: string; name: string; avatarUrl?: string | null } }) => ({
+        const list: CallParty[] = (d.conversations ?? []).map((c: { otherUser: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } }) => ({
           id: c.otherUser.id,
           name: c.otherUser.name,
           avatarUrl: c.otherUser.avatarUrl,
@@ -148,7 +150,7 @@ function ContactsSheet({ onClose, onStartCall }: ContactsSheetProps) {
             >
               {c.avatarUrl ? (
                 <img src={c.avatarUrl} alt={c.name} className="w-10 h-10 rounded-full object-cover shrink-0"
-                  style={{ border: '2px solid var(--tr-border-soft)' }} />
+                  style={{ border: '2px solid var(--tr-border-soft)', ...veilStyle(c.tareeqGender, c.id) }}  />
               ) : (
                 <div className="w-10 h-10 rounded-full flex items-center justify-center font-black shrink-0"
                   style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)', fontSize: 16 }}>
@@ -191,7 +193,7 @@ interface ProfileSheetProps {
   onCreateClick: () => void;
   userId: string;
   userName: string;
-  avatarUrl?: string | null;
+  avatarUrl?: string | null; tareeqGender?: string | null;
 }
 
 function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: ProfileSheetProps) {

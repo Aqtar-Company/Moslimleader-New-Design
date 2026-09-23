@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -14,6 +15,7 @@ interface IncomingCall {
 }
 
 export default function TareeqIncomingCall() {
+  const { veilStyle } = useTareeqViewer();
   const { user } = useAuth();
   const { isRtl } = useLang();
   const searchParams = useSearchParams();
@@ -313,7 +315,7 @@ export default function TareeqIncomingCall() {
           {incoming.caller.avatarUrl ? (
             <img src={incoming.caller.avatarUrl} alt={incoming.caller.name}
               className="w-24 h-24 rounded-full object-cover relative z-10"
-              style={{ border: `3px solid ${isVideo ? 'rgba(13,148,136,0.6)' : 'rgba(212,168,83,0.5)'}` }} />
+              style={{ border: `3px solid ${isVideo ? 'rgba(13,148,136,0.6)' : 'rgba(212,168,83,0.5)'}`, ...veilStyle(incoming.caller.tareeqGender, incoming.caller.id) }}  />
           ) : (
             <div className="w-24 h-24 rounded-full flex items-center justify-center font-black text-4xl relative z-10"
               style={{ background: 'linear-gradient(135deg,#1a4a3a,#0d9488)', color: '#fff', border: `3px solid ${isVideo ? 'rgba(13,148,136,0.6)' : 'rgba(212,168,83,0.5)'}` }}>

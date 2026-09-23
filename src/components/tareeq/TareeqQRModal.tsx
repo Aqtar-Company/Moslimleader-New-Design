@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
@@ -7,6 +8,8 @@ interface Props {
   userId: string;
   name: string;
   avatarUrl: string | null;
+  /** Whose card this is — the photo is dropped entirely when it should be veiled. */
+  ownerGender?: string | null;
   isRtl: boolean;
   onClose: () => void;
 }
@@ -32,7 +35,20 @@ function fillRoundRect(
   ctx.fill();
 }
 
-export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose }: Props) {
+/**
+ * The QR card is the one screen that handed a man a woman's face sharp AND saveable: the
+ * profile behind it veils her avatar and her cover, and this modal drew the original into
+ * a canvas, then offered «حفظ» — a PNG in his gallery. Not the accepted "CSS can be
+ * removed" case: the blur was never applied and the bytes were re-encoded into a file.
+ *
+ * So the veiled case drops the photo from BOTH the modal and the generated card. The
+ * initial takes its place, which is what the card shows for anyone without a photo anyway.
+ * Blurring it into the canvas instead was considered and refused: a blur baked into a
+ * downloadable file invites sharpening, and the card loses nothing real without it.
+ */
+export default function TareeqQRModal({ userId, name, avatarUrl: rawAvatarUrl, ownerGender, isRtl, onClose }: Props) {
+  const { blurFor } = useTareeqViewer();
+  const avatarUrl = blurFor(ownerGender, userId) ? null : rawAvatarUrl;
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const [mounted,    setMounted]    = useState(false);
   const [qrReady,    setQrReady]    = useState(false);

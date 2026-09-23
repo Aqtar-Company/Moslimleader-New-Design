@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import TareeqVideo from '@/components/tareeq/TareeqVideo';
 import TareeqImageViewer from '@/components/tareeq/TareeqImageViewer';
@@ -9,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { compressImage } from '@/lib/compress-image';
 
 // ── Interfaces ────────────────────────────────────────────────────────
-interface Member { role: string; user: { id: string; name: string; avatarUrl?: string | null } }
+interface Member { role: string; user: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } }
 interface GroupInfo {
   id: string; name: string; imageUrl?: string | null; description?: string | null;
   createdBy: string; members: Member[];
@@ -18,13 +19,13 @@ interface GroupMessage {
   id: string; content: string;
   imageUrl?: string | null; videoUrl?: string | null; audioUrl?: string | null;
   createdAt: string; senderId: string;
-  sender: { id: string; name: string; avatarUrl?: string | null };
+  sender: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null };
 }
-interface UserResult { id: string; name: string; avatarUrl?: string | null }
+interface UserResult { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null }
 interface SidebarGroup { id: string; name: string; imageUrl?: string | null; lastMessage?: string | null; lastMessageAt?: string | null; memberCount: number }
 interface MsgGroup {
   senderId: string; mine: boolean; msgs: GroupMessage[];
-  senderInfo: { name: string; avatarUrl?: string | null };
+  senderInfo: { name: string; avatarUrl?: string | null; tareeqGender?: string | null };
 }
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -177,6 +178,7 @@ function VoiceGroupMessage({ url, mine }: { url: string; mine: boolean }) {
 function AddMemberSheet({ groupId, existingIds, onClose, onAdded }: {
   groupId: string; existingIds: Set<string>; onClose: () => void; onAdded: () => void;
 }) {
+  const { veilStyle } = useTareeqViewer();
   const { isRtl } = useLang();
   const [q, setQ] = useState('');
   const [results, setResults] = useState<UserResult[]>([]);
@@ -258,7 +260,7 @@ function AddMemberSheet({ groupId, existingIds, onClose, onAdded }: {
               <div key={u.id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'var(--tr-overlay)' }}>
                 <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm"
                   style={{ background: 'var(--tr-raised)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
-                  {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" /> : u.name.charAt(0)}
+                  {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" style={{ ...veilStyle(u.tareeqGender, u.id) }} /> : u.name.charAt(0)}
                 </div>
                 <p className="flex-1 font-semibold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{u.name}</p>
                 {isExisting || isAdded ? (
@@ -295,6 +297,7 @@ function GroupSettingsSheet({ group, myId, isAdmin, onClose, onChanged, onLeft }
   onChanged: () => void;
   onLeft: () => void;
 }) {
+  const { veilStyle } = useTareeqViewer();
   const { isRtl } = useLang();
   const [editingField, setEditingField] = useState<'name' | 'desc' | null>(null);
   const [editName, setEditName] = useState(group.name);
@@ -479,7 +482,7 @@ function GroupSettingsSheet({ group, myId, isAdmin, onClose, onChanged, onLeft }
                     <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm"
                       style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-muted)', border: '1.5px solid var(--tr-border-soft)' }}>
                       {m.user.avatarUrl
-                        ? <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" />
+                        ? <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" style={{ ...veilStyle(m.user.tareeqGender, m.user.id) }} />
                         : m.user.name.charAt(0)
                       }
                     </div>
@@ -627,6 +630,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
 
 // ── Main component ────────────────────────────────────────────────────
 function Inner({ groupId }: { groupId: string }) {
+  const { veilStyle } = useTareeqViewer();
   const { isRtl } = useLang();
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -1002,7 +1006,7 @@ function Inner({ groupId }: { groupId: string }) {
               <div key={m.user.id} className="flex flex-col items-center gap-1.5 shrink-0">
                 <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center font-bold text-sm relative"
                   style={{ background: 'var(--tr-surface)', color: 'var(--tr-text-muted)', border: '1.5px solid var(--tr-border-soft)' }}>
-                  {m.user.avatarUrl ? <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" /> : m.user.name.charAt(0)}
+                  {m.user.avatarUrl ? <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" style={{ ...veilStyle(m.user.tareeqGender, m.user.id) }} /> : m.user.name.charAt(0)}
                   {m.role === 'admin' && (
                     <span className="absolute bottom-0 end-0 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]"
                       style={{ background: BLUE, color: '#fff' }}>★</span>
@@ -1076,7 +1080,7 @@ function Inner({ groupId }: { groupId: string }) {
                         <div className="w-6 h-6 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold"
                           style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)', visibility: (!grp.mine && isLast) ? 'visible' : 'hidden' }}>
                           {!grp.mine && isLast && (grp.senderInfo.avatarUrl
-                            ? <img src={grp.senderInfo.avatarUrl} alt="" className="w-full h-full object-cover" />
+                            ? <img src={grp.senderInfo.avatarUrl} alt="" className="w-full h-full object-cover" style={{ ...veilStyle(grp.senderInfo.tareeqGender, grp.senderId) }} />
                             : grp.senderInfo.name.charAt(0)
                           )}
                         </div>

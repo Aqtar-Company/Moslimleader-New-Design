@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -21,6 +22,30 @@ export async function POST(req: NextRequest) {
 
   const callee = await prisma.user.findUnique({ where: { id: calleeId }, select: { id: true } });
   if (!callee) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+  // ── A call is a message that rings ─────────────────────────────────────────────────────
+  //
+  // This route checked only that the callee existed. Everything the messaging side
+  // enforces — blocking, the privacy setting, the kinship question — was absent, and a
+  // call is the LOUDER contact: it takes over the screen and rings. So a person someone
+  // had blocked could still ring them, and a woman told that a message from a man is
+  // preceded by a question about kinship could receive an unsolicited video call instead.
+  //
+  // The rule used here is deliberately simple and hard to get around: you may call someone
+  // you already have a conversation with. Everything that decides who may open a
+  // conversation — blocks, privacy, the declaration — is therefore enforced once, on that
+  // route, instead of being restated here where it would drift.
+  if (await isBlockedEitherWay(user.userId, calleeId)) {
+    return NextResponse.json({ error: 'لا يمكن الاتصال بهذا المستخدم' }, { status: 403 });
+  }
+  const [pA, pB] = [user.userId, calleeId].sort();
+  const convo = await prisma.tareeqConversation.findUnique({
+    where: { participantA_participantB: { participantA: pA, participantB: pB } },
+    select: { id: true },
+  });
+  if (!convo) {
+    return NextResponse.json({ error: 'ابدأ محادثة أولاً قبل الاتصال' }, { status: 403 });
+  }
 
   // End any stale ringing calls from this caller (> 60s old)
   await prisma.tareeqCall.updateMany({

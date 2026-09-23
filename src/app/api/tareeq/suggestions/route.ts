@@ -83,8 +83,9 @@ export async function GET(req: NextRequest) {
 
   const users = await prisma.user.findMany({
     // A suspended account must never be recommended — it is the one place the platform
-    // actively puts an account in front of someone.
-    where: { id: { in: ids }, tareeqSuspended: false },
+    // actively puts an account in front of someone. The same goes for a locked one: being
+    // recommended to strangers is the exact opposite of what the lock was switched on for.
+    where: { id: { in: ids }, tareeqSuspended: false, tareeqProfileLocked: false },
     select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true },
   });
 

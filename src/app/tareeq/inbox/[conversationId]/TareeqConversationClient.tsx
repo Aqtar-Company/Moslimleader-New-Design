@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import TareeqVideo from '@/components/tareeq/TareeqVideo';
 import TareeqImageViewer from '@/components/tareeq/TareeqImageViewer';
@@ -21,7 +22,7 @@ interface Message {
   read: boolean;
   createdAt: string;
   senderId: string;
-  sender: { id: string; name: string; avatarUrl?: string | null };
+  sender: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null };
   replyToId?: string | null;
   replyToContent?: string | null;
   sharedPostId?: string | null;
@@ -31,7 +32,7 @@ interface Message {
   sharedPostImageUrl?: string | null;
   isDeletedForEveryone?: boolean;
 }
-interface OtherUser { id: string; name: string; avatarUrl?: string | null; tareeqLastSeen?: string | null }
+interface OtherUser { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null; tareeqLastSeen?: string | null }
 
 interface CallEvent {
   id: string;
@@ -47,7 +48,7 @@ interface MsgGroup {
   senderId: string;
   mine: boolean;
   msgs: Message[];
-  senderInfo: { name: string; avatarUrl?: string | null };
+  senderInfo: { name: string; avatarUrl?: string | null; tareeqGender?: string | null };
 }
 
 type DayItem = MsgGroup | { __isCall: true; call: CallEvent };
@@ -287,6 +288,7 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
 }
 
 function Inner({ conversationId }: { conversationId: string }) {
+  const { veilStyle } = useTareeqViewer();
   const { isRtl } = useLang();
   const { user, isLoading: authLoading } = useAuth();
   const { refresh } = useTareeqNotifications();
@@ -390,7 +392,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   } | null>(null);
 
   // Desktop sidebar — conversations list
-  interface SidebarConv { id: string; lastMessage?: string | null; lastMessageAt?: string | null; unreadCount: number; otherUser: { id: string; name: string; avatarUrl?: string | null } }
+  interface SidebarConv { id: string; lastMessage?: string | null; lastMessageAt?: string | null; unreadCount: number; otherUser: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } }
   const [sidebarConvs, setSidebarConvs] = useState<SidebarConv[]>([]);
   const [sidebarLoading, setSidebarLoading] = useState(true);
 
@@ -967,7 +969,7 @@ function Inner({ conversationId }: { conversationId: string }) {
               <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm relative"
                 style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
                 {c.otherUser.avatarUrl
-                  ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" />
+                  ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" style={{ ...veilStyle(c.otherUser.tareeqGender, c.otherUser.id) }} />
                   : c.otherUser.name.charAt(0)}
                 {c.unreadCount > 0 && (
                   <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full border-2" style={{ background: 'var(--tr-gold)', borderColor: 'var(--tr-surface)' }} />
@@ -1027,7 +1029,7 @@ function Inner({ conversationId }: { conversationId: string }) {
               <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold"
                 style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
                 {otherUser.avatarUrl
-                  ? <img src={otherUser.avatarUrl} alt={otherUser.name} className="w-full h-full object-cover" />
+                  ? <img src={otherUser.avatarUrl} alt={otherUser.name} className="w-full h-full object-cover" style={{ ...veilStyle(otherUser.tareeqGender, otherUser.id) }} />
                   : otherUser.name.charAt(0)
                 }
               </div>
@@ -1175,7 +1177,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                             }}
                           >
                             {isLast && (group.senderInfo.avatarUrl
-                              ? <img src={group.senderInfo.avatarUrl} alt="" className="w-full h-full object-cover" />
+                              ? <img src={group.senderInfo.avatarUrl} alt="" className="w-full h-full object-cover" style={{ ...veilStyle(group.senderInfo.tareeqGender, group.senderId) }} />
                               : group.senderInfo.name.charAt(0)
                             )}
                           </div>

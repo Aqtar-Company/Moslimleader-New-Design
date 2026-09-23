@@ -26,6 +26,13 @@ const resolveUser = cache(async function resolveUser(handle: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const user = await resolveUser(params.userId);
   if (!user) return { title: 'طريق' };
+  // The lock is checked in the page body, which runs AFTER this and separately from it. So
+  // the page that says «لا يمكن عرض المنشورات ولا الصورة» was carrying her name in the tab
+  // title and her unblurred avatar as og:image — rendered into a preview card for every
+  // group the link is pasted into.
+  if (user.tareeqProfileLocked) {
+    return { title: 'ملف مُقفل — طريق', robots: { index: false, follow: false } };
+  }
   const ogImage = user.avatarUrl ?? '/Tareeq-big.png';
   return {
     title: `${user.name} — طريق`,
@@ -97,7 +104,7 @@ export default async function TareeqUserPage({ params }: Props) {
           <div className="text-5xl mb-4" aria-hidden>🔒</div>
           <h1 className="text-lg font-black mb-2" style={{ color: 'var(--tr-text-primary)' }}>هذا الملف مُقفل</h1>
         <p className="text-sm leading-relaxed max-w-xs" style={{ color: 'var(--tr-text-secondary)' }}>
-          اختار صاحبه ألّا يظهر لأحد. لا يمكن عرض المنشورات ولا الصورة ولا عدد المتابعين.
+          اختار صاحبه ألّا تظهر صفحته لأحد. لا يمكن عرض صورته ولا قوائم متابعيه من هنا.
         </p>
       </div>
     );
@@ -162,6 +169,9 @@ export default async function TareeqUserPage({ params }: Props) {
     name: profileUser.name,
     username: profileUser.username ?? null,
     avatarUrl: profileUser.avatarUrl ?? null,
+    // Without this the client asks the veiling rule about `undefined` and veils every
+    // man's photo from every man — including his own, on his own page.
+    tareeqGender: profileUser.tareeqGender ?? null,
     coverUrl: profileUser.coverUrl ?? null,
     createdAt: profileUser.createdAt.toISOString(),
     ...(isOwner ? { tareeqMessagePrivacy: profileUser.tareeqMessagePrivacy ?? 'everyone' } : {}),

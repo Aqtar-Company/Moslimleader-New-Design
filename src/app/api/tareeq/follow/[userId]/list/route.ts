@@ -6,6 +6,18 @@ import { getAuthUser } from '@/lib/jwt';
 // GET /api/tareeq/follow/[userId]/list?type=followers|following
 // Returns list of followers or following with mutual-follow status for current user
 export async function GET(req: NextRequest, { params }: { params: { userId: string } }) {
+  // Someone who locked their profile does not publish who follows them. This list was
+  // open to anyone by id, complete with names, handles and photos, while the profile page
+  // itself answered «مُقفل».
+  const owner = await prisma.user.findUnique({
+    where: { id: params.userId },
+    select: { id: true, tareeqProfileLocked: true },
+  });
+  if (owner?.tareeqProfileLocked) {
+    const me = await getAuthUser().catch(() => null);
+    if (me?.userId !== owner.id) return NextResponse.json({ users: [] });
+  }
+
   const type = req.nextUrl.searchParams.get('type') ?? 'followers';
   if (type !== 'followers' && type !== 'following') {
     return NextResponse.json({ error: 'type must be followers or following' }, { status: 400 });
@@ -44,6 +56,7 @@ export async function GET(req: NextRequest, { params }: { params: { userId: stri
       name: u.name,
       username: (u as { username?: string | null }).username ?? null,
       avatarUrl: u.avatarUrl,
+      tareeqGender: u.tareeqGender,
       isFollowedByViewer: viewerFollowingIds.has(u.id),
     })),
   });

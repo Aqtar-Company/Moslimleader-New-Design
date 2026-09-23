@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { isBlockedEitherWay } from '@/lib/tareeq-guard';
+import { needsRelationDeclaration } from '@/lib/tareeq-gender';
 
 // GET /api/tareeq/conversations — list current user's conversations
 // ?countOnly=true → returns { unreadCount: N } cheaply
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
 
   const otherUser = await prisma.user.findUnique({
     where: { id: otherId },
-    select: { id: true, tareeqMessagePrivacy: true },
+    select: { id: true, tareeqMessagePrivacy: true, tareeqGender: true },
   });
   if (!otherUser) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
 
@@ -118,6 +119,41 @@ export async function POST(req: NextRequest) {
 
   if (privacy === 'nobody') {
     return NextResponse.json({ error: 'هذا المستخدم لا يقبل رسائل' }, { status: 403 });
+  }
+
+  // ── The kinship question is enforced HERE, not only on the message-request route ──────
+  //
+  // It was enforced only there, and this route is the one the «رسالة» button actually
+  // calls. Since `tareeqMessagePrivacy` defaults to 'everyone' on every account, the
+  // default path fell straight through to creating a conversation: a man opened any
+  // woman's profile, tapped once, and was typing to her — with no declaration, no request
+  // row, and nothing for her to accept or refuse. The whole declaration flow was
+  // unreachable for anyone who had not manually changed a setting they are never shown.
+  //
+  // 'followers' did not save it either: following someone is one unrestricted tap, so a
+  // man who wanted past the question simply followed first.
+  //
+  // So: a cross-gender pair with no history goes through a request, whatever the privacy
+  // setting says. An EXISTING conversation is untouched — it returns above, before this —
+  // because these two have already agreed to talk.
+  const meRow = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: { tareeqGender: true },
+  });
+  if (needsRelationDeclaration(meRow?.tareeqGender, (otherUser as any).tareeqGender)) {
+    const accepted = await prisma.tareeqMessageRequest.findUnique({
+      where: { fromId_toId: { fromId: user.userId, toId: otherId } },
+      select: { status: true },
+    });
+    // Her own accepted request in the other direction counts: if she wrote to him and he
+    // accepted, refusing to let him reply would be absurd.
+    const acceptedBack = accepted?.status === 'accepted' ? null : await prisma.tareeqMessageRequest.findUnique({
+      where: { fromId_toId: { fromId: otherId, toId: user.userId } },
+      select: { status: true },
+    });
+    if (accepted?.status !== 'accepted' && acceptedBack?.status !== 'accepted') {
+      return NextResponse.json({ requestRequired: true, reason: 'relation' }, { status: 202 });
+    }
   }
 
   if (privacy === 'followers') {

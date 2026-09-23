@@ -43,6 +43,9 @@ export default async function GroupDetailPage({ params }: { params: { id: string
     userId: m.user.id,
     name: m.user.name,
     avatarUrl: m.user.avatarUrl,
+      // Dropped here while the select above already fetched it — so the leaderboard
+      // rendered every member unveiled on a screen that is mixed by design.
+      tareeqGender: m.user.tareeqGender,
     streak: m.streak,
     totalPages: m.totalPages,
     points: m.points,

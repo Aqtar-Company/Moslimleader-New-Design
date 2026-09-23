@@ -33,12 +33,23 @@ export default function TareeqGenderGate() {
   useEffect(() => {
     if (!user) { setNeeded(false); return; }
     let cancelled = false;
-    fetch('/api/tareeq/gender', { credentials: 'include' })
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (!cancelled) setNeeded(!!d && !d.gender); })
-      // A failed check must not lock someone out of طريق over a network blip.
-      .catch(() => { if (!cancelled) setNeeded(false); });
-    return () => { cancelled = true; };
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    // Opening on failure was the wrong way round: one failed request, or any brief 500 on
+    // this route, and the member browses طريق with no gender stored — which no server route
+    // requires — so they could stay in that state indefinitely. Retrying instead means a
+    // blip costs a few seconds, not the rule.
+    const check = (attempt = 0) => {
+      fetch('/api/tareeq/gender', { credentials: 'include' })
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then(d => { if (!cancelled) setNeeded(!d?.gender); })
+        .catch(() => {
+          if (cancelled || attempt >= 4) return;
+          timer = setTimeout(() => check(attempt + 1), Math.min(8000, 1000 * 2 ** attempt));
+        });
+    };
+    check();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [user]);
 
   if (!needed) return null;

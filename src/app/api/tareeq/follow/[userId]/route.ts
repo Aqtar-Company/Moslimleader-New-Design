@@ -7,6 +7,19 @@ import { notifyTareeq } from '@/lib/tareeq-notify';
 
 // GET — check if current user follows this profile + counts
 export async function GET(_req: NextRequest, { params }: { params: { userId: string } }) {
+  // Unauthenticated and by id — so a locked profile's follower numbers were readable by
+  // anyone, from anywhere, while her page said «لا يمكن عرض … ولا عدد المتابعين».
+  const owner = await prisma.user.findUnique({
+    where: { id: params.userId },
+    select: { id: true, tareeqProfileLocked: true },
+  });
+  if (owner?.tareeqProfileLocked) {
+    const me = await getAuthUser().catch(() => null);
+    if (me?.userId !== owner.id) {
+      return NextResponse.json({ isFollowing: false, followerCount: 0, followingCount: 0, locked: true });
+    }
+  }
+
   const [followerCount, followingCount] = await Promise.all([
     prisma.tareeqFollow.count({ where: { followingId: params.userId } }),
     prisma.tareeqFollow.count({ where: { followerId: params.userId } }),

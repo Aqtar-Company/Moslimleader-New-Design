@@ -190,6 +190,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [settingsUsername, setSettingsUsername] = useState(profileUser.username ?? '');
   const [msgPrivacy, setMsgPrivacy] = useState<string>(profileUser.tareeqMessagePrivacy ?? 'everyone');
   const [savingMsgPrivacy, setSavingMsgPrivacy] = useState(false);
+  const [profileLocked, setProfileLocked] = useState(false);
+  const [savingLock, setSavingLock] = useState(false);
   const [displayUsername, setDisplayUsername] = useState(profileUser.username ?? '');
   const [savingUsername, setSavingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState('');
@@ -262,6 +264,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   // which is exactly what empties it of meaning.
   const needsRelation = needsRelationDeclaration(viewer.gender, profileUser.tareeqGender);
   const mahramTies = isGender(viewer.gender) ? mahramTiesFor(viewer.gender) : [];
+  useEffect(() => { if (isOwnProfile) setProfileLocked(viewer.profileLocked); }, [isOwnProfile, viewer.profileLocked]);
   const [coverLoadError, setCoverLoadError] = useState(false);
   const [showCoverEditor, setShowCoverEditor] = useState(false);
 
@@ -524,6 +527,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       if (res.ok) {
         router.push(`/tareeq/inbox/${d.conversationId}`);
       } else if (res.status === 202 && d.requestRequired) {
+        // 202 now also comes back for a cross-gender pair with no accepted request, which
+        // is the common case — see the note in the conversations route.
         setShowMsgReqModal(true);
       }
     } catch { /* ignore */ }
@@ -648,6 +653,32 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     finally { setSavingUsername(false); }
   }
 
+  /**
+   * The lock had a column, an API and an enforcement check — and no switch anywhere, so
+   * for every member the promise «هذا الملف مُقفل» simply did not exist. It could only be
+   * set by editing the database by hand.
+   */
+  async function saveProfileLock(next: boolean) {
+    const previous = profileLocked;
+    setSavingLock(true);
+    setProfileLocked(next);
+    try {
+      const res = await fetch('/api/tareeq/settings/privacy', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tareeqProfileLocked: next }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      showToast(next
+        ? (isRtl ? 'أُقفل ملفك — لا يراه أحد غيرك' : 'Your profile is locked')
+        : (isRtl ? 'فُتح ملفك' : 'Your profile is open'));
+    } catch {
+      setProfileLocked(previous);
+      showToast(isRtl ? 'تعذّر الحفظ' : 'Could not save');
+    } finally { setSavingLock(false); }
+  }
+
   async function saveMsgPrivacy(value: string) {
     const previous = msgPrivacy;
     setSavingMsgPrivacy(true);
@@ -689,6 +720,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           <TareeqAvatarImg
             src={src}
             name={profileUser.name}
+            ownerGender={profileUser.tareeqGender}
+            ownerId={profileUser.id}
+            // A preview is the owner's own upload shown back to them; veiling it would
+            // hide what they are choosing.
+            blur={avatarPreview ? false : undefined}
             className="rounded-full object-cover w-full h-full"
             style={{ border: `${border}px solid var(--tr-surface)`, boxShadow: `0 0 0 ${ring}px var(--tr-gold)` }}
             fallbackStyle={{ fontSize: size * 0.38, background: coverGradient, color: '#fff' }}
@@ -1523,11 +1559,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
       {/* Message request modal */}
       {showMsgReqModal && (
-        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }} onClick={() => { setShowMsgReqModal(false); setMsgReqSent(false); setMsgReqText(''); }}>
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }} onClick={() => { setShowMsgReqModal(false); setMsgReqSent(false); setMsgReqText(''); setMsgReqRelation(null); setMsgReqTie(''); setMsgReqReason(''); }}>
           <div className="w-full sm:max-w-sm sm:mx-4 rounded-t-3xl sm:rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'طلب رسالة' : 'Message Request'}</h2>
-              <button onClick={() => { setShowMsgReqModal(false); setMsgReqSent(false); setMsgReqText(''); }} className="w-8 h-8 flex items-center justify-center rounded-xl text-sm" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>✕</button>
+              <button onClick={() => { setShowMsgReqModal(false); setMsgReqSent(false); setMsgReqText(''); setMsgReqRelation(null); setMsgReqTie(''); setMsgReqReason(''); }} className="w-8 h-8 flex items-center justify-center rounded-xl text-sm" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>✕</button>
             </div>
             {msgReqSent ? (
               <div className="flex flex-col items-center gap-3 py-4">
@@ -1549,7 +1585,12 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       {isRtl ? `ما صلتك بـ${profileUser.name}؟` : `What is your relation to ${profileUser.name}?`}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {(['spouse', 'mahram', 'none'] as TareeqRelation[]).map(r => (
+                      {(['spouse', 'mahram', 'none'] as TareeqRelation[])
+                        // Without the viewer's own gender there is no list of ties to pick
+                        // from, and offering the chip would strand the form on a rule the
+                        // sender cannot satisfy.
+                        .filter(r => r !== 'mahram' || mahramTies.length > 0)
+                        .map(r => (
                         <button
                           key={r}
                           type="button"
@@ -1635,7 +1676,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   title={msgReqMissing() ?? undefined}
                   onClick={handleSendMsgRequest}
                   className="w-full py-3 rounded-xl font-black text-sm transition active:scale-95"
-                  style={{ background: '#1a6ed4', color: '#fff', opacity: (!msgReqText.trim() || msgReqSending) ? 0.6 : 1 }}
+                  style={{ background: '#1a6ed4', color: '#fff', opacity: (msgReqMissing() || msgReqSending) ? 0.6 : 1 }}
                 >{msgReqSending ? (isRtl ? 'جاري الإرسال...' : 'Sending...') : (isRtl ? 'إرسال الطلب' : 'Send Request')}</button>
               </>
             )}
@@ -1707,6 +1748,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           userId={profileUser.id}
           name={profileUser.name}
           avatarUrl={avatarPreview ?? (isOwnProfile ? (user?.avatarUrl ?? profileUser.avatarUrl) : profileUser.avatarUrl) ?? null}
+          ownerGender={profileUser.tareeqGender}
           isRtl={isRtl}
           onClose={() => setShowQR(false)}
         />
@@ -1772,6 +1814,51 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               </div>
 
               {/* Divider */}
+              <div style={{ height: 1, background: 'var(--tr-border-subtle)' }} />
+
+              {/* Profile lock */}
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  {isRtl ? 'قفل الملف' : 'Profile lock'}
+                </p>
+                <button
+                  type="button"
+                  disabled={savingLock}
+                  onClick={() => saveProfileLock(!profileLocked)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-start"
+                  style={{
+                    background: profileLocked ? 'rgba(212,168,83,0.12)' : 'var(--tr-overlay)',
+                    color: profileLocked ? 'var(--tr-gold)' : 'var(--tr-text-primary)',
+                    border: `1.5px solid ${profileLocked ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
+                    opacity: savingLock ? 0.6 : 1,
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{profileLocked ? '🔒' : '🔓'}</span>
+                  <span className="flex-1">
+                    {isRtl
+                      ? (profileLocked ? 'ملفك مُقفل — لا يراه أحد غيرك' : 'أقفل ملفي')
+                      : (profileLocked ? 'Locked — nobody but you' : 'Lock my profile')}
+                  </span>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 38, height: 22, borderRadius: 999, flexShrink: 0, position: 'relative',
+                      background: profileLocked ? 'var(--tr-gold)' : 'var(--tr-border-soft)', transition: 'background 150ms',
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 3, insetInlineStart: profileLocked ? 19 : 3,
+                      width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'inset-inline-start 150ms',
+                    }} />
+                  </span>
+                </button>
+                <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>
+                  {isRtl
+                    ? 'يُخفي صفحتك وصورتك وقوائم متابعيك وأعدادهم، ويمنع ظهورك في البحث والاقتراحات. منشوراتك السابقة تبقى في متابعة من يتابعك — احذفها أو اجعلها مسوّدة إن أردت إخفاءها.'
+                    : 'Hides your page, photo, follower lists and counts, and keeps you out of search and suggestions. Posts you already published stay in your followers\u2019 feeds — delete them or move them to drafts to hide those.'}
+                </p>
+              </div>
+
               <div style={{ height: 1, background: 'var(--tr-border-subtle)' }} />
 
               {/* Message privacy */}

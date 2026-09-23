@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -20,12 +21,13 @@ import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
  * first impression than an empty feed.
  */
 
-type Suggested = { id: string; name: string; username: string | null; avatarUrl: string | null; postCount: number };
+type Suggested = { id: string; name: string; username: string | null; avatarUrl: string | null; tareeqGender?: string | null; postCount: number };
 
 const CAT_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 const MAX_PICKS = 3;
 
 export default function WelcomeClient() {
+  const { veilStyle } = useTareeqViewer();
   const { lang, isRtl } = useLang();
   const isEn = lang === 'en';
   const { user, isLoading: authLoading } = useAuth();
@@ -176,7 +178,7 @@ export default function WelcomeClient() {
                     <Link href={`/tareeq/u/${p.id}`} className="shrink-0">
                       {p.avatarUrl ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
-                        <img src={p.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
+                        <img src={p.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" style={{ ...veilStyle(p.tareeqGender, p.id) }} />
                       ) : (
                         <span
                           className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black"

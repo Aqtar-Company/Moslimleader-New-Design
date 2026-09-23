@@ -209,7 +209,7 @@ function Inner() {
   // claim itself goes in the description: a report that says only "false claim" leaves the
   // moderator reading a complaint with the thing complained about missing.
   const [reportRequestId, setReportRequestId] = useState<string | null>(null);
-  const [reportDone, setReportDone] = useState(false);
+  const [reportResult, setReportResult] = useState<'sent' | 'duplicate' | 'failed' | null>(null);
 
   async function reportFalseClaim(reqId: string) {
     const r = msgRequests.find(x => x.id === reqId);
@@ -217,8 +217,15 @@ function Inner() {
     const claim = r.relation === 'spouse' ? 'ادّعى أنه الزوج'
       : r.relation === 'mahram' ? `ادّعى أنه «${r.relationLabel}»`
       : 'طلب مراسلة';
+    // The result is read, because the report endpoint answers `ok` in two cases where it
+    // writes NOTHING: a prior report by the same person against the same user
+    // (`duplicate: true`), and the hourly cap. Telling her «وصل البلاغ للإدارة» when no row
+    // exists is the worst possible failure for this particular button — she believes a
+    // false claim of kinship was recorded, and acts on that belief.
+    let recorded = false;
+    let already = false;
     try {
-      await fetch('/api/tareeq/reports', {
+      const res = await fetch('/api/tareeq/reports', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({
           targetType: 'user',
@@ -227,13 +234,15 @@ function Inner() {
           description: `${claim} في طلب رسالة. نص الطلب: ${r.message}`,
         }),
       });
+      const d = await res.json().catch(() => ({}));
+      already = !!d?.duplicate;
+      recorded = res.ok && !d?.duplicate;
     } catch { /* the decline below still stands on its own */ }
     // A report is also a refusal. Leaving the request pending afterwards would keep the
     // person she just reported waiting at her door.
     await handleRequest(reqId, 'reject');
     setReportRequestId(null);
-    setReportDone(true);
-    setTimeout(() => setReportDone(false), 4000);
+    setReportResult(recorded ? 'sent' : already ? 'duplicate' : 'failed');
   }
 
   const hasRequests = msgRequests.length > 0;
@@ -314,12 +323,18 @@ function Inner() {
                 {/* Declining and reporting a false kinship claim are different acts. One
                     ends a conversation; the other says someone lied about being family to
                     get a message through — and only the second leaves a record. */}
+                {/* Only where a kinship was actually claimed. On a same-gender request
+                    `relation` is null and there is nothing to be false about — filing
+                    «ادّعاء كاذب» against someone who declared nothing is an accusation the
+                    UI invented. */}
+                {(r.relation === 'spouse' || r.relation === 'mahram') && (
                 <button
                   type="button"
                   onClick={() => setReportRequestId(r.id)}
                   className="text-[12px] font-bold self-start"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e74c3c', padding: '2px 0' }}
                 >{isRtl ? 'إبلاغ عن ادّعاء كاذب' : 'Report a false claim'}</button>
+                )}
               </div>
             ))}
           </div>
@@ -629,9 +644,13 @@ function Inner() {
         </div>
       )}
 
-      {reportDone && (
-        <div role="status" className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-xl text-[13px] font-bold" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', boxShadow: '0 8px 30px rgba(0,0,0,0.35)' }}>
-          {isRtl ? 'وصل البلاغ للإدارة، ورُفض الطلب.' : 'Reported, and the request was declined.'}
+      {reportResult && (
+        <div role="status" onClick={() => setReportResult(null)} className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-xl text-[13px] font-bold max-w-[88vw] text-center" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', boxShadow: '0 8px 30px rgba(0,0,0,0.35)' }}>
+          {reportResult === 'sent'
+            ? (isRtl ? 'وصل البلاغ للإدارة، ورُفض الطلب.' : 'Reported, and the request was declined.')
+            : reportResult === 'duplicate'
+              ? (isRtl ? 'رُفض الطلب. ولك بلاغ سابق على هذا الشخص — الإدارة تراه.' : 'Declined. You already have a report on this person; the moderators see it.')
+              : (isRtl ? 'رُفض الطلب، لكن البلاغ لم يصل. حاول من صفحته.' : 'Declined, but the report did not go through. Try from their profile.')}
         </div>
       )}
 

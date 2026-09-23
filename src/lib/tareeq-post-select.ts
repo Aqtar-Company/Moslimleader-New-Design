@@ -23,7 +23,7 @@ export const SHARED_FROM_INCLUDE = {
     select: {
       id: true, title: true, content: true, imageUrl: true, imageAlt: true, videoUrl: true, thumbnailUrl: true,
       authorName: true, userId: true, createdAt: true, isHidden: true,
-      user: { select: { id: true, name: true, avatarUrl: true } },
+      user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
     },
   },
 } as const;
@@ -48,7 +48,7 @@ export interface RawSharedFrom {
   userId: string | null;
   createdAt: Date;
   isHidden: boolean;
-  user: { id: string; name: string; avatarUrl: string | null } | null;
+  user: { id: string; name: string; avatarUrl: string | null; tareeqGender: string | null } | null;
 }
 
 /** The client-facing shape (matches SharedOriginal in TareeqCard). */
@@ -62,7 +62,7 @@ export interface SerializedSharedFrom {
   authorName: string;
   userId: string | null;
   createdAt: string;
-  user: { id: string; name: string; avatarUrl: string | null } | null;
+  user: { id: string; name: string; avatarUrl: string | null; tareeqGender: string | null } | null;
 }
 
 /**

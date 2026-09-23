@@ -7,11 +7,20 @@ export const dynamic = 'force-dynamic';
  * GET  → { gender, setAt, profileLocked }
  * POST { gender: 'male' | 'female' } → stores it
  *
- * The value is CHANGEABLE, deliberately. A one-way choice would mean a mis-tap at the door
- * is permanent and support has to fix it by hand. Nothing is gained by locking it either:
- * declaring female does not reveal anything — it VEILS the declarer's own pictures — and
- * declaring male reveals nothing that was not already visible to men. The change is
- * timestamped so a pattern of flipping is visible if it ever matters.
+ * The value is changeable, but NOT freely — and the reasoning here was wrong once, so it
+ * is written out.
+ *
+ * The earlier note said "declaring female does not reveal anything — it VEILS the
+ * declarer's own pictures". That is true of the declarer's own pictures and false of
+ * everything else: the veil is computed from the VIEWER's gender, so a man who declares
+ * female unveils every woman on the platform to himself and stops being asked the kinship
+ * question. One tap, in the ordinary settings UI. The cost to him was that other men
+ * stopped seeing his own photo.
+ *
+ * Locking it permanently is not the answer either — a mis-tap at the door would then need
+ * support to undo. So: free to SET while it is unset, and afterwards changeable once every
+ * 30 days, which leaves a genuine correction easy and makes flipping it as a way to look
+ * around useless. Each change is timestamped, so the pattern is visible.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -48,6 +57,24 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   if (!isGender(body.gender)) {
     return NextResponse.json({ error: 'اختر: رجل أو امرأة' }, { status: 400 });
+  }
+
+  const current = await prisma.user.findUnique({
+    where: { id: me.userId },
+    select: { tareeqGender: true, tareeqGenderSetAt: true },
+  });
+
+  // Re-sending the same value is not a change — it costs nothing and must not start a
+  // cooldown, or a double tap would lock someone out of a correction for a month.
+  if (current?.tareeqGender && current.tareeqGender !== body.gender) {
+    const setAt = current.tareeqGenderSetAt?.getTime() ?? 0;
+    const days = (Date.now() - setAt) / 86_400_000;
+    if (days < 30) {
+      return NextResponse.json(
+        { error: `يمكن تغيير هذا بعد ${Math.ceil(30 - days)} يوماً. راسل الدعم إن كان خطأً.` },
+        { status: 429 },
+      );
+    }
   }
 
   await prisma.user.update({

@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -29,7 +30,7 @@ interface SharePost {
 
 interface Conversation {
   id: string;
-  otherUser: { id: string; name: string; avatarUrl?: string | null };
+  otherUser: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null };
 }
 
 export default function TareeqShareSheet({
@@ -44,6 +45,7 @@ export default function TareeqShareSheet({
   /** Fired after the post is re-shared onto Tareeq, so a feed can refresh. */
   onShared?: () => void;
 }) {
+  const { veilStyle } = useTareeqViewer();
   const { user } = useAuth();
   const postUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/tareeq/${post.id}`
@@ -470,7 +472,7 @@ export default function TareeqShareSheet({
                     >
                       <span className="relative">
                         {c.otherUser.avatarUrl
-                          ? <img src={c.otherUser.avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" style={{ opacity: sent ? 0.5 : 1 }} />
+                          ? <img src={c.otherUser.avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" style={{ opacity: sent ? 0.5 : 1, ...veilStyle(c.otherUser.tareeqGender, c.otherUser.id) }}  />
                           : (
                             <span
                               className="w-12 h-12 rounded-full flex items-center justify-center text-base font-black"

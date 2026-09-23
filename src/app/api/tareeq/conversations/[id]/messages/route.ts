@@ -113,7 +113,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     url: `/tareeq/inbox/${params.id}`,
     tag: `msg-${params.id}`,
     type: 'message',
-    icon: message.sender?.avatarUrl ?? undefined,
+    // NOT the sender's photo. A push icon is drawn by the operating system on the
+      // lock screen, where no CSS filter of ours can reach — so a woman's face would
+      // appear, full and sharp, on the phone of every man in the thread, with the veil
+      // everywhere else in the app making it look deliberate. طريق's own mark instead.
+      icon: '/Tareeq-small.png',
   }).catch(() => {});
 
   // In-app notification at most once per 5 minutes (non-blocking)

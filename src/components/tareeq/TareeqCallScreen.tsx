@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/context/LanguageContext';
 import { consumeOutRingPipeline, releaseOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
@@ -38,7 +39,7 @@ const ICE_CONFIG: RTCConfiguration = {
 export interface CallParty {
   id: string;
   name: string;
-  avatarUrl?: string | null;
+  avatarUrl?: string | null; tareeqGender?: string | null;
 }
 
 interface Props {
@@ -143,6 +144,7 @@ function CallButton({
 }
 
 export default function TareeqCallScreen({ callId, role, callType, remoteUser, offer, autoAnswer, onEnd }: Props) {
+  const { veilStyle } = useTareeqViewer();
   const { isRtl } = useLang();
   const [callState, setCallState] = useState<CallState>('ringing');
   const [muted, setMuted] = useState(false);
@@ -632,7 +634,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
           {/* Avatar */}
           <div className="absolute rounded-full overflow-hidden" style={{ inset: 6 }}>
             {remoteUser.avatarUrl
-              ? <img src={remoteUser.avatarUrl} alt={remoteUser.name} className="w-full h-full object-cover" />
+              ? <img src={remoteUser.avatarUrl} alt={remoteUser.name} className="w-full h-full object-cover" style={{ ...veilStyle(remoteUser.tareeqGender, remoteUser.id) }} />
               : (
                 <div className="w-full h-full flex items-center justify-center font-black transition-all duration-700" style={{
                   fontSize: callState === 'active' ? 28 : 56,

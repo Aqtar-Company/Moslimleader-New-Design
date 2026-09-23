@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import Link from 'next/link';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -33,7 +34,7 @@ interface Notification {
   id: string; type: string; actorId?: string | null; actorName?: string | null; postId?: string | null;
   postTitle?: string | null; body?: string | null; read: boolean; createdAt: string;
 }
-interface OtherUser { id: string; name: string; avatarUrl?: string | null }
+interface OtherUser { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null }
 interface Conversation {
   id: string; lastMessage?: string | null; lastMessageAt?: string | null;
   unreadCount: number; otherUser: OtherUser;
@@ -50,7 +51,7 @@ interface ChatMessage {
   replyToContent?: string | null;
   read?: boolean;
   isDeletedForEveryone?: boolean;
-  sender: { id: string; name: string; avatarUrl?: string | null };
+  sender: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null };
 }
 
 function timeAgo(iso: string, isRtl: boolean): string {
@@ -137,6 +138,7 @@ function NotifIcon({ type }: { type: string }) {
 }
 
 export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onToggleSidebar }: Props) {
+  const { veilStyle } = useTareeqViewer();
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
@@ -256,7 +258,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   /* ── Call initiated from desktop chat panel ── */
   const [desktopCall, setDesktopCall] = useState<{
     callId: string; callType: 'audio' | 'video';
-    remoteUser: { id: string; name: string; avatarUrl?: string | null };
+    remoteUser: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null };
   } | null>(null);
   const [callStarting, setCallStarting] = useState(false);
 
@@ -1192,7 +1194,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                             {conversations.filter(c => !msgSearch || c.otherUser.name.toLowerCase().includes(msgSearch.toLowerCase())).map(c => (
                               <button key={c.id} onClick={() => openChat(c)} className="w-full flex items-center gap-3 px-4 py-3 text-start transition" style={{ background: c.unreadCount > 0 ? 'rgba(212,168,83,0.04)' : 'transparent', borderBottom: '1px solid var(--tr-border-subtle)' }}>
                                 <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden relative" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
-                                  {c.otherUser.avatarUrl ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" /> : c.otherUser.name.charAt(0)}
+                                  {c.otherUser.avatarUrl ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" style={{ ...veilStyle(c.otherUser.tareeqGender, c.otherUser.id) }} /> : c.otherUser.name.charAt(0)}
                                   {c.unreadCount > 0 && <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full border-2" style={{ background: 'var(--tr-gold)', borderColor: 'var(--tr-surface)' }} />}
                                 </div>
                                 <div className="flex-1 min-w-0">

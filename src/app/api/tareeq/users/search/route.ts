@@ -22,6 +22,10 @@ export async function GET(req: NextRequest) {
   const users = await prisma.user.findMany({
     where: {
       id: { not: user.userId, ...(blockedIds.length ? { notIn: blockedIds } : {}) },
+      // A locked profile is not discoverable. The lock was enforced on one page while
+      // search still returned the person by name or handle, with her photo, and mention
+      // pickers and group-invite lists are built from this same endpoint.
+      tareeqProfileLocked: false,
       // Searching `name` only meant people couldn't be found by their @handle.
       OR: [{ name: { contains: q } }, { username: { contains: q } }],
     },

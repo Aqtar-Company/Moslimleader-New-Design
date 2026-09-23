@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import TareeqImageViewer from './TareeqImageViewer';
@@ -61,7 +62,7 @@ interface Post {
   commentCount: number;
   createdAt: string;
   userId: string | null;
-  user: { id: string; name: string; avatarUrl?: string | null } | null;
+  user: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } | null;
   comments: Comment[];
   postUpdate?: string | null;
   category?: string | null;
@@ -78,6 +79,7 @@ const REACTIONS = [
 type ReactionType = typeof REACTIONS[number]['type'];
 
 export default function TareeqPostSheet({ postId, focusComments = false, onClose, onDeleted, onReacted, onCommented, onCommentDeleted }: Props) {
+  const { veilStyle } = useTareeqViewer();
   const { isRtl } = useLang();
   const { user } = useAuth();
 
@@ -627,7 +629,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                     {/* Author */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
                       {post.user?.avatarUrl
-                        ? <img src={post.user.avatarUrl} alt={post.authorName} style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--tr-gold)', flexShrink: 0 }} />
+                        ? <img src={post.user.avatarUrl} alt={post.authorName} style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--tr-gold)', flexShrink: 0, ...veilStyle(post.user.tareeqGender, post.user.id) }}  />
                         : <div style={{ width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)', flexShrink: 0 }}>{post.authorName.charAt(0)}</div>
                       }
                       <div style={{ minWidth: 0 }}>
@@ -1010,7 +1012,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
               {/* Author row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 16px 12px' }}>
                 {post.user?.avatarUrl
-                  ? <img src={post.user.avatarUrl} alt={post.authorName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--tr-gold)', flexShrink: 0 }} />
+                  ? <img src={post.user.avatarUrl} alt={post.authorName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--tr-gold)', flexShrink: 0, ...veilStyle(post.user.tareeqGender, post.user.id) }}  />
                   : <div style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)', flexShrink: 0 }}>
                       {post.authorName.charAt(0)}
                     </div>

@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
@@ -14,7 +15,7 @@ const CARD_BD  = 'rgba(255,255,255,0.09)';
 // using the browser's own local date. The server's own "today" (container/UTC) could
 // disagree with the viewer's near midnight and show a stale/wrong "read today" state.
 interface Member {
-  id: string; userId: string; name: string; avatarUrl: string | null;
+  id: string; userId: string; name: string; avatarUrl: string | null; tareeqGender?: string | null;
   streak: number; totalPages: number; points: number; lastReadDate: string | null; rank: number;
   currentPage?: number; currentSurah?: number; currentAyah?: number;
 }
@@ -32,6 +33,7 @@ export default function KhatmaGroupDetail({
   myCurrentPage?: number; myCurrentSurah?: number; myCurrentAyah?: number;
   linkedToSolo?: boolean;
 }) {
+  const { veilStyle } = useTareeqViewer();
   const router = useRouter();
   const { isRtl } = useLang();
   // Resolved after mount — see KhatmatiHome for why this must not run during render.
@@ -127,7 +129,7 @@ export default function KhatmaGroupDetail({
           <div style={{ margin: '12px 20px 0', background: CARD, border: `1px solid ${CARD_BD}`, borderRadius: 16, padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,204,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {me.avatarUrl ? <img src={me.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 20 }}>🕯️</span>}
+                {me.avatarUrl ? <img src={me.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', ...veilStyle(me.tareeqGender, me.id) }}  /> : <span style={{ fontSize: 20 }}>🕯️</span>}
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: TEXT_PRI, marginBottom: 4 }}>{isRtl ? 'سراجك' : 'Your Lantern'}</p>
@@ -199,7 +201,7 @@ export default function KhatmaGroupDetail({
                   {m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : m.rank === 3 ? '🥉' : `#${m.rank}`}
                 </span>
                 <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,204,0,0.1)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {m.avatarUrl ? <img src={m.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16 }}>👤</span>}
+                  {m.avatarUrl ? <img src={m.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', ...veilStyle(m.tareeqGender, m.id) }}  /> : <span style={{ fontSize: 16 }}>👤</span>}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: TEXT_PRI, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</p>

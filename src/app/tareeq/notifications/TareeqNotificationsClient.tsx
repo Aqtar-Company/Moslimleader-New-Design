@@ -1,4 +1,5 @@
 'use client';
+import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 import { useState, useEffect } from 'react';
 import { notificationHref } from '@/lib/tareeq-notif-link';
 import { useRouter } from 'next/navigation';
@@ -12,6 +13,8 @@ interface TareeqNotif {
   type: string;
   actorId?: string | null;
   actorName?: string | null;
+  actorAvatarUrl?: string | null;
+  actorGender?: string | null;
   postId?: string | null;
   postTitle?: string | null;
   body?: string | null;
@@ -59,6 +62,41 @@ function NotifIcon({ type }: { type: string }) {
     </svg>
   );
 }
+
+/**
+ * The actor's face, with the notification's own glyph as a small badge on it.
+ *
+ * The list drew only the glyph, because `actorAvatarUrl` was never written on any row —
+ * so every notification looked like every other notification from the same kind of event,
+ * and «فلان بدأ متابعتك» arrived with no face beside it. The picture is resolved from the
+ * actor's row by the API, so it is current rather than a copy frozen when the event
+ * happened.
+ *
+ * No actor means no face: an admin broadcast, a system notice. Those keep the glyph alone,
+ * which is correct — there is nobody to show.
+ */
+function NotifAvatar({ n }: { n: { type: string; actorId?: string | null; actorName?: string | null; actorAvatarUrl?: string | null; actorGender?: string | null } }) {
+  if (!n.actorAvatarUrl) return <NotifAvatar n={n} />;
+  return (
+    <div className="relative shrink-0" style={{ width: 36, height: 36 }}>
+      <TareeqAvatarImg
+        src={n.actorAvatarUrl}
+        name={n.actorName ?? '?'}
+        ownerGender={n.actorGender}
+        ownerId={n.actorId}
+        sizePx={36}
+        className="w-9 h-9 rounded-full object-cover overflow-hidden"
+      />
+      <span
+        className="absolute flex items-center justify-center rounded-full"
+        style={{ width: 17, height: 17, bottom: -2, insetInlineEnd: -2, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', fontSize: 9, lineHeight: 1 }}
+      >
+        <span style={{ transform: 'scale(0.62)', transformOrigin: 'center' }}><NotifAvatar n={n} /></span>
+      </span>
+    </div>
+  );
+}
+
 
 function NotifText({ n, isRtl }: { n: TareeqNotif; isRtl: boolean }) {
   const actor = n.actorName || (isRtl ? 'شخص ما' : 'Someone');
@@ -431,7 +469,7 @@ function Inner() {
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.read ? 'var(--tr-surface)' : 'var(--tr-gold-glow)'; }}
               >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
-                  <NotifIcon type={n.type} />
+                  <NotifAvatar n={n} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium leading-snug" style={{ color: 'var(--tr-text-primary)' }}>

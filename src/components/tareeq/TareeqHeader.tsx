@@ -9,6 +9,7 @@ import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
 import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 import { notificationHref } from '@/lib/tareeq-notif-link';
+import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 
 interface Props {
   onCreateClick: () => void;
@@ -31,7 +32,8 @@ function Badge({ count }: { count: number }) {
 
 /* ── Types ── */
 interface Notification {
-  id: string; type: string; actorId?: string | null; actorName?: string | null; postId?: string | null;
+  id: string; type: string; actorId?: string | null; actorName?: string | null;
+  actorAvatarUrl?: string | null; actorGender?: string | null; postId?: string | null;
   postTitle?: string | null; body?: string | null; read: boolean; createdAt: string;
 }
 interface OtherUser { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null }
@@ -136,6 +138,41 @@ function NotifIcon({ type }: { type: string }) {
     </div>
   );
 }
+
+/**
+ * The actor's face, with the notification's own glyph as a small badge on it.
+ *
+ * The list drew only the glyph, because `actorAvatarUrl` was never written on any row —
+ * so every notification looked like every other notification from the same kind of event,
+ * and «فلان بدأ متابعتك» arrived with no face beside it. The picture is resolved from the
+ * actor's row by the API, so it is current rather than a copy frozen when the event
+ * happened.
+ *
+ * No actor means no face: an admin broadcast, a system notice. Those keep the glyph alone,
+ * which is correct — there is nobody to show.
+ */
+function NotifAvatar({ n }: { n: { type: string; actorId?: string | null; actorName?: string | null; actorAvatarUrl?: string | null; actorGender?: string | null } }) {
+  if (!n.actorAvatarUrl) return <NotifAvatar n={n} />;
+  return (
+    <div className="relative shrink-0" style={{ width: 36, height: 36 }}>
+      <TareeqAvatarImg
+        src={n.actorAvatarUrl}
+        name={n.actorName ?? '?'}
+        ownerGender={n.actorGender}
+        ownerId={n.actorId}
+        sizePx={36}
+        className="w-9 h-9 rounded-full object-cover overflow-hidden"
+      />
+      <span
+        className="absolute flex items-center justify-center rounded-full"
+        style={{ width: 17, height: 17, bottom: -2, insetInlineEnd: -2, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', fontSize: 9, lineHeight: 1 }}
+      >
+        <span style={{ transform: 'scale(0.62)', transformOrigin: 'center' }}><NotifAvatar n={n} /></span>
+      </span>
+    </div>
+  );
+}
+
 
 export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onToggleSidebar }: Props) {
   const { veilStyle } = useTareeqViewer();
@@ -738,7 +775,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     router.push(notificationHref(n) ?? '/tareeq/notifications');
                   }}
                 >
-                  <NotifIcon type={n.type} />
+                  <NotifAvatar n={n} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.90)' }}>
                       {n.type === 'like' && (
@@ -1088,7 +1125,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                             <button key={n.id} onClick={() => { setShowNotifPanel(false); const href = notificationHref(n); if (href) router.push(href); }}
                               className="w-full flex items-start gap-3 px-4 py-3 text-start transition"
                               style={{ background: n.read ? 'transparent' : 'rgba(212,168,83,0.04)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-                              <NotifIcon type={n.type} />
+                              <NotifAvatar n={n} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-primary)' }}>
                                   {n.type === 'like' && <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
@@ -1372,7 +1409,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                           <button key={n.id} onClick={() => { setShowNotifPanel(false); if (n.type === 'follow' && n.actorId) router.push(`/tareeq/u/${n.actorId}`); else { const href = notificationHref(n); if (href) router.push(href); } }}
                             className="w-full flex items-start gap-3 px-4 py-3 text-start transition"
                             style={{ background: n.read ? 'transparent' : 'rgba(212,168,83,0.04)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-                            <NotifIcon type={n.type} />
+                            <NotifAvatar n={n} />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-primary)' }}>
                                 {n.type === 'like' && <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}

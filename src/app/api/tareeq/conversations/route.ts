@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { isBlockedEitherWay } from '@/lib/tareeq-guard';
-import { needsRelationDeclaration } from '@/lib/tareeq-gender';
+import { needsRelationDeclaration, orgNeedsRequest } from '@/lib/tareeq-gender';
 
 // GET /api/tareeq/conversations — list current user's conversations
 // ?countOnly=true → returns { unreadCount: N } cheaply
@@ -142,7 +142,12 @@ export async function POST(req: NextRequest) {
     where: { id: user.userId },
     select: { tareeqGender: true },
   });
-  if (needsRelationDeclaration(meRow?.tareeqGender, otherUser.tareeqGender)) {
+  // An organisation writing first is gated on the same path, for the same reason and with
+  // the same escape: it needs consent unless this person has already written to it.
+  const gate = needsRelationDeclaration(meRow?.tareeqGender, otherUser.tareeqGender) ? 'relation'
+    : orgNeedsRequest(meRow?.tareeqGender, otherUser.tareeqGender) ? 'org'
+    : null;
+  if (gate) {
     const accepted = await prisma.tareeqMessageRequest.findUnique({
       where: { fromId_toId: { fromId: user.userId, toId: otherId } },
       select: { status: true },
@@ -154,7 +159,7 @@ export async function POST(req: NextRequest) {
       select: { status: true },
     });
     if (accepted?.status !== 'accepted' && acceptedBack?.status !== 'accepted') {
-      return NextResponse.json({ requestRequired: true, reason: 'relation' }, { status: 202 });
+      return NextResponse.json({ requestRequired: true, reason: gate }, { status: 202 });
     }
   }
 

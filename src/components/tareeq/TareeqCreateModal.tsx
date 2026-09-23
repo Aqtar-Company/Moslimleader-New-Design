@@ -1,4 +1,5 @@
 'use client';
+import { classifyLinkMedia, firstUrlIn } from '@/lib/tareeq-link-media';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLang } from '@/context/LanguageContext';
@@ -65,6 +66,58 @@ interface Props {
   initialContent?: string;
   initialFile?: File;
   mode?: 'text' | 'media';
+}
+
+/**
+ * The link card the composer shows while typing.
+ *
+ * Debounced, because a URL is typed character by character and each keystroke would
+ * otherwise be a request to somebody else's server — and the first 20 of them are for
+ * prefixes that are not a URL yet.
+ */
+function ComposerLinkPreview({ url, isRtl }: { url: string; isRtl: boolean }) {
+  const [data, setData] = useState<{ title: string | null; description: string | null; image: string | null; domain: string } | null>(null);
+  const [state, setState] = useState<'idle' | 'loading' | 'empty'>('idle');
+
+  useEffect(() => {
+    let cancelled = false;
+    setData(null);
+    setState('loading');
+    const t = setTimeout(() => {
+      fetch(`/api/tareeq/link-preview?url=${encodeURIComponent(url)}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => {
+          if (cancelled) return;
+          if (d && (d.title || d.image)) { setData(d); setState('idle'); }
+          else setState('empty');
+        })
+        .catch(() => { if (!cancelled) setState('empty'); });
+    }, 700);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [url]);
+
+  // Nothing to show is not an error worth a box: the link stays in the text either way.
+  if (state === 'empty') return null;
+  if (!data) {
+    return (
+      <div className="rounded-2xl px-4 py-3 text-[12px]" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-muted)' }}>
+        {isRtl ? 'جارٍ قراءة الرابط…' : 'Reading the link…'}
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}>
+      {data.image && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={data.image} alt="" style={{ display: 'block', width: '100%', maxHeight: 200, objectFit: 'cover' }} />
+      )}
+      <div className="px-3.5 py-2.5">
+        <p className="text-[10.5px] font-bold mb-0.5" style={{ color: 'var(--tr-text-muted)' }}>{data.domain}</p>
+        {data.title && <p className="text-[13px] font-bold leading-snug" style={{ color: 'var(--tr-text-primary)' }}>{data.title}</p>}
+        {data.description && <p className="text-[11.5px] leading-relaxed mt-0.5 line-clamp-2" style={{ color: 'var(--tr-text-muted)' }}>{data.description}</p>}
+      </div>
+    </div>
+  );
 }
 
 export default function TareeqCreateModal({ onClose, onCreated, initialContent, initialFile, mode = 'text' }: Props) {
@@ -1301,6 +1354,40 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                   loading="lazy"
                   style={{ border: 'none', display: 'block' }}
                 />
+              </div>
+            );
+          })()}
+
+          {/* ── Any other link, previewed while typing ──────────────────────────────
+              The composer showed a YouTube embed and nothing else, so pasting a plain
+              link gave no sign that طريق would draw anything for it — the author saw a
+              bare address and reasonably assumed that is what would be published. The
+              card here is the same one the feed renders, so what is previewed is what
+              appears. A direct audio or image link gets its own element, since a file has
+              no og: tags to scrape and the generic card would draw nothing at all. */}
+          {(() => {
+            if (localPreview || mediaUrl || uploading || videoThumb || mainUploadFailed) return null;
+            const url = firstUrlIn(content);
+            if (!url) return null;
+            // The video platforms already have their own embeds above and below.
+            if (/(?:youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|facebook\.com|fb\.watch)/i.test(url)) return null;
+            const kind = classifyLinkMedia(url);
+            return (
+              <div className="mx-4 mb-4">
+                {kind === 'audio' ? (
+                  <div className="rounded-2xl px-3 py-3" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}>
+                    <p className="text-[11px] font-bold mb-2" style={{ color: 'var(--tr-text-muted)' }}>
+                      {isRtl ? '🎧 تسجيل صوتي' : '🎧 Audio'}
+                    </p>
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <audio src={url} controls preload="none" style={{ width: '100%' }} />
+                  </div>
+                ) : kind === 'image' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={url} alt="" className="w-full rounded-2xl" style={{ maxHeight: 320, objectFit: 'cover', border: '1px solid var(--tr-border-soft)' }} />
+                ) : (
+                  <ComposerLinkPreview url={url} isRtl={isRtl} />
+                )}
               </div>
             );
           })()}

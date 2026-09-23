@@ -10,6 +10,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqReactionPicker from '@/components/tareeq/TareeqReactionPicker';
 import { renderRichText } from '@/lib/tareeq-rich-text';
+import { classifyLinkMedia } from '@/lib/tareeq-link-media';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX, TAREEQ_REACTIONS, reactionEmojiFor } from '@/lib/tareeq-constants';
 import { savePostOffline, removePostOffline, isPostSavedOffline } from '@/lib/tareeq-idb';
 import type { TareeqCategoryKey, TareeqReactionType } from '@/lib/tareeq-constants';
@@ -135,6 +136,55 @@ function FacebookVideoEmbed({ url, isRtl }: { url: string; isRtl: boolean }) {
         title={isRtl ? 'فيديو فيسبوك' : 'Facebook video'}
       />
     </div>
+  );
+}
+
+/**
+ * A link straight to an audio file, as a player.
+ *
+ * It cannot start on its own — browsers refuse sound before the reader has interacted with
+ * the page, and that refusal is the rule working, not a bug to route around. One tap in
+ * place, with no navigation, is what was missing.
+ */
+function AudioLinkCard({ url, isRtl }: { url: string; isRtl: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;   // a wrong extension falls back to the plain link in the text
+  return (
+    <div
+      className="mt-3 rounded-2xl px-3 py-3"
+      style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}
+      onClick={e => e.stopPropagation()}
+    >
+      <p className="text-[11px] font-bold mb-2" style={{ color: 'var(--tr-text-muted)' }}>
+        {isRtl ? '🎧 تسجيل صوتي' : '🎧 Audio'}
+      </p>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio src={url} controls preload="none" onError={() => setFailed(true)} style={{ width: '100%' }} />
+    </div>
+  );
+}
+
+/**
+ * A link straight to an image, as the image.
+ *
+ * The generic preview card fetches such a URL expecting a page, finds no og: tags in a
+ * JPEG, and renders nothing — so the post showed a bare address where a picture was meant.
+ */
+function ImageLinkCard({ url }: { url: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={e => e.stopPropagation()}
+      className="mt-3 block rounded-2xl overflow-hidden"
+      style={{ border: '1px solid var(--tr-border-soft)' }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="" loading="lazy" onError={() => setFailed(true)} style={{ display: 'block', width: '100%', maxHeight: 420, objectFit: 'cover' }} />
+    </a>
   );
 }
 
@@ -1573,7 +1623,13 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           {/* Link preview — shown only when no image/video and no video embed detected */}
           {!post.sharedFromId && isTextOnly && !extractYouTubeId(post.content) && !extractTikTokId(post.content) && !extractVimeoId(post.content) && !extractFacebookVideoUrl(post.content) && (() => {
             const firstUrl = extractFirstNonVideoUrl(post.content);
-            return firstUrl ? <LinkPreviewCard url={firstUrl} isRtl={isRtl} /> : null;
+            if (!firstUrl) return null;
+            // A link to a FILE has no og: tags to scrape, so the generic card would draw
+            // nothing. Show the file.
+            const kind = classifyLinkMedia(firstUrl);
+            if (kind === 'audio') return <AudioLinkCard url={firstUrl} isRtl={isRtl} />;
+            if (kind === 'image') return <ImageLinkCard url={firstUrl} />;
+            return <LinkPreviewCard url={firstUrl} isRtl={isRtl} />;
           })()}
 
           {post.videoUrl && !hasImage && (

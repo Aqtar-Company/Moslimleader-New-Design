@@ -77,7 +77,7 @@ const FEMALE = new Set([
   'بسمة', 'بسمه', 'تسنيم', 'جميلة', 'حنان', 'دعاء', 'رشا', 'سحر', 'سعاد', 'سمر',
   'سميرة', 'شادية', 'صباح', 'عزة', 'علياء', 'غدير', 'فايزة', 'كريمة', 'لبنى', 'لينا',
   'ماجدة', 'مروه', 'منة الله', 'منى', 'نعمة', 'نهال', 'هالة', 'هناء', 'وردة', 'يسرا',
-  'هدير', 'ايه', 'آية', 'اية', 'رنا', 'رنيم', 'لؤلؤة', 'جهاد', 'امل', 'أمل', 'اسماء',
+  'هدير', 'ايمي', 'ايه', 'آية', 'اية', 'رنا', 'رنيم', 'لؤلؤة', 'جهاد', 'امل', 'أمل', 'اسماء',
 ]);
 
 /** Prefixes that settle it without a list. */
@@ -140,6 +140,7 @@ const FEMALE_LATIN = new Set([
   // several spellings each name is actually written in go in together.
   'rokia', 'rokya', 'roqia', 'rokaya', 'rokaia', 'roqaya', 'ruqaya', 'ruqayya', 'rokiya',
   'hadir', 'hadeer', 'hadeir', 'hedeer', 'hadier',
+  'emy', 'emmy', 'aimy', 'eimy', 'aimee',
 ]);
 
 const MALE_PREFIX = ['عبد', 'ابو', 'أبو'];

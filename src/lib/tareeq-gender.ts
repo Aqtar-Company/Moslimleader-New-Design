@@ -29,7 +29,7 @@
  * What kind of account this is — the field answers "who or what is this", not only
  * "man or woman".
  *
- * `org` is a company, a school, a charity, a shop: an account that is not a person. None
+ * `org` is a company, an institution, a charity, a shop: an account that is not a person. None
  * of the modesty reasoning applies to it in either direction — there is no face to veil
  * and no kinship to declare with an institution — so it is exempt from both rules rather
  * than being squeezed into one of the two human answers.
@@ -44,8 +44,8 @@ export const TAREEQ_GENDERS: { value: TareeqGender; labelAr: string; labelEn: st
   { value: 'male',   labelAr: 'رجل',   labelEn: 'Man' },
   { value: 'female', labelAr: 'امرأة', labelEn: 'Woman' },
   { value: 'org',    labelAr: 'جهة',   labelEn: 'Organisation',
-    hintAr: 'شركة أو مؤسسة أو مدرسة — حساب لكيان لا لشخص',
-    hintEn: 'A company, school or charity — an account for an entity, not a person' },
+    hintAr: 'شركة أو مؤسسة أو جمعية — حساب لكيان لا لشخص',
+    hintEn: 'A company, institution or charity — an account for an entity, not a person' },
 ];
 
 export function isGender(v: unknown): v is TareeqGender {

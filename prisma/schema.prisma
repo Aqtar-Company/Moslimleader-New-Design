@@ -47,7 +47,7 @@ model User {
   /// 'male' | 'female' | 'org'. NULL means the account has not answered yet, and طريق is
   /// closed to it until it does.
   ///
-  /// `org` is a company, school or charity — an account for an entity, not a person. It is
+  /// `org` is a company, institution or charity — an account for an entity, not a person. It is
   /// exempt from BOTH rules this field drives: there is no face to veil and no kinship to
   /// declare with an institution. It is a value of this field rather than a second column
   /// because this one already travels with every payload that carries a picture, and

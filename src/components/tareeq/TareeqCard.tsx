@@ -427,6 +427,10 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  // Seeded from the payload, then kept live by the react endpoint. Reading the prop
+  // directly meant the stacked emoji were whatever the server said when the page loaded:
+  // removing a reaction dropped the count but left its face in the strip.
+  const [topReactions, setTopReactions] = useState<string[]>(post.topReactions ?? []);
   const [showReactors, setShowReactors] = useState(false);
   const [textExpanded, setTextExpanded] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
@@ -535,9 +539,20 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     if (!user) { setShowGate(true); return; }
     if ('vibrate' in navigator) navigator.vibrate(40);
     const prev = currentReaction;
-    if (prev === type) { setCurrentReaction(null); setLikeCount(c => Math.max(0, c - 1)); }
-    else if (prev) { setCurrentReaction(type); }
-    else { setCurrentReaction(type); setLikeCount(c => c + 1); }
+    const prevTop = topReactions;
+    if (prev === type) {
+      setCurrentReaction(null);
+      setLikeCount(c => Math.max(0, c - 1));
+      // Drop it from the strip at once IF nobody else is holding it up. The client cannot
+      // know that, so it only removes the face when this was the only reaction on the
+      // post; otherwise it waits for the server rather than showing a wrong strip.
+      if (likeCount <= 1) setTopReactions(t => t.filter(x => x !== type));
+    } else if (prev) {
+      setCurrentReaction(type);
+    } else {
+      setCurrentReaction(type);
+      setLikeCount(c => c + 1);
+    }
     const res = await fetch(`/api/tareeq/${post.id}/react`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ type }),
@@ -549,9 +564,13 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       // a legacy TareeqLike being converted into a reaction changes nothing, and a stale
       // like being repaid changes it by more than one.
       if (typeof data.likeCount === 'number') setLikeCount(data.likeCount);
+      // The authoritative summary — this is what makes removing a reaction take the face
+      // with it even when others still hold different ones.
+      if (Array.isArray(data.topReactions)) setTopReactions(data.topReactions);
     }
     else {
       setCurrentReaction(prev);
+      setTopReactions(prevTop);
       if (prev === type) setLikeCount(c => c + 1);
       else if (!prev) setLikeCount(c => Math.max(0, c - 1));
     }
@@ -978,7 +997,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     // merged in — without this, reacting (or switching reaction type) bumped the count
     // but left the stacked emojis showing the stale server snapshot from page load.
     const topEmojis: string[] = (() => {
-      const types = [...(post.topReactions ?? [])];
+      const types = [...topReactions];
+      // Own reaction first and merged in, so the strip answers the tap before the request
+      // does. The server's list replaces this the moment it arrives.
       if (currentReaction && !types.includes(currentReaction)) types.unshift(currentReaction);
       if (types.length === 0) return ['⭐'];
       return types.slice(0, 3).map(t => reactionEmoji(t));

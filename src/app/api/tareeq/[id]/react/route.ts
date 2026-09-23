@@ -104,10 +104,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     });
   }
 
-  // Return the authoritative count: the client cannot predict it (a converted legacy like
-  // changes nothing), and guessing left the on-screen number one below the truth.
-  const fresh = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { likeCount: true } });
-  return NextResponse.json({ reaction, likeCount: fresh?.likeCount ?? 0 });
+  // Return the authoritative count AND the fresh summary. The count alone was not enough:
+  // the card builds its stacked emoji from `topReactions`, which is a snapshot taken when
+  // the page loaded, so removing a reaction left the emoji that was just withdrawn sitting
+  // in the strip — the number said one thing and the faces beside it said another.
+  const [fresh, grouped] = await Promise.all([
+    prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { likeCount: true } }),
+    prisma.tareeqReaction.groupBy({
+      by: ['type'],
+      where: { postId: params.id },
+      _count: { type: true },
+      orderBy: { _count: { type: 'desc' } },
+      take: 3,
+    }),
+  ]);
+
+  return NextResponse.json({
+    reaction,
+    likeCount: fresh?.likeCount ?? 0,
+    topReactions: grouped.map(g => g.type),
+  });
 }
 
 // GET — fetch reaction counts or full reactor list (?users=1)

@@ -421,7 +421,7 @@ function stripLinks(text: string): string {
             >
               <div className="flex items-center gap-2 mb-1">
                 {post.authorAvatarUrl
-                  ? <img src={post.authorAvatarUrl} style={{ ...veilStyle(post.authorGender, post.authorId) }} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                  ? <img src={post.authorAvatarUrl} style={{ ...veilStyle(post.authorGender, post.authorId, 24) }} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
                   : (
                     <span
                       className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] font-black"

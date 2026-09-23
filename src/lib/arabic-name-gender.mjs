@@ -77,7 +77,7 @@ const FEMALE = new Set([
   'بسمة', 'بسمه', 'تسنيم', 'جميلة', 'حنان', 'دعاء', 'رشا', 'سحر', 'سعاد', 'سمر',
   'سميرة', 'شادية', 'صباح', 'عزة', 'علياء', 'غدير', 'فايزة', 'كريمة', 'لبنى', 'لينا',
   'ماجدة', 'مروه', 'منة الله', 'منى', 'نعمة', 'نهال', 'هالة', 'هناء', 'وردة', 'يسرا',
-  'ايه', 'آية', 'اية', 'رنا', 'رنيم', 'لؤلؤة', 'جهاد', 'امل', 'أمل', 'اسماء',
+  'هدير', 'ايه', 'آية', 'اية', 'رنا', 'رنيم', 'لؤلؤة', 'جهاد', 'امل', 'أمل', 'اسماء',
 ]);
 
 /** Prefixes that settle it without a list. */
@@ -134,6 +134,12 @@ const FEMALE_LATIN = new Set([
   'esraa', 'israa', 'alaa', 'basma', 'tasneem', 'hanan', 'doaa', 'rasha', 'sahar', 'souad',
   'samar', 'samira', 'sabah', 'aya', 'aia', 'rana', 'raneem', 'amal', 'mai', 'may', 'menna',
   'yosra', 'yusra', 'nermeen', 'nermin', 'dalia', 'hala', 'hanaa', 'mona', 'nahla',
+  // Added from the first real run, where «Rokia Ibrahim» and «Hadir Ali» came back
+  // unresolved and their owner said plainly that both are women. Transliteration is the
+  // only reason they were missed — رقية and هدير are on the Arabic list already — so the
+  // several spellings each name is actually written in go in together.
+  'rokia', 'rokya', 'roqia', 'rokaya', 'rokaia', 'roqaya', 'ruqaya', 'ruqayya', 'rokiya',
+  'hadir', 'hadeer', 'hadeir', 'hedeer', 'hadier',
 ]);
 
 const MALE_PREFIX = ['عبد', 'ابو', 'أبو'];

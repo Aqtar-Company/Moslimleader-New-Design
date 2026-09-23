@@ -115,7 +115,12 @@ function Inner() {
   const [tab, setTab] = useState<'dms' | 'groups' | 'requests'>('dms');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [msgRequests, setMsgRequests] = useState<{ id: string; message: string; createdAt: string; from: { id: string; name: string; avatarUrl?: string | null; username?: string | null } }[]>([]);
+  const [msgRequests, setMsgRequests] = useState<{
+    id: string; message: string; createdAt: string;
+    /** What the sender declared, when the two are not of the same gender. */
+    relation?: string | null; relationLabel?: string | null; reason?: string | null;
+    from: { id: string; name: string; avatarUrl?: string | null; username?: string | null; tareeqGender?: string | null };
+  }[]>([]);
   const [processingReqId, setProcessingReqId] = useState<string | null>(null);
   const [reqError, setReqError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -200,6 +205,37 @@ function Inner() {
   } as React.CSSProperties);
 
   const hasUnread = conversations.some(c => c.unreadCount > 0);
+  // Reporting a false kinship claim, carried on the existing user-report channel. The
+  // claim itself goes in the description: a report that says only "false claim" leaves the
+  // moderator reading a complaint with the thing complained about missing.
+  const [reportRequestId, setReportRequestId] = useState<string | null>(null);
+  const [reportDone, setReportDone] = useState(false);
+
+  async function reportFalseClaim(reqId: string) {
+    const r = msgRequests.find(x => x.id === reqId);
+    if (!r) return;
+    const claim = r.relation === 'spouse' ? 'ادّعى أنه الزوج'
+      : r.relation === 'mahram' ? `ادّعى أنه «${r.relationLabel}»`
+      : 'طلب مراسلة';
+    try {
+      await fetch('/api/tareeq/reports', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({
+          targetType: 'user',
+          targetId: r.from.id,
+          reason: 'false_kinship_claim',
+          description: `${claim} في طلب رسالة. نص الطلب: ${r.message}`,
+        }),
+      });
+    } catch { /* the decline below still stands on its own */ }
+    // A report is also a refusal. Leaving the request pending afterwards would keep the
+    // person she just reported waiting at her door.
+    await handleRequest(reqId, 'reject');
+    setReportRequestId(null);
+    setReportDone(true);
+    setTimeout(() => setReportDone(false), 4000);
+  }
+
   const hasRequests = msgRequests.length > 0;
 
   // ── Conversation list (shared between mobile + desktop panel) ──────
@@ -229,7 +265,35 @@ function Inner() {
                     {r.from.username && <p className="text-[12px]" style={{ color: 'var(--tr-text-muted)' }}>@{r.from.username}</p>}
                   </div>
                 </div>
-                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--tr-text-primary)', background: 'var(--tr-overlay)', padding: '10px 14px', borderRadius: 12 }}>{r.message}</p>
+                {/* The declaration, above the message and set apart from it. She is being
+                    asked to let a stranger write to her; the claim is the thing she is
+                    actually deciding on, and burying it inside his own words would leave
+                    her deciding on his tone instead. */}
+                {r.relation && (
+                  <div className="rounded-xl px-3.5 py-2.5 flex flex-col gap-1" style={{
+                    background: r.relation === 'none' ? 'var(--tr-overlay)' : 'rgba(212,168,83,0.10)',
+                    border: `1px solid ${r.relation === 'none' ? 'var(--tr-border-soft)' : 'rgba(212,168,83,0.45)'}`,
+                  }}>
+                    <p className="text-[12.5px] font-bold leading-relaxed" style={{ color: 'var(--tr-text-primary)' }}>
+                      {r.relation === 'spouse'
+                        ? (isRtl ? `يقول ${r.from.name} إنه زوجك.` : `${r.from.name} says he is your spouse.`)
+                        : r.relation === 'mahram'
+                          ? (isRtl ? `يقول ${r.from.name} إنه «${r.relationLabel}».` : `${r.from.name} claims to be your ${r.relationLabel}.`)
+                          : (isRtl ? `${r.from.name} ليس من أقاربك، وذكر السبب:` : `${r.from.name} is not a relative, and gave this reason:`)}
+                    </p>
+                    {r.relation === 'none' && r.reason && (
+                      <p className="text-[13px] leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }} dir="auto">«{r.reason}»</p>
+                    )}
+                    {r.relation !== 'none' && (
+                      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>
+                        {isRtl
+                          ? 'هذا ادّعاء منه، لم يتحقّق منه أحد. إن لم يكن صحيحاً فارفضه وأبلغ عنه.'
+                          : 'This is his claim; nobody has verified it. If it is untrue, decline and report.'}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--tr-text-primary)', background: 'var(--tr-overlay)', padding: '10px 14px', borderRadius: 12 }} dir="auto">{r.message}</p>
                 {reqError && processingReqId === r.id && (
                   <p className="text-xs font-semibold" style={{ color: '#e74c3c' }}>{reqError}</p>
                 )}
@@ -247,6 +311,15 @@ function Inner() {
                     style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', opacity: processingReqId ? 0.6 : 1 }}
                   >{isRtl ? 'رفض' : 'Decline'}</button>
                 </div>
+                {/* Declining and reporting a false kinship claim are different acts. One
+                    ends a conversation; the other says someone lied about being family to
+                    get a message through — and only the second leaves a record. */}
+                <button
+                  type="button"
+                  onClick={() => setReportRequestId(r.id)}
+                  className="text-[12px] font-bold self-start"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e74c3c', padding: '2px 0' }}
+                >{isRtl ? 'إبلاغ عن ادّعاء كاذب' : 'Report a false claim'}</button>
               </div>
             ))}
           </div>
@@ -532,6 +605,36 @@ function Inner() {
           {showNotebook && <TareeqNotebookPopup onClose={() => setShowNotebook(false)} />}
         </>
       )}
+
+      {/* Confirming matters here: the button sits under a request and a mis-tap would
+          both refuse someone and accuse them. */}
+      {reportRequestId && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-5" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }} onClick={() => setReportRequestId(null)}>
+          <div className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
+            <h2 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'إبلاغ عن ادّعاء كاذب' : 'Report a false claim'}</h2>
+            <p className="text-[13px] leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>
+              {isRtl
+                ? 'سيصل للإدارة ما ادّعاه ونصّ طلبه، وسيُرفض الطلب. لا يعرف هو أنك أبلغت.'
+                : 'The moderators receive his claim and his message, and the request is declined. He is not told that you reported.'}
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => reportFalseClaim(reportRequestId)} className="flex-1 py-2 rounded-xl text-sm font-bold" style={{ background: '#e74c3c', color: '#fff', border: 'none' }}>
+                {isRtl ? 'أبلِغ وارفض' : 'Report and decline'}
+              </button>
+              <button onClick={() => setReportRequestId(null)} className="flex-1 py-2 rounded-xl text-sm font-bold" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: 'none' }}>
+                {isRtl ? 'رجوع' : 'Back'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reportDone && (
+        <div role="status" className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-xl text-[13px] font-bold" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', boxShadow: '0 8px 30px rgba(0,0,0,0.35)' }}>
+          {isRtl ? 'وصل البلاغ للإدارة، ورُفض الطلب.' : 'Reported, and the request was declined.'}
+        </div>
+      )}
+
     </div>
   );
 }

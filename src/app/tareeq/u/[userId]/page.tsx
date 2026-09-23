@@ -14,12 +14,12 @@ interface Props { params: { userId: string } }
 const resolveUser = cache(async function resolveUser(handle: string) {
   const byUsername = await prisma.user.findUnique({
     where: { username: handle },
-    select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true, tareeqProfileLocked: true },
   });
   if (byUsername) return byUsername;
   return prisma.user.findUnique({
     where: { id: handle },
-    select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true, tareeqProfileLocked: true },
   });
 });
 
@@ -86,6 +86,22 @@ export default async function TareeqUserPage({ params }: Props) {
     blockedByProfile = rows.some(r => r.blockerId === profileUser.id);
   }
   const blocked = viewerIsBlocking || blockedByProfile;
+
+  // A locked profile is answered on the SERVER, before any of it is fetched. Hiding it in
+  // the client would mean the posts, the picture and the counts were all sent to a browser
+  // that was asked politely not to show them — and "view source" is not a lock.
+  if (profileUser.tareeqProfileLocked && !isOwner) {
+    return (
+      // The shell comes from the layout — this page returns its content only.
+      <div dir="rtl" className="flex flex-col items-center justify-center text-center px-6" style={{ minHeight: '70vh' }}>
+          <div className="text-5xl mb-4" aria-hidden>🔒</div>
+          <h1 className="text-lg font-black mb-2" style={{ color: 'var(--tr-text-primary)' }}>هذا الملف مُقفل</h1>
+        <p className="text-sm leading-relaxed max-w-xs" style={{ color: 'var(--tr-text-secondary)' }}>
+          اختار صاحبه ألّا يظهر لأحد. لا يمكن عرض المنشورات ولا الصورة ولا عدد المتابعين.
+        </p>
+      </div>
+    );
+  }
 
   const [rawPosts, postCount] = blocked
     ? [[], 0]

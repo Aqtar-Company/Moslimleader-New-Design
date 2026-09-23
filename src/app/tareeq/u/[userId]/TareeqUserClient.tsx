@@ -8,6 +8,7 @@ import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 import { useTareeqViewer } from '@/context/TareeqViewerContext';
+import { needsRelationDeclaration, mahramTiesFor, isGender, RELATION_LABELS, type TareeqRelation } from '@/lib/tareeq-gender';
 import { BLUR_COVER_PX, blurStyle } from '@/lib/tareeq-gender';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqQRModal from '@/components/tareeq/TareeqQRModal';
@@ -177,6 +178,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [showReportUser, setShowReportUser] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showMsgReqModal, setShowMsgReqModal] = useState(false);
+  // The declaration a cross-gender request must carry. Asked only when it applies — see
+  // needsRelationDeclaration; two members of the same gender are asked nothing.
+  const [msgReqRelation, setMsgReqRelation] = useState<TareeqRelation | null>(null);
+  const [msgReqTie, setMsgReqTie] = useState('');
+  const [msgReqReason, setMsgReqReason] = useState('');
   const [msgReqText, setMsgReqText] = useState('');
   const [msgReqSending, setMsgReqSending] = useState(false);
   const [msgReqSent, setMsgReqSent] = useState(false);
@@ -252,6 +258,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   // OTHERS see, and the owner is not other.
   const viewer = useTareeqViewer();
   const veilCover = viewer.blurFor(profileUser.tareeqGender, profileUser.id);
+  // Only across genders. Asking everyone would make it a formality people click past,
+  // which is exactly what empties it of meaning.
+  const needsRelation = needsRelationDeclaration(viewer.gender, profileUser.tareeqGender);
+  const mahramTies = isGender(viewer.gender) ? mahramTiesFor(viewer.gender) : [];
   const [coverLoadError, setCoverLoadError] = useState(false);
   const [showCoverEditor, setShowCoverEditor] = useState(false);
 
@@ -519,8 +529,20 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     } catch { /* ignore */ }
   }
 
+  /** What the form still needs before it can be sent, or null when it is complete. */
+  function msgReqMissing(): string | null {
+    if (!msgReqText.trim()) return isRtl ? 'اكتب رسالتك' : 'Write your message';
+    if (!needsRelation) return null;
+    if (!msgReqRelation) return isRtl ? 'حدّد صلتك أولاً' : 'State your relation first';
+    if (msgReqRelation === 'mahram' && !msgReqTie) return isRtl ? 'اختر صلة القرابة' : 'Choose the tie';
+    if (msgReqRelation === 'none' && msgReqReason.trim().length < 10) {
+      return isRtl ? 'اكتب سبب الرسالة (١٠ أحرف على الأقل)' : 'Give a reason (10 characters minimum)';
+    }
+    return null;
+  }
+
   async function handleSendMsgRequest() {
-    if (!msgReqText.trim() || msgReqSending) return;
+    if (msgReqMissing() || msgReqSending) return;
     setMsgReqSending(true);
     setMsgReqError('');
     try {
@@ -528,7 +550,15 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ toId: profileUser.id, message: msgReqText.trim() }),
+        body: JSON.stringify({
+          toId: profileUser.id,
+          message: msgReqText.trim(),
+          // Sent unconditionally; the server ignores them when the pair does not need a
+          // declaration, and refuses the request when it does and they are absent.
+          relation: msgReqRelation,
+          relationLabel: msgReqRelation === 'mahram' ? msgReqTie : undefined,
+          reason: msgReqRelation === 'none' ? msgReqReason.trim() : undefined,
+        }),
       });
       if (res.ok) {
         setMsgReqSent(true);
@@ -1508,6 +1538,84 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             ) : (
               <>
                 <p className="text-[13px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? `${profileUser.name} يقبل الرسائل من المتابِعين فقط. أرسل طلباً برسالة مختصرة.` : `${profileUser.name} only accepts messages from followers. Send a short request.`}</p>
+
+                {/* The declaration. It is a CLAIM and nothing here verifies it — what it
+                    buys is that the recipient reads it in words before she answers, and
+                    that it is stored, so a false one becomes something she can report
+                    rather than a private lie. */}
+                {needsRelation && (
+                  <div className="flex flex-col gap-2 rounded-2xl p-3" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
+                    <p className="text-[12px] font-bold" style={{ color: 'var(--tr-text-primary)' }}>
+                      {isRtl ? `ما صلتك بـ${profileUser.name}؟` : `What is your relation to ${profileUser.name}?`}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(['spouse', 'mahram', 'none'] as TareeqRelation[]).map(r => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => { setMsgReqRelation(r); setMsgReqTie(''); }}
+                          className="px-3 py-1.5 rounded-xl text-[12px] font-bold transition"
+                          style={{
+                            background: msgReqRelation === r ? 'var(--tr-gold)' : 'var(--tr-surface)',
+                            color: msgReqRelation === r ? '#1a1a1a' : 'var(--tr-text-secondary)',
+                            border: '1px solid var(--tr-border-soft)',
+                          }}
+                        >
+                          {isRtl ? RELATION_LABELS[r].ar : RELATION_LABELS[r].en}
+                        </button>
+                      ))}
+                    </div>
+
+                    {msgReqRelation === 'mahram' && (
+                      <>
+                        <p className="text-[11px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>
+                          {isRtl ? 'اختر الصلة — ستظهر لها كما هي:' : 'Choose the tie — she will read it as written:'}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {mahramTies.map(t => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setMsgReqTie(t)}
+                              className="px-2.5 py-1 rounded-lg text-[12px] font-semibold transition"
+                              style={{
+                                background: msgReqTie === t ? 'rgba(212,168,83,0.22)' : 'var(--tr-surface)',
+                                color: msgReqTie === t ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                                border: `1px solid ${msgReqTie === t ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
+                              }}
+                            >{t}</button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {msgReqRelation === 'none' && (
+                      <>
+                        <p className="text-[11px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>
+                          {isRtl ? 'لماذا تريد مراسلتها؟ هذا ما ستقرّر على أساسه.' : 'Why are you writing? This is what she decides on.'}
+                        </p>
+                        <input
+                          value={msgReqReason}
+                          onChange={e => setMsgReqReason(e.target.value)}
+                          maxLength={300}
+                          placeholder={isRtl ? 'مثال: سؤال عن كتاب نشرتِه' : 'e.g. a question about a book you shared'}
+                          className="w-full rounded-xl px-3 py-2 text-[13px] outline-none"
+                          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+                          dir="auto"
+                        />
+                      </>
+                    )}
+
+                    {msgReqRelation && (
+                      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>
+                        {isRtl
+                          ? 'ما تختاره يظهر لها مع طلبك. ادّعاء صلة غير صحيحة يمكن الإبلاغ عنه.'
+                          : 'What you choose is shown to her with your request. A false claim can be reported.'}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <textarea
                   value={msgReqText}
                   onChange={e => setMsgReqText(e.target.value)}
@@ -1523,7 +1631,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   <p className="text-[13px] text-center rounded-xl px-3 py-2" style={{ color: '#e53e3e', background: 'rgba(229,62,62,0.08)' }}>{msgReqError}</p>
                 )}
                 <button
-                  disabled={!msgReqText.trim() || msgReqSending}
+                  disabled={!!msgReqMissing() || msgReqSending}
+                  title={msgReqMissing() ?? undefined}
                   onClick={handleSendMsgRequest}
                   className="w-full py-3 rounded-xl font-black text-sm transition active:scale-95"
                   style={{ background: '#1a6ed4', color: '#fff', opacity: (!msgReqText.trim() || msgReqSending) ? 0.6 : 1 }}

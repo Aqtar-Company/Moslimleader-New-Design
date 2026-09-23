@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isBlockedEitherWay, isTareeqSuspended } from '@/lib/tareeq-guard';
+import { isGender, isMahramTie, needsRelationDeclaration, type TareeqRelation } from '@/lib/tareeq-gender';
 
 // GET /api/tareeq/message-requests — list incoming pending requests for current user
 export async function GET(_req: NextRequest) {
@@ -16,6 +17,9 @@ export async function GET(_req: NextRequest) {
     include: { from: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true, username: true } } },
   });
 
+  // `relation`, `relationLabel` and `reason` go out with the row: they are what the
+  // recipient decides on. A request that arrives as a bare name and a line of text asks
+  // her to judge a stranger with nothing to judge by.
   return NextResponse.json({ requests });
 }
 
@@ -40,8 +44,49 @@ export async function POST(req: NextRequest) {
   if (!message) return NextResponse.json({ error: 'الرسالة فارغة' }, { status: 400 });
 
   // Verify target user exists before upserting (prevents FK 500 error)
-  const target = await prisma.user.findUnique({ where: { id: toId }, select: { id: true } });
+  const target = await prisma.user.findUnique({ where: { id: toId }, select: { id: true, tareeqGender: true } });
   if (!target) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
+
+  // ── What the sender states about the recipient ────────────────────────────────────────
+  // Only across genders. Two men writing to each other are asked nothing: the question
+  // exists because of the mixing, and asking it of everyone would make it a formality
+  // people click through — which is exactly what would empty it of meaning.
+  //
+  // NOTHING here is verified, and the design does not pretend otherwise. What it buys is
+  // that the claim is SHOWN to the recipient in words before she answers, and stored. A
+  // false claim stops being a private lie and becomes something she can report with the
+  // claim attached to it.
+  const me = await prisma.user.findUnique({ where: { id: user.userId }, select: { tareeqGender: true } });
+  let relation: TareeqRelation | null = null;
+  let relationLabel: string | null = null;
+  let reason: string | null = null;
+
+  if (needsRelationDeclaration(me?.tareeqGender, target.tareeqGender)) {
+    const claimed = String(body.relation ?? '').trim();
+    if (claimed !== 'spouse' && claimed !== 'mahram' && claimed !== 'none') {
+      return NextResponse.json({ error: 'حدّد صلتك بالمُرسَل إليه أولاً' }, { status: 400 });
+    }
+    relation = claimed;
+
+    if (relation === 'mahram') {
+      const tie = String(body.relationLabel ?? '').trim();
+      // From the fixed list, not free text: a typed tie is a place to write anything at
+      // all, and what the recipient must read is a claim she can recognise at a glance.
+      if (!isGender(me?.tareeqGender) || !isMahramTie(me.tareeqGender, tie)) {
+        return NextResponse.json({ error: 'اختر صلة القرابة من القائمة' }, { status: 400 });
+      }
+      relationLabel = tie;
+    }
+
+    if (relation === 'none') {
+      // Without a stated purpose the recipient is asked to judge a stranger with nothing
+      // to judge by, which is how «اقبل؟» becomes a coin toss.
+      reason = String(body.reason ?? '').trim().slice(0, 300);
+      if (reason.length < 10) {
+        return NextResponse.json({ error: 'اكتب سبب الرسالة (١٠ أحرف على الأقل)' }, { status: 400 });
+      }
+    }
+  }
 
   if (await isBlockedEitherWay(user.userId, toId)) {
     return NextResponse.json({ error: 'لا يمكن إرسال طلب لهذا المستخدم' }, { status: 403 });
@@ -83,8 +128,11 @@ export async function POST(req: NextRequest) {
 
   await prisma.tareeqMessageRequest.upsert({
     where: { fromId_toId: { fromId: user.userId, toId } },
-    create: { fromId: user.userId, toId, message, status: 'pending' },
-    update: { message, status: 'pending' },
+    create: { fromId: user.userId, toId, message, status: 'pending', relation, relationLabel, reason },
+    // A re-send replaces the claim too. Leaving the old one would let someone declare a
+    // kinship, be refused, and have that declaration still attached to a later request
+    // they sent without it.
+    update: { message, status: 'pending', relation, relationLabel, reason },
   });
 
   return NextResponse.json({ ok: true });

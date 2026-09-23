@@ -78,7 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         id: true, content: true, imageUrl: true, videoUrl: true, audioUrl: true, read: true, createdAt: true, senderId: true,
         replyToId: true, replyToContent: true, sharedPostId: true, sharedPostTitle: true,
         sharedPostExcerpt: true, sharedPostAuthor: true, sharedPostImageUrl: true,
-        sender: { select: { id: true, name: true, avatarUrl: true } },
+        sender: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
       },
     }),
     prisma.tareeqConversation.update({

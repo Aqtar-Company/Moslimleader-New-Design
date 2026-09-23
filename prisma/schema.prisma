@@ -44,6 +44,13 @@ model User {
   tareeqSuspendedAt       DateTime?
   tareeqSuspendReason     String?
   tareeqMessagePrivacy    String    @default("everyone")
+  /// 'male' | 'female'. NULL means the member has not chosen yet, and طريق is closed to
+  /// them until they do — every rule below reads from this one field.
+  tareeqGender            String?
+  /// When they chose. A change after the fact is worth being able to see.
+  tareeqGenderSetAt       DateTime?
+  /// The member's profile page answers "this profile is private" to everyone but them.
+  tareeqProfileLocked     Boolean   @default(false)
   /// Which notification types this user wants, as { like: false, comment: true, … }.
   /// Nine notification types existed and the only control was all-or-nothing, so anyone
   /// annoyed by "someone liked your mark" lost "you have a new message" along with it.
@@ -54,59 +61,59 @@ model User {
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
-  orders                  Order[]
-  cart                    Cart?
-  reviews                 Review[]
-  bookAccesses            BookAccess[]
-  oauthAccounts           OAuthAccount[]
-  bookOrders              BookOrder[]
-  devices                 BookDevice[]
-  supportRequests         SupportRequest[]         @relation("UserSupportRequests")
-  sponsorProfile          Sponsor?                 @relation("UserSponsorProfile")
-  beneficiaryCopies       SponsoredCopy[]          @relation("BeneficiaryCopies")
-  customerTransactions    CustomerTransaction[]
-  campaignRecipients      CampaignRecipient[]
-  wishlistShareLinks      WishlistShareLink[]
-  loyaltyTransactions     LoyaltyTransaction[]
-  referralRewards         ReferralReward[]
-  returnRequests          ReturnRequest[]
-  children                Child[]
-  tareeqPosts             TareeqPost[]
-  tareeqLikes             TareeqLike[]
-  tareeqComments          TareeqComment[]
-  tareeqBookmarks         TareeqBookmark[]
-  tareeqBookmarkFolders   TareeqBookmarkFolder[]   @relation("TareeqBmFolders")
-  tareeqNotifications     TareeqNotification[]     @relation("TareeqNotifRecipient")
-  tareeqSentMessages      TareeqMessage[]          @relation("TareeqMsgSender")
-  tareeqPushSubscriptions TareeqPushSubscription[] @relation("TareeqPushSubs")
-  adminBroadcastReceipts  AdminBroadcastRecipient[] @relation("AdminBroadcastRecipients")
-  tareeqFollowing         TareeqFollow[]           @relation("TareeqFollowing")
-  tareeqFollowers         TareeqFollow[]           @relation("TareeqFollowers")
-  tareeqReactions         TareeqReaction[]
-  tareeqCommentReactions  TareeqCommentReaction[]  @relation("TareeqCommentReactions")
-  tareeqGroupsCreated     TareeqGroup[]            @relation("TareeqGroupCreator")
-  tareeqGroupMembers      TareeqGroupMember[]      @relation("TareeqGroupMemberships")
-  tareeqGroupMessages     TareeqGroupMessage[]     @relation("TareeqGroupMsgSender")
-  tareeqCallsOut          TareeqCall[]             @relation("TareeqCallCaller")
-  tareeqCallsIn           TareeqCall[]             @relation("TareeqCallCallee")
-  tareeqReports           TareeqReport[]           @relation("TareeqUserReports")
-  tareeqReportsFiled      TareeqReport[]           @relation("TareeqReporter")
-  tareeqBans                  TareeqBan[]              @relation("TareeqBans")
-  tareeqTickets               TareeqSupportTicket[]    @relation("TareeqTickets")
-  tareeqPostSubscriptions     TareeqPostSubscription[]
-  tareeqPostViews         TareeqPostView[]
-  tareeqNotes             TareeqNote[]             @relation("TareeqNotes")
-  khatmatiProgress        KhatmatiProgress?
-  khatmatiWirds           KhatmatiWird[]
-  tareeqBlocksMade        TareeqBlock[]            @relation("TareeqBlocksMade")
-  tareeqBlocksReceived    TareeqBlock[]            @relation("TareeqBlocksReceived")
-  tareeqMutesMade         TareeqMute[]             @relation("TareeqMutesMade")
-  tareeqMutesReceived     TareeqMute[]             @relation("TareeqMutesReceived")
-  tareeqMsgRequestsSent   TareeqMessageRequest[]   @relation("TareeqMsgReqFrom")
-  tareeqMsgRequestsReceived TareeqMessageRequest[] @relation("TareeqMsgReqTo")
-  khatmaGroupsAdmin       KhatmaGroup[]            @relation("KhatmaGroupAdmin")
-  khatmaGroupMemberships  KhatmaGroupMember[]      @relation("KhatmaGroupMemberships")
-  familyMembership        FamilyMembership?        @relation("MembershipOwner")
+  orders                    Order[]
+  cart                      Cart?
+  reviews                   Review[]
+  bookAccesses              BookAccess[]
+  oauthAccounts             OAuthAccount[]
+  bookOrders                BookOrder[]
+  devices                   BookDevice[]
+  supportRequests           SupportRequest[]          @relation("UserSupportRequests")
+  sponsorProfile            Sponsor?                  @relation("UserSponsorProfile")
+  beneficiaryCopies         SponsoredCopy[]           @relation("BeneficiaryCopies")
+  customerTransactions      CustomerTransaction[]
+  campaignRecipients        CampaignRecipient[]
+  wishlistShareLinks        WishlistShareLink[]
+  loyaltyTransactions       LoyaltyTransaction[]
+  referralRewards           ReferralReward[]
+  returnRequests            ReturnRequest[]
+  children                  Child[]
+  tareeqPosts               TareeqPost[]
+  tareeqLikes               TareeqLike[]
+  tareeqComments            TareeqComment[]
+  tareeqBookmarks           TareeqBookmark[]
+  tareeqBookmarkFolders     TareeqBookmarkFolder[]    @relation("TareeqBmFolders")
+  tareeqNotifications       TareeqNotification[]      @relation("TareeqNotifRecipient")
+  tareeqSentMessages        TareeqMessage[]           @relation("TareeqMsgSender")
+  tareeqPushSubscriptions   TareeqPushSubscription[]  @relation("TareeqPushSubs")
+  adminBroadcastReceipts    AdminBroadcastRecipient[] @relation("AdminBroadcastRecipients")
+  tareeqFollowing           TareeqFollow[]            @relation("TareeqFollowing")
+  tareeqFollowers           TareeqFollow[]            @relation("TareeqFollowers")
+  tareeqReactions           TareeqReaction[]
+  tareeqCommentReactions    TareeqCommentReaction[]   @relation("TareeqCommentReactions")
+  tareeqGroupsCreated       TareeqGroup[]             @relation("TareeqGroupCreator")
+  tareeqGroupMembers        TareeqGroupMember[]       @relation("TareeqGroupMemberships")
+  tareeqGroupMessages       TareeqGroupMessage[]      @relation("TareeqGroupMsgSender")
+  tareeqCallsOut            TareeqCall[]              @relation("TareeqCallCaller")
+  tareeqCallsIn             TareeqCall[]              @relation("TareeqCallCallee")
+  tareeqReports             TareeqReport[]            @relation("TareeqUserReports")
+  tareeqReportsFiled        TareeqReport[]            @relation("TareeqReporter")
+  tareeqBans                TareeqBan[]               @relation("TareeqBans")
+  tareeqTickets             TareeqSupportTicket[]     @relation("TareeqTickets")
+  tareeqPostSubscriptions   TareeqPostSubscription[]
+  tareeqPostViews           TareeqPostView[]
+  tareeqNotes               TareeqNote[]              @relation("TareeqNotes")
+  khatmatiProgress          KhatmatiProgress?
+  khatmatiWirds             KhatmatiWird[]
+  tareeqBlocksMade          TareeqBlock[]             @relation("TareeqBlocksMade")
+  tareeqBlocksReceived      TareeqBlock[]             @relation("TareeqBlocksReceived")
+  tareeqMutesMade           TareeqMute[]              @relation("TareeqMutesMade")
+  tareeqMutesReceived       TareeqMute[]              @relation("TareeqMutesReceived")
+  tareeqMsgRequestsSent     TareeqMessageRequest[]    @relation("TareeqMsgReqFrom")
+  tareeqMsgRequestsReceived TareeqMessageRequest[]    @relation("TareeqMsgReqTo")
+  khatmaGroupsAdmin         KhatmaGroup[]             @relation("KhatmaGroupAdmin")
+  khatmaGroupMemberships    KhatmaGroupMember[]       @relation("KhatmaGroupMemberships")
+  familyMembership          FamilyMembership?         @relation("MembershipOwner")
 
   @@index([role])
   @@index([isWholesale])
@@ -968,36 +975,36 @@ model ProductionFile {
 
 // ─── طريق — Community Layer ───────────────────────────────────────────────────
 model TareeqPost {
-  id           String           @id @default(cuid())
-  content      String           @db.Text
-  title        String?
-  summary      String?          @db.Text
-  category     String?
-  tags         Json?
-  imageUrl     String?          @db.Text
-  imageUrls    Json?
+  id              String    @id @default(cuid())
+  content         String    @db.Text
+  title           String?
+  summary         String?   @db.Text
+  category        String?
+  tags            Json?
+  imageUrl        String?   @db.Text
+  imageUrls       Json?
   // Author-written description of the image, for screen readers. Every <img> in Tareeq
   // was hardcoded alt="" — correct for decoration, wrong for a photo carrying the point
   // of the post, which made every uploaded image invisible to a blind reader.
-  imageAlt     String?          @db.Text
-  videoUrl     String?          @db.Text
+  imageAlt        String?   @db.Text
+  videoUrl        String?   @db.Text
   // Poster frame for a video post. The composer has always SENT this (a frame it grabs
   // from the video, or a cover the author picked) and POST /api/tareeq silently dropped
   // it — there was no column. So a video post had no still image anywhere: no poster on
   // the player, and nothing to show when it was sent in a message.
-  thumbnailUrl String?          @db.Text
-  userId       String?
-  user         User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  authorName   String           @default("مجهول")
-  likeCount    Int              @default(0)
-  commentCount Int              @default(0)
-  savedCount   Int              @default(0)
-  viewCount    Int              @default(0)
-  isHidden     Boolean          @default(false)
-  hiddenBy     String?
-  hiddenReason String?
+  thumbnailUrl    String?   @db.Text
+  userId          String?
+  user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  authorName      String    @default("مجهول")
+  likeCount       Int       @default(0)
+  commentCount    Int       @default(0)
+  savedCount      Int       @default(0)
+  viewCount       Int       @default(0)
+  isHidden        Boolean   @default(false)
+  hiddenBy        String?
+  hiddenReason    String?
   pinnedCommentId String?
-  postUpdate      String?                  @db.Text
+  postUpdate      String?   @db.Text
   postUpdateAt    DateTime?
   seriesId        String?
   seriesTitle     String?
@@ -1006,16 +1013,16 @@ model TareeqPost {
   // Server-side drafts. The composer already kept ONE draft in localStorage, which meant
   // a draft started on the phone did not exist on the desktop, and starting a second post
   // overwrote the first. A draft is a real row that the feed filters out.
-  isDraft         Boolean                  @default(false)
+  isDraft     Boolean   @default(false)
   /// Ranking score for the «الأنفع» feed: engagement, damped, plus a recency term.
   /// Stored rather than computed at read time so the feed can ORDER BY an index instead of
   /// sorting the whole table. Set on publish and recomputed nightly by
   /// /api/cron/tareeq-cleanup — the decay is slow enough that a daily pass is plenty.
-  hotScore        Float                    @default(0)
+  hotScore    Float     @default(0)
   // When the post actually went public. Null while it is a draft. Set on publish rather
   // than reusing createdAt, so a post drafted last week and published today is not buried
   // a week deep in the feed.
-  publishedAt     DateTime?
+  publishedAt DateTime?
 
   // A share is a POINTER to the original, not a copy of its text. Copying produced a post
   // that read as if the sharer had written it themselves — the author's name, avatar and
@@ -1023,20 +1030,20 @@ model TareeqPost {
   // it show through and attribution can't drift.
   // onDelete: SetNull, never Cascade: deleting a post must not delete everyone's shares of
   // it. A share whose original is gone renders an "unavailable" placeholder.
-  sharedFromId    String?
-  sharedFrom      TareeqPost?              @relation("TareeqShares", fields: [sharedFromId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  shares          TareeqPost[]             @relation("TareeqShares")
-  shareCount      Int                      @default(0)
+  sharedFromId String?
+  sharedFrom   TareeqPost?  @relation("TareeqShares", fields: [sharedFromId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  shares       TareeqPost[] @relation("TareeqShares")
+  shareCount   Int          @default(0)
 
-  likes           TareeqLike[]
-  comments        TareeqComment[]
-  bookmarks       TareeqBookmark[]
-  reactions       TareeqReaction[]
-  reports         TareeqReport[]           @relation("TareeqPostReports")
-  subscriptions   TareeqPostSubscription[]
-  views           TareeqPostView[]
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
+  likes         TareeqLike[]
+  comments      TareeqComment[]
+  bookmarks     TareeqBookmark[]
+  reactions     TareeqReaction[]
+  reports       TareeqReport[]           @relation("TareeqPostReports")
+  subscriptions TareeqPostSubscription[]
+  views         TareeqPostView[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
 
   @@index([userId])
   @@index([createdAt])
@@ -1162,19 +1169,19 @@ model TareeqPostSubscription {
 }
 
 model KhatmatiProgress {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currentPage    Int       @default(1)
-  currentSurah   Int       @default(1)
-  currentAyah    Int       @default(1)
-  dailyGoalPages Int       @default(4)
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentPage    Int      @default(1)
+  currentSurah   Int      @default(1)
+  currentAyah    Int      @default(1)
+  dailyGoalPages Int      @default(4)
   lastReadDate   String?
-  sirajStreak    Int       @default(0)
-  totalPagesRead Int       @default(0)
-  dailyReminder  Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  sirajStreak    Int      @default(0)
+  totalPagesRead Int      @default(0)
+  dailyReminder  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 /// Muting, as distinct from blocking.
@@ -1267,32 +1274,32 @@ model TareeqConversation {
 }
 
 model TareeqMessage {
-  id               String             @id @default(cuid())
-  conversationId   String
-  conversation     TareeqConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId         String
-  sender           User               @relation("TareeqMsgSender", fields: [senderId], references: [id], onDelete: Cascade)
-  content          String             @db.Text
-  imageUrl         String?            @db.Text
-  videoUrl         String?            @db.Text
-  audioUrl         String?            @db.Text
-  read             Boolean            @default(false)
-  deletedAt        DateTime?
-  deletedForA      Boolean   @default(false)
-  deletedForB      Boolean   @default(false)
-  expiresAt        DateTime?
-  replyToId        String?
-  replyToContent   String?            @db.Text
+  id                 String             @id @default(cuid())
+  conversationId     String
+  conversation       TareeqConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId           String
+  sender             User               @relation("TareeqMsgSender", fields: [senderId], references: [id], onDelete: Cascade)
+  content            String             @db.Text
+  imageUrl           String?            @db.Text
+  videoUrl           String?            @db.Text
+  audioUrl           String?            @db.Text
+  read               Boolean            @default(false)
+  deletedAt          DateTime?
+  deletedForA        Boolean            @default(false)
+  deletedForB        Boolean            @default(false)
+  expiresAt          DateTime?
+  replyToId          String?
+  replyToContent     String?            @db.Text
   // A shared post is snapshotted at send time on purpose: the message must still show
   // something if the post is later deleted. Title alone was not enough — most posts have
   // no title, so the bubble fell back to a generic "منشور طريق" with no author and no text,
   // which reads as a broken attachment rather than a post.
-  sharedPostId     String?
-  sharedPostTitle  String?
-  sharedPostExcerpt String?           @db.Text
-  sharedPostAuthor String?
-  sharedPostImageUrl String?          @db.Text
-  createdAt        DateTime           @default(now())
+  sharedPostId       String?
+  sharedPostTitle    String?
+  sharedPostExcerpt  String?            @db.Text
+  sharedPostAuthor   String?
+  sharedPostImageUrl String?            @db.Text
+  createdAt          DateTime           @default(now())
 
   @@index([conversationId, createdAt])
   @@index([conversationId, deletedAt])
@@ -1300,17 +1307,26 @@ model TareeqMessage {
 }
 
 model TareeqMessageRequest {
-  id          String   @id @default(cuid())
-  fromId      String
-  from        User     @relation("TareeqMsgReqFrom", fields: [fromId], references: [id], onDelete: Cascade)
-  toId        String
-  to          User     @relation("TareeqMsgReqTo", fields: [toId], references: [id], onDelete: Cascade)
-  message     String   @db.Text
-  status      String   @default("pending")
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  /// How the sender describes their standing with the recipient, when the two are not of
+  /// the same gender: 'spouse' | 'mahram' | 'none'. NULL on a same-gender request, which
+  /// is not asked.
+  relation      String?
+  /// The named tie for a 'mahram' claim — أخت, خالة, ابنة… Free text from a fixed list, so
+  /// the recipient reads a claim in words rather than a code.
+  relationLabel String?  @db.VarChar(40)
+  /// Why they are writing, required when relation = 'none'. The recipient decides on THIS.
+  reason        String?  @db.Text
+  fromId        String
+  from          User     @relation("TareeqMsgReqFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId          String
+  to            User     @relation("TareeqMsgReqTo", fields: [toId], references: [id], onDelete: Cascade)
+  message       String   @db.Text
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
   // When the status last changed — a declined request is silenced for 30 days from
   // THIS, not from when it was first sent.
-  updatedAt   DateTime @default(now()) @updatedAt
+  updatedAt     DateTime @default(now()) @updatedAt
 
   @@unique([fromId, toId])
   @@index([toId])
@@ -1826,22 +1842,22 @@ enum TareeqBanType {
 }
 
 model TareeqBan {
-  id        String        @id @default(cuid())
-  userId    String
-  user      User          @relation("TareeqBans", fields: [userId], references: [id], onDelete: Cascade)
-  type      TareeqBanType
-  reason    String        @db.Text
-  bannedBy  String
-  expiresAt DateTime?
-  isActive  Boolean       @default(true)
-  liftedBy  String?
-  liftedAt  DateTime?
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation("TareeqBans", fields: [userId], references: [id], onDelete: Cascade)
+  type         TareeqBanType
+  reason       String        @db.Text
+  bannedBy     String
+  expiresAt    DateTime?
+  isActive     Boolean       @default(true)
+  liftedBy     String?
+  liftedAt     DateTime?
   // A ban with no way to answer it reads as arbitrary even when it is correct. The banned
   // user can state their case once; an admin sees it in the same row as the ban.
-  appealText   String?    @db.Text
+  appealText   String?       @db.Text
   appealedAt   DateTime?
-  appealStatus String?    // null = never appealed | "pending" | "rejected" | "accepted"
-  createdAt DateTime      @default(now())
+  appealStatus String? // null = never appealed | "pending" | "rejected" | "accepted"
+  createdAt    DateTime      @default(now())
 
   @@index([userId])
   @@index([isActive])
@@ -1958,22 +1974,22 @@ enum MembershipStatus {
 
 model FamilyMembership {
   id               String           @id @default(cuid())
-  membershipNumber String           @unique  // ML-026-00184
-  qrToken          String           @unique  // ML-XXXXXXXX (random, used in QR URL)
+  membershipNumber String           @unique // ML-026-00184
+  qrToken          String           @unique // ML-XXXXXXXX (random, used in QR URL)
   ownerUserId      String           @unique
   owner            User             @relation("MembershipOwner", fields: [ownerUserId], references: [id])
   status           MembershipStatus @default(PENDING)
-  tier             String           @default("leader")  // "leader" | "community"
-  familyName       String?          // e.g. "أسرة إبراهيم حسن"
-  memberSince      Int              // Year of first activation — never changes on renewal
+  tier             String           @default("leader") // "leader" | "community"
+  familyName       String? // e.g. "أسرة إبراهيم حسن"
+  memberSince      Int // Year of first activation — never changes on renewal
   startsAt         DateTime?
   expiresAt        DateTime?
   paypalOrderId    String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  familyMembers    FamilyMember[]
-  renewals         MembershipRenewal[]
+  familyMembers FamilyMember[]
+  renewals      MembershipRenewal[]
 
   @@index([status])
   @@index([expiresAt])
@@ -1984,7 +2000,7 @@ model FamilyMember {
   membershipId String
   membership   FamilyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
   name         String
-  relation     String?          // spouse | child | other
+  relation     String? // spouse | child | other
   birthdate    String?
   createdAt    DateTime         @default(now())
 
@@ -2004,18 +2020,18 @@ model MembershipRenewal {
 }
 
 model MembershipPerk {
-  id            String    @id @default(cuid())
-  title         String
-  description   String?   @db.Text
-  imageUrl      String?
-  linkUrl       String?
-  validUntil    DateTime?
-  isActive      Boolean   @default(true)
-  forTier       String    @default("leader") // "all" = community + leader | "leader" = leader only
-  tareeqPostId  String?   // TareeqPost created when perk was published
-  sortOrder     Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  title        String
+  description  String?   @db.Text
+  imageUrl     String?
+  linkUrl      String?
+  validUntil   DateTime?
+  isActive     Boolean   @default(true)
+  forTier      String    @default("leader") // "all" = community + leader | "leader" = leader only
+  tareeqPostId String? // TareeqPost created when perk was published
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([isActive])
   @@index([validUntil])
@@ -2031,35 +2047,35 @@ model MembershipPerk {
 // makes a crashed send resumable, and gives the admin a per-person delivery report.
 
 model AdminBroadcast {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   /// update | announcement | reminder | note
   kind             String
-  title            String   @db.VarChar(160)
-  body             String   @db.Text
-  linkUrl          String?  @db.VarChar(500)
-  linkLabel        String?  @db.VarChar(80)
+  title            String    @db.VarChar(160)
+  body             String    @db.Text
+  linkUrl          String?   @db.VarChar(500)
+  linkLabel        String?   @db.VarChar(80)
   /// all | tareeq | shop | selected
   audience         String
   /// string[] of user ids — only when audience = selected
   targetUserIds    Json?
-  channelInApp     Boolean  @default(true)
-  channelPush      Boolean  @default(true)
-  channelEmail     Boolean  @default(false)
+  channelInApp     Boolean   @default(true)
+  channelPush      Boolean   @default(true)
+  channelEmail     Boolean   @default(false)
   /// A service message reaches people who opted out of marketing email. Promotional
   /// announcements should leave this off.
-  serviceMessage   Boolean  @default(true)
+  serviceMessage   Boolean   @default(true)
   /// draft | sending | sent | failed | canceled
-  status           String   @default("draft")
-  recipientCount   Int      @default(0)
-  processedCount   Int      @default(0)
-  inAppCount       Int      @default(0)
-  pushCount        Int      @default(0)
-  emailSentCount   Int      @default(0)
-  emailFailedCount Int      @default(0)
-  error            String?  @db.Text
+  status           String    @default("draft")
+  recipientCount   Int       @default(0)
+  processedCount   Int       @default(0)
+  inAppCount       Int       @default(0)
+  pushCount        Int       @default(0)
+  emailSentCount   Int       @default(0)
+  emailFailedCount Int       @default(0)
+  error            String?   @db.Text
   createdById      String?
   createdByName    String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
   startedAt        DateTime?
   finishedAt       DateTime?
 

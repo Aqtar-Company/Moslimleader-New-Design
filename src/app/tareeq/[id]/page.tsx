@@ -80,7 +80,7 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
   const post = await prisma.tareeqPost.findUnique({
     where: { id: params.id },
     include: {
-      user: { select: { id: true, name: true, avatarUrl: true } },
+      user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
       ...SHARED_FROM_INCLUDE,
       comments: {
         orderBy: { createdAt: 'asc' },

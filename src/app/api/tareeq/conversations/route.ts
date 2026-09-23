@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const uniqueIds = [...new Set(otherIds)];
   const users = await prisma.user.findMany({
     where: { id: { in: uniqueIds } },
-    select: { id: true, name: true, avatarUrl: true },
+    select: { id: true, name: true, avatarUrl: true, tareeqGender: true },
   });
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 

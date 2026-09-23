@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         members: {
           select: {
             role: true,
-            user: { select: { id: true, name: true, avatarUrl: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
           },
           orderBy: { joinedAt: 'asc' },
         },
@@ -43,7 +43,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         audioUrl: true,
         createdAt: true,
         senderId: true,
-        sender: { select: { id: true, name: true, avatarUrl: true } },
+        sender: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
       },
     }),
   ]);

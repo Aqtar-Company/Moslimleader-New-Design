@@ -13,12 +13,12 @@ export default async function GroupDetailPage({ params }: { params: { id: string
     prisma.khatmaGroup.findUnique({
       where: { id: params.id },
       include: {
-        admin: { select: { id: true, name: true, avatarUrl: true } },
+        admin: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
         members: {
           select: {
             id: true, streak: true, lastReadDate: true, totalPages: true, points: true, joinedAt: true,
             currentPage: true, currentSurah: true, currentAyah: true, linkedToSolo: true,
-            user: { select: { id: true, name: true, avatarUrl: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
           },
           orderBy: { points: 'desc' },
         },

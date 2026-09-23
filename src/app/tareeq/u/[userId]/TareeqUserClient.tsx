@@ -7,6 +7,8 @@ import TareeqCard, { TareeqPostSummary, ReportModal } from '@/components/tareeq/
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
+import { BLUR_COVER_PX, blurStyle } from '@/lib/tareeq-gender';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqQRModal from '@/components/tareeq/TareeqQRModal';
 import TareeqCoverEditor from '@/components/tareeq/TareeqCoverEditor';
@@ -18,6 +20,8 @@ interface ProfileUser {
   name: string;
   username?: string | null;
   avatarUrl?: string | null;
+  /** Whose face this is — decides whether a man sees it veiled. */
+  tareeqGender?: string | null;
   coverUrl?: string | null;
   createdAt: string;
   tareeqMessagePrivacy?: string | null;
@@ -211,7 +215,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
   // Follow list modal
   const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
-  const [followListUsers, setFollowListUsers] = useState<{ id: string; name: string; username?: string | null; avatarUrl?: string | null; isFollowedByViewer: boolean }[]>([]);
+  const [followListUsers, setFollowListUsers] = useState<{ id: string; name: string; username?: string | null; avatarUrl?: string | null; tareeqGender?: string | null; isFollowedByViewer: boolean }[]>([]);
   const [followListLoading, setFollowListLoading] = useState(false);
 
   // Toast notification
@@ -243,6 +247,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverUrl, setCoverUrl] = useState<string | null | undefined>(profileUser.coverUrl);
+  // Veil the cover on the same rule as the avatar. A `coverPreview` is the owner's own
+  // upload being previewed back to them, so it is never veiled — the blur applies to what
+  // OTHERS see, and the owner is not other.
+  const viewer = useTareeqViewer();
+  const veilCover = viewer.blurFor(profileUser.tareeqGender, profileUser.id);
   const [coverLoadError, setCoverLoadError] = useState(false);
   const [showCoverEditor, setShowCoverEditor] = useState(false);
 
@@ -1057,6 +1066,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   src={coverPreview ?? coverUrl!}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover"
+                  style={veilCover && !coverPreview ? blurStyle(BLUR_COVER_PX) : undefined}
                   onError={() => setCoverLoadError(true)}
                 />
               ) : (
@@ -1279,7 +1289,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             chose is visible on a phone instead of a 110px slice out of its middle. */}
         <div className="relative w-full" style={{ aspectRatio: '3 / 1', minHeight: 110, background: coverGradient }}>
           {(coverPreview ?? (coverLoadError ? null : coverUrl)) ? (
-            <img src={coverPreview ?? coverUrl!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setCoverLoadError(true)} />
+            <img src={coverPreview ?? coverUrl!} alt="" className="absolute inset-0 w-full h-full object-cover" style={veilCover && !coverPreview ? blurStyle(BLUR_COVER_PX) : undefined} onError={() => setCoverLoadError(true)} />
           ) : (
             <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.12)' }} />
           )}
@@ -1546,7 +1556,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               ) : followListUsers.map(u => (
                 <div key={u.id} className="flex items-center gap-3">
                   <button onClick={() => { setFollowListType(null); router.push(`/tareeq/u/${u.username ?? u.id}`); }} className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
-                    {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" /> : u.name.charAt(0)}
+                    {u.avatarUrl
+                      ? <TareeqAvatarImg src={u.avatarUrl} name={u.name} ownerGender={u.tareeqGender} ownerId={u.id} className="w-full h-full object-cover" />
+                      : u.name.charAt(0)}
                   </button>
                   <button onClick={() => { setFollowListType(null); router.push(`/tareeq/u/${u.username ?? u.id}`); }} className="flex-1 min-w-0 text-start">
                     <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{u.name}</p>

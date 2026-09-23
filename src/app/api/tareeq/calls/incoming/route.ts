@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest) {
     },
     orderBy: { createdAt: 'desc' },
     include: {
-      caller: { select: { id: true, name: true, avatarUrl: true } },
+      caller: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
     },
   });
 

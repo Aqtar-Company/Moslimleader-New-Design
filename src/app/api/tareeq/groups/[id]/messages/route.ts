@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       select: {
         id: true, content: true, imageUrl: true, videoUrl: true, audioUrl: true,
         createdAt: true, senderId: true,
-        sender: { select: { id: true, name: true, avatarUrl: true } },
+        sender: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
       },
     }),
     prisma.tareeqGroup.update({

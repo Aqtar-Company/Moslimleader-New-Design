@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       replyToId: true, replyToContent: true, sharedPostId: true, sharedPostTitle: true,
       sharedPostExcerpt: true, sharedPostAuthor: true, sharedPostImageUrl: true,
       deletedAt: true,
-      sender: { select: { id: true, name: true, avatarUrl: true } },
+      sender: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
     },
   });
 
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const otherUser = await prisma.user.findUnique({
     where: { id: otherId },
-    select: { id: true, name: true, avatarUrl: true, tareeqLastSeen: true },
+    select: { id: true, name: true, avatarUrl: true, tareeqGender: true, tareeqLastSeen: true },
   });
 
   const nextCursor = messages.length === limit ? messages[messages.length - 1].createdAt.toISOString() : null;

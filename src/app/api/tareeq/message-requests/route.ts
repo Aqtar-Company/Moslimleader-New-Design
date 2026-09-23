@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest) {
     where: { toId: user.userId, status: 'pending' },
     orderBy: { createdAt: 'desc' },
     take: 50,
-    include: { from: { select: { id: true, name: true, avatarUrl: true, username: true } } },
+    include: { from: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true, username: true } } },
   });
 
   return NextResponse.json({ requests });

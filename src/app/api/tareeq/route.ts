@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
         pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
         seriesId: true, seriesTitle: true, seriesOrder: true,
         ...SHARED_FROM_SELECT,
-        user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+        user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true, role: true } },
         // No orderBy here previously meant Prisma picked one row per distinct type in
         // whatever order the DB scan happened to return — an arbitrary, not "top",
         // selection. Ordering by recency at least makes it deterministic and reflects
@@ -159,7 +159,7 @@ export async function GET(req: NextRequest) {
             likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
-            user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true, role: true } },
             ...SHARED_FROM_SELECT,
             reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
           },
@@ -208,7 +208,7 @@ export async function GET(req: NextRequest) {
       pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
       seriesId: true, seriesTitle: true, seriesOrder: true,
       ...SHARED_FROM_SELECT,
-      user: { select: { id: true, name: true, avatarUrl: true } },
+      user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
       reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
     },
   });
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   // Check if user is suspended from Tareeq (also fetch name/avatar for post creation below)
-  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { tareeqSuspended: true, name: true, avatarUrl: true } });
+  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { tareeqSuspended: true, name: true, avatarUrl: true, tareeqGender: true } });
   if (!dbUser) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
   if (dbUser.tareeqSuspended) return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
 

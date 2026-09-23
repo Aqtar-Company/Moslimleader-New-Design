@@ -10,7 +10,7 @@ const MEMBER_SELECT = {
   totalPages: true,
   points: true,
   joinedAt: true,
-  user: { select: { id: true, name: true, avatarUrl: true } },
+  user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
 };
 
 /** GET — group details + leaderboard (any member can view) */
@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const group = await prisma.khatmaGroup.findUnique({
     where: { id: params.id },
     include: {
-      admin: { select: { id: true, name: true, avatarUrl: true } },
+      admin: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
       members: { select: MEMBER_SELECT, orderBy: { points: 'desc' } },
     },
   });

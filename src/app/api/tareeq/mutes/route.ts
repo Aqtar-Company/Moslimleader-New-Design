@@ -19,7 +19,7 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
     select: {
       id: true, postId: true, createdAt: true,
-      muted: { select: { id: true, name: true, avatarUrl: true } },
+      muted: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
     },
   });
 

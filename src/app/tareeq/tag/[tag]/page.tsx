@@ -56,7 +56,7 @@ export default async function TagPage({ params }: Props) {
           category: true, tags: true, imageUrl: true, imageAlt: true, videoUrl: true, thumbnailUrl: true,
           authorName: true, likeCount: true, commentCount: true,
           createdAt: true, userId: true,
-          user: { select: { id: true, name: true, avatarUrl: true } },
+          user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
           ...SHARED_FROM_SELECT,
         },
       });

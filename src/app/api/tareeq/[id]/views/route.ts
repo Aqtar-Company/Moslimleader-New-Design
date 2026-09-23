@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     // Get last 50 unique named viewers (logged-in users only)
     const views = await prisma.tareeqPostView.findMany({
       where: { postId: params.id, userId: { not: null } },
-      select: { userId: true, createdAt: true, user: { select: { id: true, name: true, avatarUrl: true } } },
+      select: { userId: true, createdAt: true, user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } } },
       orderBy: { createdAt: 'desc' },
       distinct: ['userId'],
       take: 50,

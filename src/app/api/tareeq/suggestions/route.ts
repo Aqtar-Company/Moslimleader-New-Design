@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
     // A suspended account must never be recommended — it is the one place the platform
     // actively puts an account in front of someone.
     where: { id: { in: ids }, tareeqSuspended: false },
-    select: { id: true, name: true, username: true, avatarUrl: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true },
   });
 
   const counts = new Map(rows.map(r => [r.userId, r._count.userId]));

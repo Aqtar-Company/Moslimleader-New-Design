@@ -10,7 +10,7 @@ const MEMBER_SELECT = {
   totalPages: true,
   points: true,
   joinedAt: true,
-  user: { select: { id: true, name: true, avatarUrl: true } },
+  user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
 };
 
 /** GET  — list groups the current user belongs to or admins */
@@ -23,7 +23,7 @@ export async function GET() {
     include: {
       group: {
         include: {
-          admin: { select: { id: true, name: true, avatarUrl: true } },
+          admin: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
           members: { select: MEMBER_SELECT, orderBy: { points: 'desc' } },
         },
       },
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       },
     },
     include: {
-      admin: { select: { id: true, name: true, avatarUrl: true } },
+      admin: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
       members: { select: MEMBER_SELECT },
     },
   });

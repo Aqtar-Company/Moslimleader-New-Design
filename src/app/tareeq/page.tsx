@@ -35,7 +35,7 @@ export default async function TareeqPage() {
         id: true, title: true, summary: true, content: true,
         category: true, tags: true, imageUrl: true, imageAlt: true, videoUrl: true, thumbnailUrl: true, authorName: true,
         likeCount: true, commentCount: true, createdAt: true, userId: true,
-        user: { select: { id: true, name: true, avatarUrl: true } },
+        user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
         ...SHARED_FROM_SELECT,
         reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
       },

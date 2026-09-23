@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       folder: { select: { id: true, name: true } },
       post: {
         include: {
-          user: { select: { id: true, name: true, avatarUrl: true } },
+          user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
           // `include` brings the scalar sharedFromId along, but not the relation — so a
           // saved share would have rendered as "the original is unavailable".
           ...SHARED_FROM_INCLUDE,

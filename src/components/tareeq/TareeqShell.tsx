@@ -9,6 +9,8 @@ import TareeqOfflineBanner from './TareeqOfflineBanner';
 import TareeqQueueBanner from './TareeqQueueBanner';
 import TareeqNoticeBanner from './TareeqNoticeBanner';
 import TareeqSplash from './TareeqSplash';
+import TareeqGenderGate from '@/components/tareeq/TareeqGenderGate';
+import { TareeqViewerProvider } from '@/context/TareeqViewerContext';
 import TareeqIncomingCall from './TareeqIncomingCall';
 import { TareeqSatisfactionGate } from './TareeqSatisfactionMode';
 import { prewireInRingPipeline } from '@/lib/tareeq-ring-pipeline';
@@ -182,6 +184,10 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   return (
     <>
       <TareeqSplash />
+      {/* Before anything else on the page: a member with no stated gender cannot be placed
+          on either side of the modesty or messaging rules, and no avatar below should be
+          rendered until we know whether to veil it. */}
+      <TareeqGenderGate />
       <TareeqOfflineBanner />
       <TareeqQueueBanner />
       <TareeqNoticeBanner />
@@ -206,7 +212,11 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 export default function TareeqShell({ children }: { children: React.ReactNode }) {
   return (
     <TareeqNotificationsProvider>
-      <ShellInner>{children}</ShellInner>
+      {/* Outside ShellInner so every avatar under طريق — cards, comments, chat, lists —
+          can ask whether to veil, without the answer being threaded to each of them. */}
+      <TareeqViewerProvider>
+        <ShellInner>{children}</ShellInner>
+      </TareeqViewerProvider>
     </TareeqNotificationsProvider>
   );
 }

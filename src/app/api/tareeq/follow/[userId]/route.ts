@@ -64,7 +64,7 @@ export async function POST(_req: NextRequest, { params }: { params: { userId: st
     }
     // New followers were previously invisible — no notification was ever
     // created here, so growth's most basic feedback signal never fired.
-    const actor = await prisma.user.findUnique({ where: { id: me.userId }, select: { name: true, avatarUrl: true } });
+    const actor = await prisma.user.findUnique({ where: { id: me.userId }, select: { name: true, avatarUrl: true, tareeqGender: true } });
     const actorName = actor?.name ?? 'شخص ما';
     void notifyTareeq({
       userId: params.userId,

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       // Searching `name` only meant people couldn't be found by their @handle.
       OR: [{ name: { contains: q } }, { username: { contains: q } }],
     },
-    select: { id: true, name: true, username: true, avatarUrl: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true },
     take: 8,
   });
 

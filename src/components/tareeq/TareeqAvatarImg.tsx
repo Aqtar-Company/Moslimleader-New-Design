@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { BLUR_AVATAR_PX, blurStyle } from '@/lib/tareeq-gender';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 
 /**
  * An avatar `<img>` that degrades to the person's initial when the picture cannot load.
@@ -21,6 +23,9 @@ export default function TareeqAvatarImg({
   className,
   style,
   fallbackStyle,
+  blur,
+  ownerGender,
+  ownerId,
 }: {
   src: string | null | undefined;
   name: string | null | undefined;
@@ -28,11 +33,32 @@ export default function TareeqAvatarImg({
   style?: React.CSSProperties;
   /** Extra styles for the initial circle only (background/colour). */
   fallbackStyle?: React.CSSProperties;
+  /**
+   * Veil this picture — a woman's avatar seen by a man. Enough blur to lose the features
+   * and keep the shape, decided in one place (`BLUR_AVATAR_PX`).
+   *
+   * It is a CSS filter, so it is modesty and not protection: the original is what was
+   * sent, and developer tools reveal it. Never tell a member their photo is protected by
+   * this — see the note in `src/lib/tareeq-gender.ts`.
+   *
+   * Leave it undefined and the component decides from `ownerGender` and the viewer. Pass
+   * it explicitly only to force one way — a preview of your own photo, say.
+   */
+  blur?: boolean;
+  /** The gender of the person in the picture. Undefined is treated as "not a man". */
+  ownerGender?: string | null;
+  /** Their id, so nobody's own picture is ever veiled to them. */
+  ownerId?: string | null;
 }) {
+  const viewer = useTareeqViewer();
+  // The decision is the context's, not the caller's: an avatar is rendered in a dozen
+  // places and a boolean computed at each of them is a boolean forgotten at one of them.
+  const veil = blur ?? viewer.blurFor(ownerGender, ownerId);
   const [failed, setFailed] = useState(false);
   // A new src gets a fresh chance — the member may have just uploaded a working photo.
   useEffect(() => { setFailed(false); }, [src]);
 
+  // The initial-in-a-circle carries no likeness, so it is never veiled.
   if (!src || failed) {
     return (
       <span
@@ -45,6 +71,24 @@ export default function TareeqAvatarImg({
       </span>
     );
   }
+  if (veil) {
+    // The scale in blurStyle pushes the softened edge past the frame, so the wrapper has to
+    // clip it — otherwise the blur bleeds a pale halo outside the circle.
+    return (
+      <span className={className} style={{ ...style, overflow: 'hidden', display: 'inline-block', position: 'relative' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt=""
+          aria-hidden
+          onError={() => setFailed(true)}
+          draggable={false}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...blurStyle(BLUR_AVATAR_PX) }}
+        />
+      </span>
+    );
+  }
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img

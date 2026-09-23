@@ -12,8 +12,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const call = await prisma.tareeqCall.findUnique({
     where: { id: params.id },
     include: {
-      caller: { select: { id: true, name: true, avatarUrl: true } },
-      callee: { select: { id: true, name: true, avatarUrl: true } },
+      caller: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
+      callee: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
     },
   });
 

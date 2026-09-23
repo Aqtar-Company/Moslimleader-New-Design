@@ -14,7 +14,7 @@ export default async function GroupsPage() {
     include: {
       group: {
         include: {
-          admin: { select: { id: true, name: true, avatarUrl: true } },
+          admin: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
           _count: { select: { members: true } },
         },
       },

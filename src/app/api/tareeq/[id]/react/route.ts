@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Notify the post author on a genuinely new reaction only (skip self, skip type switches
   // and toggles-off).
   if (!existing && post.userId) {
-    const actor = await prisma.user.findUnique({ where: { id: me.userId }, select: { name: true, avatarUrl: true } });
+    const actor = await prisma.user.findUnique({ where: { id: me.userId }, select: { name: true, avatarUrl: true, tareeqGender: true } });
     const actorName = actor?.name ?? 'شخص ما';
     const LABELS: Record<string, string> = { inspired: 'ألهمه ⭐', thanks: 'شكره 🙏', agree: 'يتفق معه ✊', yarabb: 'يارب 🤲', mashaallah: 'ماشاء الله 🌴' };
     // The reaction kind IS the notification type, and all five share one preference switch
@@ -118,7 +118,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!authResult) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const reactions = await prisma.tareeqReaction.findMany({
       where: { postId: params.id },
-      select: { type: true, user: { select: { id: true, name: true, avatarUrl: true } } },
+      select: { type: true, user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } } },
       orderBy: { createdAt: 'asc' },
       take: 200,
     });

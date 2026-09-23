@@ -19,8 +19,8 @@ export async function GET(req: NextRequest, { params }: { params: { userId: stri
       ? { followingId: params.userId }
       : { followerId: params.userId },
     include: {
-      follower: { select: { id: true, name: true, username: true, avatarUrl: true } },
-      following: { select: { id: true, name: true, username: true, avatarUrl: true } },
+      follower: { select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true } },
+      following: { select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true } },
     },
     orderBy: { createdAt: 'desc' },
     take: 100,

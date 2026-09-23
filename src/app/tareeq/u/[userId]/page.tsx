@@ -14,12 +14,12 @@ interface Props { params: { userId: string } }
 const resolveUser = cache(async function resolveUser(handle: string) {
   const byUsername = await prisma.user.findUnique({
     where: { username: handle },
-    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
   });
   if (byUsername) return byUsername;
   return prisma.user.findUnique({
     where: { id: handle },
-    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, tareeqGender: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
   });
 });
 
@@ -106,7 +106,7 @@ export default async function TareeqUserPage({ params }: Props) {
             createdAt: true, userId: true,
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
-            user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true, role: true } },
             ...SHARED_FROM_SELECT,
             reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
           },

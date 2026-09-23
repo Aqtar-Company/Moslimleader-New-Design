@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import { emailLogoImg } from '@/lib/email-template';
 
 export async function POST(req: NextRequest) {
   try {
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
       subject: 'تأكيد البريد الإلكتروني - مسلم ليدر',
       html: `
         <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 24px;"><img src="${siteUrl}/Logo.webp" alt="مسلم ليدر" style="height: 60px;" /></div>
+          <div style="text-align: center; margin-bottom: 24px;">${emailLogoImg(siteUrl)}</div>
           <h2 style="color: #1a1a1a; text-align: center;">تأكيد البريد الإلكتروني</h2>
           <p style="color: #555;">مرحباً ${user.name}،</p>
           <p style="color: #555;">اضغط على الزر أدناه لتأكيد بريدك الإلكتروني وتفعيل حسابك. الرابط صالح لمدة 24 ساعة.</p>

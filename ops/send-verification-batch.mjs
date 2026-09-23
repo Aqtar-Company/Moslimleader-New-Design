@@ -83,7 +83,7 @@ function html(name, url) {
   // Plain tables and inline styles: Outlook renders with Word's engine, which ignores
   // most of everything else.
   return `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#333">
-  <div style="text-align:center;margin-bottom:22px"><img src="${SITE}/Logo.webp" alt="مسلم ليدر" style="height:56px" /></div>
+  <div style="text-align:center;margin-bottom:22px"><img src="${SITE}/ml-logo-new.png" alt="مسلم ليدر" width="48" height="60" style="display:block;margin:0 auto;border:0;width:48px;height:60px" /></div>
   <h2 style="color:#1a1a1a;text-align:center;font-size:20px;margin:0 0 18px">تأكيد بريدك الإلكتروني</h2>
   <p style="line-height:1.9;margin:0 0 12px">مرحباً ${name}،</p>
   <p style="line-height:1.9;margin:0 0 12px">

@@ -86,3 +86,29 @@ export function renderPlainTextEmail(input: RenderInput): string {
 </body>
 </html>`;
 }
+
+/**
+ * The shop's logo as an `<img>` for an EMAIL — a PNG, with both dimensions written out.
+ *
+ * It was `${siteUrl}/Logo.webp` with `style="height: 60px"` and no width, in three
+ * different auth routes. Two things wrong with that, and they compound:
+ *
+ * 1. **WebP is not an email format.** Outlook and the Windows mail client do not decode it
+ *    at all, and several webmail clients only do so sometimes. What the recipient sees is
+ *    not a logo.
+ * 2. **A height with no width** leaves the client guessing the other side before the image
+ *    decodes — and a client that cannot decode it at all guesses from nothing. That is how
+ *    it arrived stretched into bars: the alt box took the height it was given and whatever
+ *    width it felt like.
+ *
+ * So: PNG, `width` and `height` as real ATTRIBUTES (Outlook ignores CSS dimensions on
+ * images), the ratio preserved from the file itself (368×460), `display:block` so no
+ * baseline gap sits under it, and `border:0` for the clients that outline a linked image.
+ */
+export const EMAIL_LOGO_WIDTH = 48;
+export const EMAIL_LOGO_HEIGHT = 60;
+
+export function emailLogoImg(siteUrl: string, alt = 'مسلم ليدر'): string {
+  const base = siteUrl.replace(/\/+$/, '');
+  return `<img src="${base}/ml-logo-new.png" alt="${alt}" width="${EMAIL_LOGO_WIDTH}" height="${EMAIL_LOGO_HEIGHT}" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;width:${EMAIL_LOGO_WIDTH}px;height:${EMAIL_LOGO_HEIGHT}px;" />`;
+}

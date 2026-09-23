@@ -787,6 +787,14 @@ Books are protected from download at two levels:
     would claim the whole platform was active this minute and make "last seen" a lie on
     every profile showing it. A member with no activity at all is left null, because
     nothing in the data knows whether they ever opened طريق. One-off; run once after deploy.
+- **A logo in an EMAIL is a PNG with both dimensions as attributes — never WebP, never a
+  bare height.** Three auth routes carried `<img src="${siteUrl}/Logo.webp"
+  style="height: 60px">`, and it arrived as stretched black bars. Two causes, compounding:
+  WebP is not decoded by Outlook or the Windows mail client at all, and a height with no
+  width leaves the client to invent the other side — which is exactly what an undecodable
+  image's placeholder does. Outlook also ignores CSS dimensions on images, so `width` and
+  `height` must be real ATTRIBUTES. `emailLogoImg()` in `src/lib/email-template.ts` is the
+  one copy; it serves `ml-logo-new.png` at 48×60, the file's own 368×460 ratio.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

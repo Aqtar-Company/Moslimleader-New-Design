@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { sendPushToUser } from '@/lib/tareeq-push';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isBlockedEitherWay, isTareeqSuspended } from '@/lib/tareeq-guard';
-import { isGender, isMahramTie, needsRelationDeclaration, type TareeqRelation } from '@/lib/tareeq-gender';
+import { isGender, isMahramTie, needsRelationDeclaration, orgNeedsRequest, type TareeqRelation } from '@/lib/tareeq-gender';
 
 // GET /api/tareeq/message-requests — list incoming pending requests for current user
 export async function GET(_req: NextRequest) {
@@ -86,6 +86,16 @@ export async function POST(req: NextRequest) {
       if (reason.length < 10) {
         return NextResponse.json({ error: 'اكتب سبب الرسالة (١٠ أحرف على الأقل)' }, { status: 400 });
       }
+    }
+  }
+
+  // An organisation has no kinship to declare, so what it states is its PURPOSE. Without
+  // one the recipient is asked to judge an institution she has never heard of on a name.
+  if (relation === null && orgNeedsRequest(me?.tareeqGender, target.tareeqGender)) {
+    relation = 'none';
+    reason = String(body.reason ?? '').trim().slice(0, 300);
+    if (reason.length < 10) {
+      return NextResponse.json({ error: 'اكتب سبب الرسالة (١٠ أحرف على الأقل)' }, { status: 400 });
     }
   }
 

@@ -8,7 +8,7 @@ import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 import { useTareeqViewer } from '@/context/TareeqViewerContext';
-import { needsRelationDeclaration, mahramTiesFor, isGender, RELATION_LABELS, type TareeqRelation } from '@/lib/tareeq-gender';
+import { needsRelationDeclaration, orgNeedsRequest, mahramTiesFor, isGender, RELATION_LABELS, type TareeqRelation } from '@/lib/tareeq-gender';
 import { BLUR_COVER_PX, blurStyle } from '@/lib/tareeq-gender';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqQRModal from '@/components/tareeq/TareeqQRModal';
@@ -265,6 +265,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   // Only across genders. Asking everyone would make it a formality people click past,
   // which is exactly what empties it of meaning.
   const needsRelation = needsRelationDeclaration(viewer.gender, profileUser.tareeqGender);
+  // An organisation opening a thread states a PURPOSE, not a kinship — there is none to
+  // state with an institution on one side. Same box, different question.
+  const needsPurpose = orgNeedsRequest(viewer.gender, profileUser.tareeqGender);
   const mahramTies = isGender(viewer.gender) ? mahramTiesFor(viewer.gender) : [];
   useEffect(() => { if (isOwnProfile) setProfileLocked(viewer.profileLocked); }, [isOwnProfile, viewer.profileLocked]);
   const [coverLoadError, setCoverLoadError] = useState(false);
@@ -552,6 +555,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   /** What the form still needs before it can be sent, or null when it is complete. */
   function msgReqMissing(): string | null {
     if (!msgReqText.trim()) return isRtl ? 'اكتب رسالتك' : 'Write your message';
+    if (needsPurpose && msgReqReason.trim().length < 10) {
+      return isRtl ? 'اكتب سبب الرسالة (١٠ أحرف على الأقل)' : 'Give a reason (10 characters minimum)';
+    }
     if (!needsRelation) return null;
     if (!msgReqRelation) return isRtl ? 'حدّد صلتك أولاً' : 'State your relation first';
     if (msgReqRelation === 'mahram' && !msgReqTie) return isRtl ? 'اختر صلة القرابة' : 'Choose the tie';
@@ -577,7 +583,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           // declaration, and refuses the request when it does and they are absent.
           relation: msgReqRelation,
           relationLabel: msgReqRelation === 'mahram' ? msgReqTie : undefined,
-          reason: msgReqRelation === 'none' ? msgReqReason.trim() : undefined,
+          reason: (msgReqRelation === 'none' || needsPurpose) ? msgReqReason.trim() : undefined,
         }),
       });
       if (res.ok) {
@@ -1620,6 +1626,23 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     buys is that the recipient reads it in words before she answers, and
                     that it is stored, so a false one becomes something she can report
                     rather than a private lie. */}
+                {needsPurpose && (
+                  <div className="flex flex-col gap-2 rounded-2xl p-3" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
+                    <p className="text-[12px] font-bold" style={{ color: 'var(--tr-text-primary)' }}>
+                      {isRtl ? 'سبب المراسلة' : 'Why you are writing'}
+                    </p>
+                    <input
+                      value={msgReqReason}
+                      onChange={e => setMsgReqReason(e.target.value)}
+                      maxLength={300}
+                      placeholder={isRtl ? 'مثال: ردّ على استفسارك عن موعد' : 'e.g. answering your question about a date'}
+                      className="w-full rounded-xl px-3 py-2 text-[13px] outline-none"
+                      style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+                      dir="auto"
+                    />
+                  </div>
+                )}
+
                 {needsRelation && (
                   <div className="flex flex-col gap-2 rounded-2xl p-3" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
                     <p className="text-[12px] font-bold" style={{ color: 'var(--tr-text-primary)' }}>

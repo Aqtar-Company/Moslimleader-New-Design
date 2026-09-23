@@ -92,7 +92,15 @@ export function shouldBlurFor(
   if (ownerId && exempt?.has(ownerId)) return false;
   // An organisation has no face to veil, and its page is meant to be found.
   if (ownerGender === 'org') return false;
-  if (viewerGender !== 'male') return false;
+  // An organisation SEES what a man sees.
+  //
+  // Not being a person is a reason not to be veiled — an institution has no face — but it
+  // is not a reason to be shown what the default withholds. Nothing verifies the label:
+  // it is a button anyone may press on their own account, and exempting the viewer side
+  // would hand whoever presses it precisely the view this default exists to prevent,
+  // while the honest members who chose «رجل» keep the restriction. Behind the account
+  // sits a person either way.
+  if (viewerGender !== 'male' && viewerGender !== 'org') return false;
   return ownerGender !== 'male';   // female, or not yet stated
 }
 
@@ -177,6 +185,33 @@ export function needsRelationDeclaration(
   // There is no kinship to declare with an institution, in either direction.
   if (!isPerson(senderGender) || !isPerson(recipientGender)) return false;
   return senderGender !== recipientGender;
+}
+
+/**
+ * True when an ORGANISATION is opening a conversation with a person who has not written
+ * to it first — in which case it needs that person's consent, like anyone else.
+ *
+ * The organisation kind was added so a company or a charity would not be sorted into man
+ * or woman and would not be veiled. It was NOT a licence to write to people unasked: as
+ * first written, `needsRelationDeclaration` returned false for an org in either
+ * direction, so an account that declared itself an institution could open a thread with
+ * any woman on the platform with one tap — a better position than any member has, granted
+ * by a self-declared label that nothing verifies.
+ *
+ * The direction is the whole rule. A member writing TO an organisation is asking for
+ * something and is not asked anything; the organisation writing FIRST is the case that
+ * needs consent. And once the member has written, the conversation exists and is returned
+ * before any of this runs, so the organisation answers freely — which is the ordinary
+ * case of a customer asking and a company replying.
+ *
+ * There is no kinship between a person and an institution, so what the request carries is
+ * a stated PURPOSE, not a tie.
+ */
+export function orgNeedsRequest(
+  senderGender: string | null | undefined,
+  recipientGender: string | null | undefined,
+): boolean {
+  return senderGender === 'org' && recipientGender !== 'org';
 }
 
 export const RELATION_LABELS: Record<TareeqRelation, { ar: string; en: string }> = {

@@ -1119,7 +1119,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null, authorGender: post.user?.tareeqGender ?? null, authorId: post.user?.id ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1318,7 +1318,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null, authorGender: post.user?.tareeqGender ?? null, authorId: post.user?.id ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1580,7 +1580,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       </article>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null, authorGender: post.user?.tareeqGender ?? null, authorId: post.user?.id ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
       {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}

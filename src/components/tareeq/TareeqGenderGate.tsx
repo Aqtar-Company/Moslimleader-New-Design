@@ -131,6 +131,13 @@ export default function TareeqGenderGate() {
     width: '100%', borderRadius: 14, padding: '11px 14px', fontSize: 14,
     background: 'var(--tr-overlay)', color: 'var(--tr-text-primary)',
     border: '1px solid var(--tr-border-soft)', outline: 'none', appearance: 'none',
+    // `appearance: none` removes the native arrow; without drawing one back the control
+    // reads as an inert box and nobody taps it.
+    backgroundImage:
+      "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23999' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: isRtl ? 'left 14px center' : 'right 14px center',
+    paddingInlineEnd: 34,
   };
   const label: React.CSSProperties = {
     fontSize: 12, fontWeight: 700, color: 'var(--tr-text-muted)', marginBottom: 6, display: 'block',
@@ -152,7 +159,7 @@ export default function TareeqGenderGate() {
           {isRtl ? 'أكمل بياناتك' : 'Complete your profile'}
         </h2>
         <p className="text-[13px] mb-5" style={{ color: 'var(--tr-text-muted)' }}>
-          {isRtl ? 'مرة واحدة، ويمكنك تعديلها لاحقاً.' : 'Once, and you can change it later.'}
+          {isRtl ? 'مرة واحدة، ويمكنك تعديلها لاحقاً من إعدادات ملفك.' : 'Once — you can change it later in your profile settings.'}
         </p>
 
         <div className="flex flex-col gap-4">

@@ -103,12 +103,22 @@ export function isMahramTie(senderGender: TareeqGender, tie: string): boolean {
   return mahramTiesFor(senderGender).includes(tie);
 }
 
-/** True when the pair needs the declaration at all. */
+/**
+ * True when the pair needs the declaration at all — i.e. when both are known and differ.
+ *
+ * An unknown gender does NOT trigger the question, and the asymmetry with `shouldBlurFor`
+ * (where unknown does mean veil) is deliberate. Veiling a picture wrongly costs a moment
+ * of oddness; demanding a kinship declaration wrongly costs a real conversation and reads
+ * as nonsense — a man asked «ما صلتك بـ<male name>؟», with «زوجتي، أمي، أختي» to choose
+ * from. Most rows in this database have never stated a gender and never will (they are
+ * phone-import rows for manual orders), so "unknown → ask" would make the absurd case the
+ * common one.
+ */
 export function needsRelationDeclaration(
   senderGender: string | null | undefined,
   recipientGender: string | null | undefined,
 ): boolean {
-  if (!isGender(senderGender) || !isGender(recipientGender)) return true; // unknown → ask
+  if (!isGender(senderGender) || !isGender(recipientGender)) return false;
   return senderGender !== recipientGender;
 }
 

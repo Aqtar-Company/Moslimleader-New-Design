@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendPushToUser } from '@/lib/tareeq-push';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isBlockedEitherWay, isTareeqSuspended } from '@/lib/tareeq-guard';
 import { isGender, isMahramTie, needsRelationDeclaration, type TareeqRelation } from '@/lib/tareeq-gender';
@@ -126,7 +127,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await prisma.tareeqMessageRequest.upsert({
+  // She was never told. The row was written and the sender was shown «تم إرسال طلبك!
+  // سيتمكن X من قبول أو رفض طلبك» — while nothing pushed, nothing appeared in her
+  // notifications, and the only badge lives on a tab inside the inbox she had no reason to
+  // open. He waits, she never learns, and neither of them can tell which.
+  const requestUpsert = prisma.tareeqMessageRequest.upsert({
     where: { fromId_toId: { fromId: user.userId, toId } },
     create: { fromId: user.userId, toId, message, status: 'pending', relation, relationLabel, reason },
     // A re-send replaces the claim too. Leaving the old one would let someone declare a
@@ -134,6 +139,16 @@ export async function POST(req: NextRequest) {
     // they sent without it.
     update: { message, status: 'pending', relation, relationLabel, reason },
   });
+  await requestUpsert;
+
+  // Best effort, and deliberately after the row: a failed push must not lose the request.
+  void sendPushToUser(toId, {
+    title: 'طلب رسالة جديد',
+    body: `${user.name ?? 'أحد الأعضاء'} يطلب مراسلتك`,
+    url: '/tareeq/inbox?tab=requests',
+    tag: `msgreq-${user.userId}`,
+    icon: '/Tareeq-small.png',
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

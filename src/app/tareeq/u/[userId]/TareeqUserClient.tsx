@@ -190,7 +190,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [settingsUsername, setSettingsUsername] = useState(profileUser.username ?? '');
   const [msgPrivacy, setMsgPrivacy] = useState<string>(profileUser.tareeqMessagePrivacy ?? 'everyone');
   const [savingMsgPrivacy, setSavingMsgPrivacy] = useState(false);
+  const [msgError, setMsgError] = useState('');
   const [profileLocked, setProfileLocked] = useState(false);
+  const [savingGender, setSavingGender] = useState(false);
   const [savingLock, setSavingLock] = useState(false);
   const [displayUsername, setDisplayUsername] = useState(profileUser.username ?? '');
   const [savingUsername, setSavingUsername] = useState(false);
@@ -523,15 +525,28 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         credentials: 'include',
         body: JSON.stringify({ userId: profileUser.id }),
       });
-      const d = await res.json();
-      if (res.ok) {
-        router.push(`/tareeq/inbox/${d.conversationId}`);
-      } else if (res.status === 202 && d.requestRequired) {
-        // 202 now also comes back for a cross-gender pair with no accepted request, which
-        // is the common case — see the note in the conversations route.
+      const d = await res.json().catch(() => ({}));
+
+      // `res.ok` is TRUE for 202, so branching on it first sent everyone who needs a
+      // request to `/tareeq/inbox/undefined` — a 404 that bounces back to the Messages
+      // list. A flash, and nothing else: no modal, no error, no request. While 202 only
+      // happened for the rare "followers only" setting that was a latent bug; the moment
+      // it became the path for every first contact across genders, it silently swallowed
+      // the entire feature. So the REQUEST cases are read before the success case.
+      if (d?.requestRequired) {
         setShowMsgReqModal(true);
+        return;
       }
-    } catch { /* ignore */ }
+      if (res.ok && d?.conversationId) {
+        router.push(`/tareeq/inbox/${d.conversationId}`);
+        return;
+      }
+      // Everything else — blocked, «لا أحد», a rate limit — used to be a button that did
+      // nothing at all.
+      setMsgError(d?.error || (isRtl ? 'تعذّر بدء المحادثة' : 'Could not start the conversation'));
+    } catch {
+      setMsgError(isRtl ? 'خطأ في الاتصال' : 'Connection error');
+    }
   }
 
   /** What the form still needs before it can be sent, or null when it is complete. */
@@ -658,6 +673,23 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
    * for every member the promise «هذا الملف مُقفل» simply did not exist. It could only be
    * set by editing the database by hand.
    */
+  async function saveGender(next: 'male' | 'female') {
+    if (savingGender) return;
+    setSavingGender(true);
+    try {
+      const res = await fetch('/api/tareeq/gender', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ gender: next }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(d?.error || (isRtl ? 'تعذّر الحفظ' : 'Could not save')); return; }
+      // Reload: what is already on screen was rendered under the old answer.
+      window.location.reload();
+    } catch {
+      showToast(isRtl ? 'خطأ في الاتصال' : 'Connection error');
+    } finally { setSavingGender(false); }
+  }
+
   async function saveProfileLock(next: boolean) {
     const previous = profileLocked;
     setSavingLock(true);
@@ -1558,7 +1590,16 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       {showReportUser && <ReportModal targetType="user" targetId={profileUser.id} isRtl={isRtl} onClose={() => setShowReportUser(false)} />}
 
       {/* Message request modal */}
-      {showMsgReqModal && (
+            {msgError && (
+        <div
+          role="alert"
+          onClick={() => setMsgError('')}
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-xl text-[13px] font-bold max-w-[88vw] text-center"
+          style={{ background: 'var(--tr-surface)', border: '1px solid rgba(231,76,60,0.5)', color: '#e74c3c', boxShadow: '0 8px 30px rgba(0,0,0,0.35)' }}
+        >{msgError}</div>
+      )}
+
+{showMsgReqModal && (
         <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }} onClick={() => { setShowMsgReqModal(false); setMsgReqSent(false); setMsgReqText(''); setMsgReqRelation(null); setMsgReqTie(''); setMsgReqReason(''); }}>
           <div className="w-full sm:max-w-sm sm:mx-4 rounded-t-3xl sm:rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
@@ -1573,7 +1614,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               </div>
             ) : (
               <>
-                <p className="text-[13px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? `${profileUser.name} يقبل الرسائل من المتابِعين فقط. أرسل طلباً برسالة مختصرة.` : `${profileUser.name} only accepts messages from followers. Send a short request.`}</p>
+                <p className="text-[13px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? `${profileUser.name} يستقبل الرسائل بطلب. أرسل طلباً برسالة مختصرة.` : `${profileUser.name} only accepts messages from followers. Send a short request.`}</p>
 
                 {/* The declaration. It is a CLAIM and nothing here verifies it — what it
                     buys is that the recipient reads it in words before she answers, and
@@ -1810,6 +1851,35 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               {/* Divider */}
               <div style={{ height: 1, background: 'var(--tr-border-subtle)' }} />
 
+              {/* Own data — the answer given at the door, and a way back from it */}
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  {isRtl ? 'بياناتي' : 'My details'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['male', 'female'] as const).map(g => (
+                    <button
+                      key={g}
+                      type="button"
+                      disabled={savingGender}
+                      onClick={() => { if (g !== viewer.gender) saveGender(g); }}
+                      className="py-3 rounded-xl text-sm font-bold transition"
+                      style={{
+                        background: viewer.gender === g ? 'rgba(212,168,83,0.12)' : 'var(--tr-overlay)',
+                        color: viewer.gender === g ? 'var(--tr-gold)' : 'var(--tr-text-primary)',
+                        border: `1.5px solid ${viewer.gender === g ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
+                        opacity: savingGender ? 0.6 : 1,
+                      }}
+                    >{isRtl ? (g === 'male' ? 'رجل' : 'امرأة') : (g === 'male' ? 'Man' : 'Woman')}</button>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>
+                  {isRtl ? 'يمكن تغييره مرة كل ٣٠ يوماً.' : 'Changeable once every 30 days.'}
+                </p>
+              </div>
+
+              <div style={{ height: 1, background: 'var(--tr-border-subtle)' }} />
+
               {/* Profile lock */}
               <div>
                 <p className="text-xs font-bold mb-2" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
@@ -1830,8 +1900,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   <span style={{ fontSize: 16 }}>{profileLocked ? '🔒' : '🔓'}</span>
                   <span className="flex-1">
                     {isRtl
-                      ? (profileLocked ? 'ملفك مُقفل — لا يراه أحد غيرك' : 'أقفل ملفي')
-                      : (profileLocked ? 'Locked — nobody but you' : 'Lock my profile')}
+                      ? (profileLocked ? 'صفحتك مُقفلة' : 'أقفل صفحتي')
+                      : (profileLocked ? 'Page locked' : 'Lock my page')}
                   </span>
                   <span
                     aria-hidden
@@ -1848,7 +1918,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                 </button>
                 <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>
                   {isRtl
-                    ? 'يُخفي صفحتك وصورتك وقوائم متابعيك وأعدادهم، ويمنع ظهورك في البحث والاقتراحات. منشوراتك السابقة تبقى في متابعة من يتابعك — احذفها أو اجعلها مسوّدة إن أردت إخفاءها.'
+                    ? 'يُخفي صفحتك وصورتك وقوائم متابعيك وأعدادهم، ويمنع ظهورك في البحث والاقتراحات والإشارات والدعوات للمجموعات. منشوراتك السابقة تبقى في متابعة من يتابعك — احذفها أو اجعلها مسوّدة إن أردت إخفاءها.'
                     : 'Hides your page, photo, follower lists and counts, and keeps you out of search and suggestions. Posts you already published stay in your followers\u2019 feeds — delete them or move them to drafts to hide those.'}
                 </p>
               </div>

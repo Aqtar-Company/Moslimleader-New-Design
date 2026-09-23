@@ -12,7 +12,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const post = await prisma.tareeqPost.findUnique({
     where: { id: params.id },
     include: {
-      user: { select: { id: true, name: true } },
+      // `tareeqGender` rides along even though this select has no avatarUrl today: the
+      // day someone adds the picture, the veil must not fail open silently.
+      user: { select: { id: true, name: true, tareeqGender: true } },
       comments: {
         orderBy: { createdAt: 'asc' },
         take: 100,

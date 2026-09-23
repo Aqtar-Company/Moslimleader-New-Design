@@ -58,7 +58,7 @@ export function TareeqViewerProvider({ children }: { children: ReactNode }) {
   const [profileLocked, setProfileLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(() => {
+  const load = useCallback((attempt = 0) => {
     // A signed-out visitor is a known state, not a failed one.
     if (!user) { setGender(null); setKnown(true); setLoading(false); return; }
     fetch('/api/tareeq/gender', { credentials: 'include' })
@@ -66,11 +66,16 @@ export function TareeqViewerProvider({ children }: { children: ReactNode }) {
       .then(d => { setGender(d?.gender ?? null); setProfileLocked(!!d?.profileLocked); setKnown(true); })
       // A failed request must not open what the feature exists to cover. `known` stays
       // false and every picture keeps its veil until an answer actually arrives.
-      .catch(() => { setKnown(false); })
+      .catch(() => {
+        setKnown(false);
+        // Retry: the failed state veils everything, so sitting in it until the member
+        // happens to reload is a broken screen with no exit.
+        if (attempt < 4) setTimeout(() => load(attempt + 1), Math.min(8000, 1000 * 2 ** attempt));
+      })
       .finally(() => setLoading(false));
   }, [user]);
 
-  useEffect(() => { setLoading(true); load(); }, [load]);
+  useEffect(() => { setLoading(true); load(0); }, [load]);
 
   const blurFor = useCallback(
     (ownerGender: string | null | undefined, ownerId?: string | null) => {
@@ -88,12 +93,17 @@ export function TareeqViewerProvider({ children }: { children: ReactNode }) {
 
   const veilStyle = useCallback(
     (ownerGender: string | null | undefined, ownerId?: string | null): React.CSSProperties =>
-      (blurFor(ownerGender, ownerId) ? { ...blurStyle(BLUR_AVATAR_PX), overflow: 'hidden' } : {}),
+      // No `overflow: hidden` here: it is applied to the <img> itself, where it does
+      // nothing — `overflow` has no effect on a replaced element. Clipping the blur's
+      // fuzzy edge depends on an ancestor having it, which most avatar wrappers do. Where
+      // none does, the halo bleeds a few pixels past the circle; cosmetic, and better than
+      // the pale rim that dropping the 6% scale would leave instead.
+      (blurFor(ownerGender, ownerId) ? { ...blurStyle(BLUR_AVATAR_PX) } : {}),
     [blurFor],
   );
 
   return (
-    <Ctx.Provider value={{ gender, loading, profileLocked, blurFor, veilStyle, refresh: load }}>
+    <Ctx.Provider value={{ gender, loading, profileLocked, blurFor, veilStyle, refresh: () => load(0) }}>
       {children}
     </Ctx.Provider>
   );

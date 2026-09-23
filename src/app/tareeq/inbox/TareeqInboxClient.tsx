@@ -1,4 +1,5 @@
 'use client';
+import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -6,7 +7,8 @@ import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqNotebookPopup from '@/components/tareeq/TareeqNotebookPopup';
 
-interface OtherUser { id: string; name: string; avatarUrl?: string | null }
+interface OtherUser {
+  tareeqGender?: string | null; id: string; name: string; avatarUrl?: string | null }
 interface Conversation {
   id: string; lastMessage?: string | null; lastMessageAt?: string | null;
   unreadCount: number; otherUser: OtherUser;
@@ -94,12 +96,16 @@ export function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; 
   );
 }
 
-function RowAvatar({ url, name, emoji }: { url?: string | null; name: string; emoji?: string }) {
+function RowAvatar({ url, name, emoji, ownerGender, ownerId }: {
+  url?: string | null; name: string; emoji?: string;
+  ownerGender?: string | null; ownerId?: string | null;
+}) {
+  const { veilStyle } = useTareeqViewer();
   return (
     <div className="w-[50px] h-[50px] rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-base"
       style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: '1.5px solid var(--tr-border-soft)' }}>
       {url
-        ? <img src={url} alt={name} className="w-full h-full object-cover" />
+        ? <img src={url} alt={name} className="w-full h-full object-cover" style={{ ...veilStyle(ownerGender, ownerId) }} />
         : emoji
         ? <span>{emoji}</span>
         : <span style={{ fontSize: 18 }}>{name.charAt(0)}</span>
@@ -260,7 +266,7 @@ function Inner() {
           <div className="flex flex-col items-center px-6" style={{ paddingTop: '15dvh' }}>
             <div className="w-14 h-14 mb-4 rounded-2xl flex items-center justify-center text-2xl" style={{ background: BLUE_SOFT }}>📬</div>
             <p className="font-bold text-[15px]" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'لا طلبات جديدة' : 'No requests'}</p>
-            <p className="text-[13px] mt-1.5 text-center" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ستظهر هنا طلبات الرسائل من غير المتابَعين' : 'Message requests from non-followers appear here'}</p>
+            <p className="text-[13px] mt-1.5 text-center" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ستظهر هنا طلبات الرسائل' : 'Message requests from non-followers appear here'}</p>
           </div>
         );
         return (
@@ -268,7 +274,7 @@ function Inner() {
             {msgRequests.map((r, idx) => (
               <div key={r.id} className="flex flex-col gap-3 px-4 py-4" style={{ borderBottom: idx < msgRequests.length - 1 ? '1px solid var(--tr-border-subtle)' : 'none' }}>
                 <div className="flex items-center gap-3">
-                  <RowAvatar url={r.from.avatarUrl} name={r.from.name} />
+                  <RowAvatar url={r.from.avatarUrl} name={r.from.name} ownerGender={r.from.tareeqGender} ownerId={r.from.id} />
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-[15px] truncate" style={{ color: 'var(--tr-text-primary)' }}>{r.from.name}</p>
                     {r.from.username && <p className="text-[12px]" style={{ color: 'var(--tr-text-muted)' }}>@{r.from.username}</p>}
@@ -284,18 +290,33 @@ function Inner() {
                     border: `1px solid ${r.relation === 'none' ? 'var(--tr-border-soft)' : 'rgba(212,168,83,0.45)'}`,
                   }}>
                     <p className="text-[12.5px] font-bold leading-relaxed" style={{ color: 'var(--tr-text-primary)' }}>
-                      {r.relation === 'spouse'
-                        ? (isRtl ? `يقول ${r.from.name} إنه زوجك.` : `${r.from.name} says he is your spouse.`)
-                        : r.relation === 'mahram'
-                          ? (isRtl ? `يقول ${r.from.name} إنه «${r.relationLabel}».` : `${r.from.name} claims to be your ${r.relationLabel}.`)
-                          : (isRtl ? `${r.from.name} ليس من أقاربك، وذكر السبب:` : `${r.from.name} is not a relative, and gave this reason:`)}
+                      {(() => {
+                        // The sender may be a woman — she declares too. Verb agreement
+                        // follows the SENDER, and the mahram tie is already phrased from
+                        // their side («أختي», «زوجتي»), so it is quoted as written.
+                        const f = r.from.tareeqGender === 'female';
+                        const says = isRtl ? (f ? 'تقول' : 'يقول') : 'says';
+                        if (r.relation === 'spouse') {
+                          return isRtl
+                            ? `${says} ${r.from.name} إن بينكما زواجاً.`
+                            : `${r.from.name} says you are married.`;
+                        }
+                        if (r.relation === 'mahram') {
+                          return isRtl
+                            ? `${says} ${r.from.name}: «${r.relationLabel}».`
+                            : `${r.from.name} claims: “${r.relationLabel}”.`;
+                        }
+                        return isRtl
+                          ? `${r.from.name} ${f ? 'ليست' : 'ليس'} من أقاربك، والسبب:`
+                          : `${r.from.name} is not a relative. Reason:`;
+                      })()}
                     </p>
                     {r.relation === 'none' && r.reason && (
                       <p className="text-[13px] leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }} dir="auto">«{r.reason}»</p>
                     )}
                     {r.relation !== 'none' && (
                       <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>
-                        {isRtl ? 'قاله هو عن نفسه.' : 'His own words about himself.'}
+                        {isRtl ? 'قاله عن نفسه.' : 'Their own words about themselves.'}
                       </p>
                     )}
                   </div>
@@ -362,7 +383,7 @@ function Inner() {
                   background: c.unreadCount > 0 ? BLUE_ROW : 'transparent',
                   borderBottom: idx < filtered.length - 1 ? '1px solid var(--tr-border-subtle)' : 'none',
                 }}>
-                <RowAvatar url={c.otherUser.avatarUrl} name={c.otherUser.name} />
+                <RowAvatar url={c.otherUser.avatarUrl} name={c.otherUser.name} ownerGender={c.otherUser.tareeqGender} ownerId={c.otherUser.id} />
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="text-[15px] truncate"
@@ -627,8 +648,8 @@ function Inner() {
             <h2 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'إبلاغ عن ادّعاء كاذب' : 'Report a false claim'}</h2>
             <p className="text-[13px] leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>
               {isRtl
-                ? 'سيصل للإدارة ما ادّعاه ونصّ طلبه، وسيُرفض الطلب. لا يعرف هو أنك أبلغت.'
-                : 'The moderators receive his claim and his message, and the request is declined. He is not told that you reported.'}
+                ? 'سيصل للإدارة ما قاله ونصّ طلبه، وسيُرفض الطلب. لا يعلم بالبلاغ.'
+                : 'The moderators receive the claim and the message, and the request is declined. They are not told.'}
             </p>
             <div className="flex gap-2">
               <button onClick={() => reportFalseClaim(reportRequestId)} className="flex-1 py-2 rounded-xl text-sm font-bold" style={{ background: '#e74c3c', color: '#fff', border: 'none' }}>

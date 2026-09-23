@@ -115,7 +115,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ conversationId: existing.id });
   }
 
-  const privacy = (otherUser as any).tareeqMessagePrivacy ?? 'everyone';
+  // Not `as any`: this is the route the entire declaration gate hangs on, and the cast
+  // would hide the day somebody trims either field out of the select above.
+  const privacy = otherUser.tareeqMessagePrivacy ?? 'everyone';
 
   if (privacy === 'nobody') {
     return NextResponse.json({ error: 'هذا المستخدم لا يقبل رسائل' }, { status: 403 });
@@ -140,7 +142,7 @@ export async function POST(req: NextRequest) {
     where: { id: user.userId },
     select: { tareeqGender: true },
   });
-  if (needsRelationDeclaration(meRow?.tareeqGender, (otherUser as any).tareeqGender)) {
+  if (needsRelationDeclaration(meRow?.tareeqGender, otherUser.tareeqGender)) {
     const accepted = await prisma.tareeqMessageRequest.findUnique({
       where: { fromId_toId: { fromId: user.userId, toId: otherId } },
       select: { status: true },

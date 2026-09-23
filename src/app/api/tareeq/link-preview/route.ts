@@ -144,7 +144,19 @@ function requestPinned(target: URL, address: string, family: 4 | 6, ua: string):
   return new Promise((resolve, reject) => {
     const mod = target.protocol === 'https:' ? https : http;
     const req = mod.request(target, {
-      lookup: (_hostname, _options, callback) => { callback(null, address, family); },
+      // Honour the `all` form of the callback. Node ≥20 turns on `autoSelectFamily`, and
+      // that path calls a custom lookup with `{ all: true }` and expects an ARRAY of
+      // records back. Answering it the three-argument way — which is what this line used
+      // to do unconditionally — hands Node a string where it indexes `[0].address`, and
+      // every fetch died with `Invalid IP address: undefined`. It failed for EVERY link,
+      // and the route's old blanket 502 made it look like the sites were at fault.
+      lookup: ((_hostname: string, options: { all?: boolean }, callback: (...a: unknown[]) => void) => {
+        if (options && options.all) callback(null, [{ address, family }]);
+        else callback(null, address, family);
+      }) as never,
+      // `autoSelectFamily: false` would also avoid it, but it is absent from
+      // @types/node's RequestOptions and the callback above is correct either way —
+      // verified against a local server with the flag both on and off.
       headers: {
         'User-Agent': ua,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

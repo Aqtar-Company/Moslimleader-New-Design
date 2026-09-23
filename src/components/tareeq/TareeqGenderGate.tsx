@@ -173,7 +173,7 @@ export default function TareeqGenderGate() {
             </select>
           </div>
 
-          <div>
+          <div style={{ display: gender === 'org' ? 'none' : undefined }}>
             <span style={label}>{isRtl ? 'سنة الميلاد' : 'Year of birth'}</span>
             <select value={birthYear} onChange={e => setBirthYear(e.target.value)} style={field}>
               <option value="">{isRtl ? '— اختياري —' : '— optional —'}</option>
@@ -182,9 +182,9 @@ export default function TareeqGenderGate() {
           </div>
 
           <div>
-            <span style={label}>{isRtl ? 'أنا' : 'I am'}</span>
+            <span style={label}>{isRtl ? 'هذا الحساب' : 'This account'}</span>
             <div className="grid grid-cols-2 gap-2">
-              {TAREEQ_GENDERS.map(g => (
+              {TAREEQ_GENDERS.filter(g => g.value !== 'org').map(g => (
                 <button
                   key={g.value}
                   type="button"
@@ -200,6 +200,32 @@ export default function TareeqGenderGate() {
                 </button>
               ))}
             </div>
+
+            {/* Below the two, not beside them: an organisation is not a third kind of
+                person, and putting it in the same row invites a mis-tap that then needs
+                30 days to undo. */}
+            {(() => {
+              const org = TAREEQ_GENDERS.find(g => g.value === 'org')!;
+              const on = gender === 'org';
+              return (
+                <button
+                  type="button"
+                  onClick={() => setGender('org')}
+                  className="w-full rounded-2xl py-3 px-3 mt-2 text-start transition active:scale-95"
+                  style={{
+                    background: on ? 'rgba(212,168,83,0.12)' : 'var(--tr-overlay)',
+                    border: `1px solid ${on ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
+                  }}
+                >
+                  <span className="block text-sm font-bold" style={{ color: on ? 'var(--tr-gold)' : 'var(--tr-text-primary)' }}>
+                    {isRtl ? org.labelAr : org.labelEn}
+                  </span>
+                  <span className="block text-[11px] mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>
+                    {isRtl ? org.hintAr : org.hintEn}
+                  </span>
+                </button>
+              );
+            })()}
           </div>
         </div>
 

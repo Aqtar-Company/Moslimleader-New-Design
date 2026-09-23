@@ -673,7 +673,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
    * for every member the promise «هذا الملف مُقفل» simply did not exist. It could only be
    * set by editing the database by hand.
    */
-  async function saveGender(next: 'male' | 'female') {
+  async function saveGender(next: 'male' | 'female' | 'org') {
     if (savingGender) return;
     setSavingGender(true);
     try {
@@ -1856,8 +1856,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                 <p className="text-xs font-bold mb-2" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                   {isRtl ? 'بياناتي' : 'My details'}
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['male', 'female'] as const).map(g => (
+                <div className="grid grid-cols-3 gap-2">
+                  {(['male', 'female', 'org'] as const).map(g => (
                     <button
                       key={g}
                       type="button"
@@ -1870,7 +1870,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                         border: `1.5px solid ${viewer.gender === g ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
                         opacity: savingGender ? 0.6 : 1,
                       }}
-                    >{isRtl ? (g === 'male' ? 'رجل' : 'امرأة') : (g === 'male' ? 'Man' : 'Woman')}</button>
+                    >{isRtl
+                      ? (g === 'male' ? 'رجل' : g === 'female' ? 'امرأة' : 'جهة')
+                      : (g === 'male' ? 'Man' : g === 'female' ? 'Woman' : 'Org')}</button>
                   ))}
                 </div>
                 <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>

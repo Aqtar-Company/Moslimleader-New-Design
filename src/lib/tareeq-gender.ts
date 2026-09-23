@@ -25,14 +25,35 @@
  * second.
  */
 
-export type TareeqGender = 'male' | 'female';
+/**
+ * What kind of account this is — the field answers "who or what is this", not only
+ * "man or woman".
+ *
+ * `org` is a company, a school, a charity, a shop: an account that is not a person. None
+ * of the modesty reasoning applies to it in either direction — there is no face to veil
+ * and no kinship to declare with an institution — so it is exempt from both rules rather
+ * than being squeezed into one of the two human answers.
+ *
+ * It is a value of the same stored field, not a new column. The field already travels with
+ * every payload that carries a picture, and adding a second one to all of them is the
+ * plumbing that has gone wrong twice.
+ */
+export type TareeqGender = 'male' | 'female' | 'org';
 
-export const TAREEQ_GENDERS: { value: TareeqGender; labelAr: string; labelEn: string }[] = [
+export const TAREEQ_GENDERS: { value: TareeqGender; labelAr: string; labelEn: string; hintAr?: string; hintEn?: string }[] = [
   { value: 'male',   labelAr: 'رجل',   labelEn: 'Man' },
   { value: 'female', labelAr: 'امرأة', labelEn: 'Woman' },
+  { value: 'org',    labelAr: 'جهة',   labelEn: 'Organisation',
+    hintAr: 'شركة أو مؤسسة أو مدرسة — حساب لكيان لا لشخص',
+    hintEn: 'A company, school or charity — an account for an entity, not a person' },
 ];
 
 export function isGender(v: unknown): v is TareeqGender {
+  return v === 'male' || v === 'female' || v === 'org';
+}
+
+/** True for the two answers the modesty rules are actually about. */
+export function isPerson(v: unknown): v is 'male' | 'female' {
   return v === 'male' || v === 'female';
 }
 
@@ -69,6 +90,8 @@ export function shouldBlurFor(
   // Nobody's own pictures are ever blurred to them.
   if (viewerId && ownerId && viewerId === ownerId) return false;
   if (ownerId && exempt?.has(ownerId)) return false;
+  // An organisation has no face to veil, and its page is meant to be found.
+  if (ownerGender === 'org') return false;
   if (viewerGender !== 'male') return false;
   return ownerGender !== 'male';   // female, or not yet stated
 }
@@ -123,8 +146,12 @@ export const MAHRAM_TIES_FOR_MAN: string[] = [
   'زوجتي', 'أمي', 'ابنتي', 'أختي', 'عمتي', 'خالتي', 'جدتي', 'حفيدتي', 'زوجة ابني', 'أم زوجتي',
 ];
 
-/** The list the SENDER picks from, phrased from the sender's side. */
+/**
+ * The list the SENDER picks from, phrased from the sender's side. Empty for an
+ * organisation, which is never asked — see `needsRelationDeclaration`.
+ */
 export function mahramTiesFor(senderGender: TareeqGender): string[] {
+  if (senderGender === 'org') return [];
   return senderGender === 'male' ? MAHRAM_TIES_FOR_MAN : MAHRAM_TIES_FOR_WOMAN;
 }
 
@@ -147,7 +174,8 @@ export function needsRelationDeclaration(
   senderGender: string | null | undefined,
   recipientGender: string | null | undefined,
 ): boolean {
-  if (!isGender(senderGender) || !isGender(recipientGender)) return false;
+  // There is no kinship to declare with an institution, in either direction.
+  if (!isPerson(senderGender) || !isPerson(recipientGender)) return false;
   return senderGender !== recipientGender;
 }
 

@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect } from 'react';
@@ -697,19 +698,24 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 const isPinned = c.id === pinnedCommentId;
                 return (
                   <div key={c.id} className="flex gap-3 group">
+                    <Link href={c.user?.id ? `/tareeq/u/${c.user.id}` : '#'} onClick={e => { if (!c.user?.id) e.preventDefault(); }} className="shrink-0">
                     <TareeqAvatarImg
                       src={c.user?.avatarUrl}
                       name={c.user?.name ?? '?'}
                       ownerGender={c.user?.tareeqGender}
                       ownerId={c.user?.id}
+                      sizePx={32}
                       className="w-8 h-8 rounded-full object-cover flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden"
                       style={{ border: isPinned ? '1.5px solid rgba(212,168,83,0.4)' : 'none' }}
                       fallbackStyle={{ background: isPinned ? 'rgba(212,168,83,0.18)' : 'var(--tr-overlay)', color: isPinned ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}
                     />
+                    </Link>
                     <div className="flex-1 rounded-xl px-4 py-3"
                       style={{ background: isPinned ? 'rgba(212,168,83,0.06)' : 'var(--tr-raised)', border: isPinned ? '1px solid rgba(212,168,83,0.22)' : 'none' }}>
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
+                        {c.user?.id
+                          ? <Link href={`/tareeq/u/${c.user.id}`} className="text-xs font-semibold" style={{ color: 'var(--tr-text-primary)', textDecoration: 'none' }}>{c.user.name}</Link>
+                          : <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'مجهول' : 'Anonymous'}</span>}
                         {isPinned && (
                           <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>
                             ⭐ {isRtl ? 'أفضل رد' : 'Best Reply'}

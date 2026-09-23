@@ -170,7 +170,7 @@ export default function TareeqMentionInput({
                 onMouseEnter={() => setSelectedIdx(i)}
               >
                 {u.avatarUrl ? (
-                  <img src={u.avatarUrl} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, ...veilStyle(u.tareeqGender, u.id) }}  />
+                  <img src={u.avatarUrl} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, ...veilStyle(u.tareeqGender, u.id, 28) }}  />
                 ) : (
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, flexShrink: 0 }}>
                     {u.name?.charAt(0) ?? '?'}

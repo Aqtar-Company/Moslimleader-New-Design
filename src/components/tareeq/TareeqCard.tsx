@@ -702,17 +702,24 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           {inlineComments.map(c => (
             <div key={c.id}>
               <div className="flex gap-2.5 py-2" style={{ borderBottom: (c.replyCount ?? 0) > 0 || showRepliesFor.has(c.id) ? 'none' : '1px solid var(--tr-border-subtle)' }}>
-                <TareeqAvatarImg
-                  src={c.user?.avatarUrl}
-                  name={c.user?.name ?? '?'}
-                  ownerGender={c.user?.tareeqGender}
-                  ownerId={c.user?.id}
-                  className="w-7 h-7 rounded-full object-cover overflow-hidden text-[10px] font-black shrink-0"
-                  style={{ border: '1.5px solid var(--tr-gold-dim, rgba(212,168,83,0.3))' }}
-                  fallbackStyle={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}
-                />
+                <Link href={c.user?.id ? `/tareeq/u/${c.user.id}` : '#'} onClick={e => { if (!c.user?.id) e.preventDefault(); }} className="shrink-0">
+                  <TareeqAvatarImg
+                    src={c.user?.avatarUrl}
+                    name={c.user?.name ?? '?'}
+                    ownerGender={c.user?.tareeqGender}
+                    ownerId={c.user?.id}
+                    sizePx={28}
+                    className="w-7 h-7 rounded-full object-cover overflow-hidden text-[10px] font-black shrink-0"
+                    style={{ border: '1.5px solid var(--tr-gold-dim, rgba(212,168,83,0.3))' }}
+                    fallbackStyle={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}
+                  />
+                </Link>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? '—'}</p>
+                  {c.user?.id ? (
+                    <Link href={`/tareeq/u/${c.user.id}`} className="text-xs font-semibold mb-0.5 block" style={{ color: 'var(--tr-text-primary)', textDecoration: 'none' }}>{c.user.name}</Link>
+                  ) : (
+                    <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>—</p>
+                  )}
                   <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
                   <div className="flex items-center gap-3 mt-1 relative">
                     {(() => {

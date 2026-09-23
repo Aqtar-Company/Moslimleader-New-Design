@@ -47,8 +47,32 @@ export async function GET() {
     },
   });
 
+  // ── Who this viewer is never veiled from ────────────────────────────────────────────
+  //
+  // Sent as a list of ids because both kinds are small, and because the alternative is
+  // carrying a role flag and a "do we already talk" answer on every payload that ever
+  // shows a picture — which is the plumbing that already went wrong once.
+  const [admins, convos] = await Promise.all([
+    // The platform's own accounts. An official account is recognised by its picture, and
+    // veiling it makes the platform look like it is hiding from its members.
+    prisma.user.findMany({ where: { role: 'admin' }, select: { id: true }, take: 50 }),
+    // Anyone already in a conversation with this member. A father who was messaging his
+    // daughter before any of this existed does not need a default placed between them
+    // afterwards — that reads as an accusation. The default is for strangers.
+    prisma.tareeqConversation.findMany({
+      where: { OR: [{ participantA: me.userId }, { participantB: me.userId }] },
+      select: { participantA: true, participantB: true },
+      take: 500,
+    }),
+  ]);
+  const exemptIds = new Set<string>(admins.map(a => a.id));
+  for (const c of convos) {
+    exemptIds.add(c.participantA === me.userId ? c.participantB : c.participantA);
+  }
+
   return NextResponse.json({
     gender: row?.tareeqGender ?? null,
+    exemptIds: [...exemptIds],
     country: row?.country ?? null,
     birthYear: row?.birthYear ?? null,
     setAt: row?.tareeqGenderSetAt ?? null,

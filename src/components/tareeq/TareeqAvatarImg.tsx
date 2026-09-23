@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BLUR_AVATAR_PX, blurStyle } from '@/lib/tareeq-gender';
+import { blurPxForSize, blurStyle } from '@/lib/tareeq-gender';
 import { useTareeqViewer } from '@/context/TareeqViewerContext';
 
 /**
@@ -26,6 +26,7 @@ export default function TareeqAvatarImg({
   blur,
   ownerGender,
   ownerId,
+  sizePx,
 }: {
   src: string | null | undefined;
   name: string | null | undefined;
@@ -49,11 +50,22 @@ export default function TareeqAvatarImg({
   ownerGender?: string | null;
   /** Their id, so nobody's own picture is ever veiled to them. */
   ownerId?: string | null;
+  /**
+   * Rendered width in px, when the caller knows it. The blur scales with it — the radius
+   * that hides a 96px face turns a 28px one into a smear.
+   */
+  sizePx?: number;
 }) {
   const viewer = useTareeqViewer();
   // The decision is the context's, not the caller's: an avatar is rendered in a dozen
   // places and a boolean computed at each of them is a boolean forgotten at one of them.
   const veil = blur ?? viewer.blurFor(ownerGender, ownerId);
+  // Fall back to reading it off the Tailwind size class when no number was passed — `w-8`
+  // is 2rem, and a wrong guess only picks a slightly different radius.
+  const guessed = sizePx ?? (() => {
+    const m = /(?:^|\s)w-(\d+(?:\.\d+)?)(?:$|\s)/.exec(className ?? '');
+    return m ? Number(m[1]) * 4 : undefined;
+  })();
   const [failed, setFailed] = useState(false);
   // A new src gets a fresh chance — the member may have just uploaded a working photo.
   useEffect(() => { setFailed(false); }, [src]);
@@ -83,7 +95,7 @@ export default function TareeqAvatarImg({
           aria-hidden
           onError={() => setFailed(true)}
           draggable={false}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...blurStyle(BLUR_AVATAR_PX) }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...blurStyle(blurPxForSize(guessed)) }}
         />
       </span>
     );

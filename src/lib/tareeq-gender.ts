@@ -53,16 +53,45 @@ export function shouldBlurFor(
   ownerGender: string | null | undefined,
   viewerId?: string | null,
   ownerId?: string | null,
+  /**
+   * People this viewer is never veiled from. Two kinds, and both are about the default
+   * having nothing to add:
+   *
+   *  - **The platform's own admins.** An official account is identified by its picture,
+   *    and veiling it makes the platform look like it is hiding from its members.
+   *  - **Anyone this viewer already has a conversation with.** A father who was messaging
+   *    his daughter before this existed did not need a modesty default between them, and
+   *    applying one retroactively reads as an accusation. Two people who already
+   *    correspond have settled the question themselves; the default is for strangers.
+   */
+  exempt?: ReadonlySet<string> | null,
 ): boolean {
   // Nobody's own pictures are ever blurred to them.
   if (viewerId && ownerId && viewerId === ownerId) return false;
+  if (ownerId && exempt?.has(ownerId)) return false;
   if (viewerGender !== 'male') return false;
   return ownerGender !== 'male';   // female, or not yet stated
 }
 
-/** Enough to hide features, not enough to hide that a person is there. */
-export const BLUR_AVATAR_PX = 6;
-export const BLUR_COVER_PX = 14;
+/**
+ * Enough to lose the features, not enough to lose that a person is there.
+ *
+ * Lowered from 6/14. At 6px a 28px avatar in a comment row was not veiled, it was a smear
+ * — the blur radius was a quarter of the picture. The amount that hides a face depends on
+ * how large the face is drawn, so it scales with the element instead of being one number
+ * for a 28px circle and a 96px one.
+ */
+export const BLUR_AVATAR_PX = 4;
+export const BLUR_COVER_PX = 10;
+
+/**
+ * The blur for an avatar of a given rendered size. Roughly 7% of the width, held between
+ * 2 and 6 px: below 2 nothing is hidden, above 6 nothing is left.
+ */
+export function blurPxForSize(px?: number): number {
+  if (!px || !Number.isFinite(px)) return BLUR_AVATAR_PX;
+  return Math.max(2, Math.min(6, Math.round(px * 0.07 * 10) / 10));
+}
 
 export function blurStyle(px: number): React.CSSProperties {
   return {

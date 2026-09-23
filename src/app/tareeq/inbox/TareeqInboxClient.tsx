@@ -105,7 +105,7 @@ function RowAvatar({ url, name, emoji, ownerGender, ownerId }: {
     <div className="w-[50px] h-[50px] rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-base"
       style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: '1.5px solid var(--tr-border-soft)' }}>
       {url
-        ? <img src={url} alt={name} className="w-full h-full object-cover" style={{ ...veilStyle(ownerGender, ownerId) }} />
+        ? <img src={url} alt={name} className="w-full h-full object-cover" style={{ ...veilStyle(ownerGender, ownerId, 50) }} />
         : emoji
         ? <span>{emoji}</span>
         : <span style={{ fontSize: 18 }}>{name.charAt(0)}</span>

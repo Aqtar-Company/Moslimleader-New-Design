@@ -16,7 +16,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { shouldBlurFor, blurStyle, BLUR_AVATAR_PX } from '@/lib/tareeq-gender';
+import { shouldBlurFor, blurStyle, blurPxForSize } from '@/lib/tareeq-gender';
 
 interface ViewerState {
   /** 'male' | 'female' | null (not stated, or not signed in). */
@@ -35,7 +35,7 @@ interface ViewerState {
    * on the same element would otherwise win and leave the picture unscaled inside its
    * blur, showing a pale rim.
    */
-  veilStyle: (ownerGender: string | null | undefined, ownerId?: string | null) => React.CSSProperties;
+  veilStyle: (ownerGender: string | null | undefined, ownerId?: string | null, sizePx?: number) => React.CSSProperties;
   refresh: () => void;
 }
 
@@ -56,6 +56,8 @@ export function TareeqViewerProvider({ children }: { children: ReactNode }) {
   // null viewer as "not a man" and unveils everything.
   const [known, setKnown] = useState(false);
   const [profileLocked, setProfileLocked] = useState(false);
+  /** Admins, and everyone this viewer already has a conversation with. */
+  const [exempt, setExempt] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
 
   const load = useCallback((attempt = 0) => {
@@ -63,7 +65,12 @@ export function TareeqViewerProvider({ children }: { children: ReactNode }) {
     if (!user) { setGender(null); setKnown(true); setLoading(false); return; }
     fetch('/api/tareeq/gender', { credentials: 'include' })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { setGender(d?.gender ?? null); setProfileLocked(!!d?.profileLocked); setKnown(true); })
+      .then(d => {
+        setGender(d?.gender ?? null);
+        setProfileLocked(!!d?.profileLocked);
+        setExempt(new Set<string>(Array.isArray(d?.exemptIds) ? d.exemptIds : []));
+        setKnown(true);
+      })
       // A failed request must not open what the feature exists to cover. `known` stays
       // false and every picture keeps its veil until an answer actually arrives.
       .catch(() => {
@@ -83,22 +90,25 @@ export function TareeqViewerProvider({ children }: { children: ReactNode }) {
       // to be a man's. A signed-out visitor IS a known state (no account, no gender), and
       // veiling everything for every guest would veil it for the women among them too — so
       // this covers the loading and the failed cases only.
+      if (ownerId && exempt.has(ownerId)) return false;
       if (loading || !known) {
         if (user && ownerGender !== 'male') return true;
       }
-      return shouldBlurFor(gender, ownerGender, user?.id ?? null, ownerId ?? null);
+      return shouldBlurFor(gender, ownerGender, user?.id ?? null, ownerId ?? null, exempt);
     },
-    [gender, loading, known, user?.id],
+    [gender, loading, known, exempt, user?.id],
   );
 
   const veilStyle = useCallback(
-    (ownerGender: string | null | undefined, ownerId?: string | null): React.CSSProperties =>
+    (ownerGender: string | null | undefined, ownerId?: string | null, sizePx?: number): React.CSSProperties =>
       // No `overflow: hidden` here: it is applied to the <img> itself, where it does
       // nothing — `overflow` has no effect on a replaced element. Clipping the blur's
       // fuzzy edge depends on an ancestor having it, which most avatar wrappers do. Where
       // none does, the halo bleeds a few pixels past the circle; cosmetic, and better than
       // the pale rim that dropping the 6% scale would leave instead.
-      (blurFor(ownerGender, ownerId) ? { ...blurStyle(BLUR_AVATAR_PX) } : {}),
+      // The blur scales with how large the face is drawn: one fixed radius turned a 28px
+      // comment avatar into a smear while barely touching a 96px one.
+      (blurFor(ownerGender, ownerId) ? { ...blurStyle(blurPxForSize(sizePx)) } : {}),
     [blurFor],
   );
 

@@ -87,7 +87,12 @@ export default function TareeqGenderGate() {
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
         .then(d => {
           if (cancelled) return;
-          setNeeded(!d?.gender);
+          // `setAt` null with a gender present means the value was INFERRED from the
+          // member's name, not stated by them. They are still asked — with the guess
+          // already chosen, so confirming is one tap and correcting is one tap — while the
+          // rules apply in the meantime rather than waiting for them to log in.
+          setNeeded(!d?.gender || !d?.setAt);
+          if (d?.gender && !d?.setAt) setGender(d.gender);
           if (d?.country) setCountry(d.country);
           if (d?.birthYear) setBirthYear(String(d.birthYear));
         })
@@ -159,7 +164,11 @@ export default function TareeqGenderGate() {
           {isRtl ? 'أكمل بياناتك' : 'Complete your profile'}
         </h2>
         <p className="text-[13px] mb-5" style={{ color: 'var(--tr-text-muted)' }}>
-          {isRtl ? 'مرة واحدة، ويمكنك تعديلها لاحقاً من إعدادات ملفك.' : 'Once — you can change it later in your profile settings.'}
+          {gender
+            ? (isRtl ? 'راجع ما هو مختار وصحّحه إن لزم. يمكنك تعديله لاحقاً من إعدادات ملفك.'
+                     : 'Check what is selected and correct it if needed. Changeable later in your profile settings.')
+            : (isRtl ? 'مرة واحدة، ويمكنك تعديلها لاحقاً من إعدادات ملفك.'
+                     : 'Once — you can change it later in your profile settings.')}
         </p>
 
         <div className="flex flex-col gap-4">

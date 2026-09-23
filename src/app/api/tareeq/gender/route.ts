@@ -101,7 +101,12 @@ export async function POST(req: NextRequest) {
 
   // Re-sending the same value is not a change — it costs nothing and must not start a
   // cooldown, or a double tap would lock someone out of a correction for a month.
-  if (current?.tareeqGender && current.tareeqGender !== body.gender) {
+  // A guess is not a choice. `setAt` null means the value was inferred from the member's
+  // name by ops/infer-gender-from-names.mjs, and holding someone to a 30-day cooldown on a
+  // guess they never made — least of all a woman correcting a wrong «رجل» — would be the
+  // worst possible place to enforce it.
+  const wasStated = !!current?.tareeqGenderSetAt;
+  if (wasStated && current?.tareeqGender && current.tareeqGender !== body.gender) {
     const setAt = current.tareeqGenderSetAt?.getTime() ?? 0;
     const days = (Date.now() - setAt) / 86_400_000;
     if (days < 30) {

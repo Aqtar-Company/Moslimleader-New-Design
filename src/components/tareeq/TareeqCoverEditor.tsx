@@ -16,6 +16,7 @@ export default function TareeqCoverEditor({ isRtl, currentCoverUrl, onFile, onCa
   const [phase, setPhase] = useState<'picker' | 'crop'>('picker');
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [isObjectUrl, setIsObjectUrl] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [posX, setPosX] = useState(50);
   const [posY, setPosY] = useState(50);
   const [mounted, setMounted] = useState(false);
@@ -39,6 +40,7 @@ export default function TareeqCoverEditor({ isRtl, currentCoverUrl, onFile, onCa
 
   function handleFile(file: File) {
     if (imgSrc && isObjectUrl) URL.revokeObjectURL(imgSrc);
+    setLoadError(false);
     setImgSrc(URL.createObjectURL(file));
     setIsObjectUrl(true);
     setPosX(50);
@@ -46,10 +48,29 @@ export default function TareeqCoverEditor({ isRtl, currentCoverUrl, onFile, onCa
     setPhase('crop');
   }
 
+  /**
+   * The `<img>` below carries `crossOrigin="anonymous"` because the crop draws it into a
+   * canvas, and a tainted canvas cannot be read back. That attribute is a demand, not a
+   * preference: a host that answers without `Access-Control-Allow-Origin` makes the
+   * browser refuse the image outright — which is why editing an existing cover showed a
+   * black rectangle with a broken-image icon.
+   *
+   * Our own stored pictures therefore come back through our own origin, where there is no
+   * CORS question to fail. A blob from the file picker is already local and is left alone.
+   */
+  function sameOrigin(url: string): string {
+    if (!/^https?:\/\//i.test(url)) return url;
+    try {
+      if (new URL(url).origin === window.location.origin) return url;
+    } catch { /* fall through to the proxy */ }
+    return `/api/tareeq/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+
   function handleEditCurrent() {
     if (!currentCoverUrl) return;
     if (imgSrc && isObjectUrl) URL.revokeObjectURL(imgSrc);
-    setImgSrc(currentCoverUrl);
+    setLoadError(false);
+    setImgSrc(sameOrigin(currentCoverUrl));
     setIsObjectUrl(false);
     setPosX(50);
     setPosY(50);
@@ -241,15 +262,27 @@ export default function TareeqCoverEditor({ isRtl, currentCoverUrl, onFile, onCa
           onPointerUp={onPU}
           onPointerCancel={onPU}
         >
-          {imgSrc && (
+          {imgSrc && !loadError && (
             <img
               ref={imgRef}
               src={imgSrc}
               crossOrigin="anonymous"
               alt=""
               draggable={false}
+              onError={() => setLoadError(true)}
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${posX}% ${posY}%`, pointerEvents: 'none', display: 'block' }}
             />
+          )}
+          {loadError && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 20, textAlign: 'center' }}>
+              <span style={{ fontSize: 26 }} aria-hidden>🖼️</span>
+              <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>
+                {isRtl ? 'تعذّر تحميل الغلاف الحالي' : 'The current cover could not be loaded'}
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11.5, lineHeight: 1.7 }}>
+                {isRtl ? 'اختر صورة جديدة من جهازك.' : 'Pick a new picture from your device.'}
+              </span>
+            </div>
           )}
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 12, pointerEvents: 'none' }}>
             <span style={{ background: 'rgba(0,0,0,0.52)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '4px 14px', borderRadius: 20, backdropFilter: 'blur(6px)', letterSpacing: '0.02em' }}>

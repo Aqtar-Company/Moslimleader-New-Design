@@ -1,11 +1,17 @@
 export const dynamic = 'force-dynamic';
 
 /**
- * Reading and setting the member's gender — the field طريق's modesty and messaging rules
- * both read from.
+ * The profile step: country, year of birth, and whether the member is a man or a woman.
  *
- * GET  → { gender, setAt, profileLocked }
- * POST { gender: 'male' | 'female' } → stores it
+ * GET  → { gender, country, birthYear, setAt, profileLocked }
+ * POST { gender, country?, birthYear? } → stores them
+ *
+ * The gender is the only required one, because the platform's modesty defaults cannot place
+ * a member on either side of them without it. Nothing about those defaults is explained to
+ * the member here or anywhere in the UI: they are how طريق conducts itself, a floor for the
+ * case where someone does not keep it themselves, and not a guarantee anyone is offered.
+ * The distinction matters — the blur is a CSS filter, and a promise about it would be a
+ * promise we cannot keep.
  *
  * The value is changeable, but NOT freely — and the reasoning here was wrong once, so it
  * is written out.
@@ -35,11 +41,16 @@ export async function GET() {
 
   const row = await prisma.user.findUnique({
     where: { id: me.userId },
-    select: { tareeqGender: true, tareeqGenderSetAt: true, tareeqProfileLocked: true },
+    select: {
+      tareeqGender: true, tareeqGenderSetAt: true, tareeqProfileLocked: true,
+      country: true, birthYear: true,
+    },
   });
 
   return NextResponse.json({
     gender: row?.tareeqGender ?? null,
+    country: row?.country ?? null,
+    birthYear: row?.birthYear ?? null,
     setAt: row?.tareeqGenderSetAt ?? null,
     profileLocked: row?.tareeqProfileLocked ?? false,
   });
@@ -77,10 +88,26 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Both optional, and both accepted only in a shape that is obviously valid — this is a
+  // profile form, not a place to store arbitrary strings.
+  const country = typeof body.country === 'string' && /^[A-Za-z]{2}$/.test(body.country.trim())
+    ? body.country.trim().toUpperCase()
+    : undefined;
+  const year = Number(body.birthYear);
+  const thisYear = new Date().getFullYear();
+  const birthYear = Number.isInteger(year) && year >= thisYear - 100 && year <= thisYear - 7
+    ? year
+    : undefined;
+
   await prisma.user.update({
     where: { id: me.userId },
-    data: { tareeqGender: body.gender, tareeqGenderSetAt: new Date() },
+    data: {
+      tareeqGender: body.gender,
+      tareeqGenderSetAt: new Date(),
+      ...(country !== undefined ? { country } : {}),
+      ...(birthYear !== undefined ? { birthYear } : {}),
+    },
   });
 
-  return NextResponse.json({ ok: true, gender: body.gender });
+  return NextResponse.json({ ok: true, gender: body.gender, country: country ?? null, birthYear: birthYear ?? null });
 }

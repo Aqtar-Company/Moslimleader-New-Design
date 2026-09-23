@@ -1610,7 +1610,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     {msgReqRelation === 'mahram' && (
                       <>
                         <p className="text-[11px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>
-                          {isRtl ? 'اختر الصلة — ستظهر لها كما هي:' : 'Choose the tie — she will read it as written:'}
+                          {isRtl ? 'اختر الصلة:' : 'Choose the tie:'}
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {mahramTies.map(t => (
@@ -1633,7 +1633,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     {msgReqRelation === 'none' && (
                       <>
                         <p className="text-[11px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>
-                          {isRtl ? 'لماذا تريد مراسلتها؟ هذا ما ستقرّر على أساسه.' : 'Why are you writing? This is what she decides on.'}
+                          {isRtl ? 'سبب الرسالة' : 'Reason for writing'}
                         </p>
                         <input
                           value={msgReqReason}
@@ -1647,13 +1647,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       </>
                     )}
 
-                    {msgReqRelation && (
-                      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>
-                        {isRtl
-                          ? 'ما تختاره يظهر لها مع طلبك. ادّعاء صلة غير صحيحة يمكن الإبلاغ عنه.'
-                          : 'What you choose is shown to her with your request. A false claim can be reported.'}
-                      </p>
-                    )}
+
                   </div>
                 )}
 

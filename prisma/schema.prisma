@@ -44,13 +44,25 @@ model User {
   tareeqSuspendedAt       DateTime?
   tareeqSuspendReason     String?
   tareeqMessagePrivacy    String    @default("everyone")
-  /// 'male' | 'female'. NULL means the member has not chosen yet, and طريق is closed to
-  /// them until they do — every rule below reads from this one field.
+  /// 'male' | 'female'. NULL means the member has not answered yet, and طريق is closed to
+  /// them until they do.
+  ///
+  /// It is collected as one field of an ordinary profile step, alongside country and year
+  /// of birth, and NOTHING is promised to the member about what it does. The modesty
+  /// defaults it drives are the platform's own conduct — a floor for the case where
+  /// someone does not observe it themselves — not a guarantee sold to anyone. Telling a
+  /// woman her photo is covered would be a claim about a CSS filter, which is not one we
+  /// can keep.
   tareeqGender            String?
   /// When they chose. A change after the fact is worth being able to see.
   tareeqGenderSetAt       DateTime?
   /// The member's profile page answers "this profile is private" to everyone but them.
   tareeqProfileLocked     Boolean   @default(false)
+  /// ISO-3166 alpha-2, collected in the same step. Also better than guessing the regional
+  /// price from an IP, which a traveller or a VPN defeats.
+  country                 String?   @db.VarChar(2)
+  /// Year only — enough to know roughly who is reading, without asking a birthday.
+  birthYear               Int?
   /// Which notification types this user wants, as { like: false, comment: true, … }.
   /// Nine notification types existed and the only control was all-or-nothing, so anyone
   /// annoyed by "someone liked your mark" lost "you have a new message" along with it.

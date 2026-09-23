@@ -8,16 +8,21 @@
  *   3. Nothing else. Gender does not change what a member may post, read or be shown of
  *      the feed — widening it later would be a decision, not an extension.
  *
- * ## The blur is modesty, not security
+ * ## This is a default, not a promise
  *
- * It is a CSS filter. Anyone who opens the browser's developer tools removes it in
- * seconds and sees the original, because the original is what was sent. That is a
- * deliberate choice — the alternative (blurring the bytes on the server) costs processing
- * and a cache, and was weighed and not taken.
+ * None of it is described to members anywhere in the UI, and that is the rule, not an
+ * omission. It is how طريق conducts itself — a floor for the case where someone does not
+ * keep it themselves — and the moment it is announced it becomes something people rely on.
  *
- * So it must never be DESCRIBED to a member as protection. «الصور تظهر مشوّشة للرجال» is
- * true; «صورتك محمية» is not, and the difference matters to a woman deciding what to
- * upload. If that promise is ever wanted, the blur has to move to the server first.
+ * They could not safely rely on it: the blur is a CSS filter, so the original is what was
+ * sent and developer tools reveal it in seconds. That trade was made deliberately (blurring
+ * the bytes on the server costs processing and a cache), and it is exactly why the
+ * behaviour stays unannounced. A woman decides what to upload on the strength of what she
+ * has been told; telling her nothing leaves her judgement her own, while telling her the
+ * picture is covered would be a claim this code cannot keep.
+ *
+ * If it should ever become a promise, the blur moves to the server FIRST, and the copy
+ * second.
  */
 
 export type TareeqGender = 'male' | 'female';

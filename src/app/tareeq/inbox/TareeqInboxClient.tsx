@@ -295,9 +295,7 @@ function Inner() {
                     )}
                     {r.relation !== 'none' && (
                       <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>
-                        {isRtl
-                          ? 'هذا ادّعاء منه، لم يتحقّق منه أحد. إن لم يكن صحيحاً فارفضه وأبلغ عنه.'
-                          : 'This is his claim; nobody has verified it. If it is untrue, decline and report.'}
+                        {isRtl ? 'قاله هو عن نفسه.' : 'His own words about himself.'}
                       </p>
                     )}
                   </div>

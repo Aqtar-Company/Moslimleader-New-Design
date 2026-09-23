@@ -8,6 +8,7 @@ import TareeqTip from '@/components/tareeq/TareeqTip';
 import TareeqShareSheet from '@/components/tareeq/TareeqShareSheet';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import TareeqReactionPicker from '@/components/tareeq/TareeqReactionPicker';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX, TAREEQ_REACTIONS, reactionEmojiFor } from '@/lib/tareeq-constants';
 import { savePostOffline, removePostOffline, isPostSavedOffline } from '@/lib/tareeq-idb';
 import type { TareeqCategoryKey, TareeqReactionType } from '@/lib/tareeq-constants';
@@ -397,63 +398,6 @@ function IconBookmark({ filled = false, size = 18 }: { filled?: boolean; size?: 
 }
 
 /* ── Reaction picker popup ─────────────────────────────────────────── */
-function ReactionPicker({ currentReaction, onReact, onClose, isRtl, dark = false }: {
-  currentReaction: string | null;
-  onReact: (type: ReactionType) => void;
-  onClose: () => void;
-  isRtl: boolean;
-  dark?: boolean;
-}) {
-  return (
-    <>
-      <div className="fixed inset-0 z-[49]" onClick={onClose} />
-      <div
-        className="absolute bottom-full start-0 z-50 flex items-end gap-1.5 mb-2"
-        style={{
-          background: dark ? 'rgba(12,12,12,0.72)' : 'var(--tr-surface)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : 'var(--tr-border-soft)'}`,
-          borderRadius: 20,
-          padding: '8px 12px',
-          boxShadow: '0 8px 32px var(--tr-shadow-popup)',
-          whiteSpace: 'nowrap',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        {REACTIONS.map(r => {
-          const active = currentReaction === r.type;
-          return (
-            <button
-              key={r.type}
-              onClick={() => { onReact(r.type); onClose(); }}
-              className="flex flex-col items-center gap-0.5 transition-transform"
-              style={{ transform: active ? 'scale(1.18) translateY(-4px)' : 'scale(1)' }}
-              onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.88)')}
-              onPointerUp={e => (e.currentTarget.style.transform = active ? 'scale(1.18) translateY(-4px)' : 'scale(1)')}
-              onPointerLeave={e => (e.currentTarget.style.transform = active ? 'scale(1.18) translateY(-4px)' : 'scale(1)')}
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
-                style={{
-                  background: active ? `${r.color}22` : (dark ? 'rgba(255,255,255,0.08)' : 'var(--tr-overlay)'),
-                  border: `1.5px solid ${active ? r.color + '70' : (dark ? 'rgba(255,255,255,0.14)' : 'var(--tr-border-soft)')}`,
-                  boxShadow: active ? `0 0 12px ${r.color}55` : 'none',
-                  transition: 'all 150ms',
-                }}
-              >
-                {r.emoji}
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: active ? r.color : (dark ? 'rgba(255,255,255,0.6)' : 'var(--tr-text-muted)') }}>
-                {isRtl ? r.labelAr : r.labelEn}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </>
-  );
-}
 
 export default function TareeqCard({ post, initialLiked = false, initialReaction = null, initialBookmarked = false, onMobileOpen, onDeleted }: Props) {
   const { isRtl } = useLang();
@@ -843,7 +787,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           </button>
 
           {showPicker && (
-            <ReactionPicker
+            <TareeqReactionPicker
               currentReaction={currentReaction}
               onReact={(t) => handleReact(t)}
               onClose={() => setShowPicker(false)}
@@ -1139,7 +1083,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 <span className="text-xs font-semibold" style={{ color: currentReaction ? (reactionConfig?.color ?? '#f59e0b') : 'var(--tr-text-muted)' }}>{fmt(likeCount)}</span>
               </button>
               {showPicker && (
-                <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} />
+                <TareeqReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} />
               )}
             </div>
 
@@ -1290,7 +1234,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 </button>
                 {showPicker && (
                   <div style={{ position: 'absolute', right: 'calc(100% + 10px)', top: 0, zIndex: 20 }} onClick={e => e.stopPropagation()}>
-                    <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} dark />
+                    <TareeqReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} dark />
                   </div>
                 )}
               </div>
@@ -1596,7 +1540,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               <span className="text-sm font-semibold" style={{ color: currentReaction ? (reactionConfig?.color ?? '#f59e0b') : 'var(--tr-text-muted)' }}>{fmt(likeCount)}</span>
             </button>
             {showPicker && (
-              <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} />
+              <TareeqReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} />
             )}
           </div>
 

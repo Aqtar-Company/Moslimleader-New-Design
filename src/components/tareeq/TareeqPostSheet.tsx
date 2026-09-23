@@ -791,7 +791,10 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                       <span style={{ fontSize: 13 }}>
                                         {commentLikes[c.id]?.reaction
                                           ? reactionEmojiFor(commentLikes[c.id]?.reaction)
-                                          : '🤍'}
+                                          /* Not a heart: طريق has no heart reaction, and one
+                                             sitting in the neutral slot invited exactly the
+                                             confusion this whole change is about. */
+                                          : '🙂'}
                                       </span>
                                       {(() => {
                                         const total = Object.values(commentLikes[c.id]?.counts ?? {}).reduce((s, n) => s + n, 0);
@@ -1236,7 +1239,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                 <span style={{ fontSize: 13 }}>
                                   {commentLikes[c.id]?.reaction
                                     ? reactionEmojiFor(commentLikes[c.id]?.reaction)
-                                    : '🤍'}
+                                    : '🙂'}
                                 </span>
                                 {(() => {
                                   const total = Object.values(commentLikes[c.id]?.counts ?? {}).reduce((s, n) => s + n, 0);

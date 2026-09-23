@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import TareeqVideo from '@/components/tareeq/TareeqVideo';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
+import TareeqReactionPicker from '@/components/tareeq/TareeqReactionPicker';
+import { TAREEQ_REACTIONS, reactionEmojiFor, type TareeqReactionType } from '@/lib/tareeq-constants';
 import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import { ReportModal } from '@/components/tareeq/TareeqCard';
@@ -36,13 +38,8 @@ interface Post {
 }
 
 // ── Reaction config ───────────────────────────────────────────────────
-const REACTIONS = [
-  { type: 'inspired',    emoji: '⭐', labelAr: 'ألهمني',      labelEn: 'Inspiring',  color: '#f59e0b' },
-  { type: 'thanks',      emoji: '🙏', labelAr: 'شكرًا',       labelEn: 'Thanks',     color: '#10b981' },
-  { type: 'agree',       emoji: '✊', labelAr: 'أتفق',        labelEn: 'Agree',      color: '#3b82f6' },
-  { type: 'yarabb',      emoji: '🤲', labelAr: 'يارب',        labelEn: 'Ameen',      color: '#8b5cf6' },
-  { type: 'mashaallah',  emoji: '🌴', labelAr: 'ماشاء الله',  labelEn: 'MashaAllah', color: '#16a34a' },
-] as const;
+// The platform's one list, not a third copy of it. See TAREEQ_REACTIONS.
+const REACTIONS = TAREEQ_REACTIONS;
 
 type ReactionType = typeof REACTIONS[number]['type'];
 
@@ -69,7 +66,10 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [deleting, setDeleting] = useState(false);
   const [pinnedCommentId, setPinnedCommentId] = useState<string | null>(post.pinnedCommentId ?? null);
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
-  const [commentLikes, setCommentLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
+  // Per comment: which reaction I left, and the count of each. A boolean `liked` could
+  // only ever express the single star this used to be.
+  const [commentLikes, setCommentLikes] = useState<Record<string, { reaction: string | null; counts: Record<string, number> }>>({});
+  const [commentPicker, setCommentPicker] = useState<string | null>(null); // commentId
   const [showUpdateInput, setShowUpdateInput] = useState(false);
   const [updateText, setUpdateText] = useState('');
   const [updateSaving, setUpdateSaving] = useState(false);
@@ -98,12 +98,12 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       post.comments.map(c =>
         fetch(`/api/tareeq/comments/${c.id}/react`, { credentials: 'include' })
           .then(r => r.ok ? r.json() : null)
-          .then(d => d ? { id: c.id, count: (d.total as number) ?? 0, liked: d.reaction !== null && d.reaction !== undefined } : null)
+          .then(d => d ? { id: c.id, reaction: (d.reaction ?? null) as string | null, counts: (d.counts ?? {}) as Record<string, number> } : null)
           .catch(() => null)
       )
     ).then(results => {
-      const map: Record<string, { count: number; liked: boolean }> = {};
-      results.forEach(r => { if (r) map[r.id] = { count: r.count, liked: r.liked }; });
+      const map: Record<string, { reaction: string | null; counts: Record<string, number> }> = {};
+      results.forEach(r => { if (r) map[r.id] = { reaction: r.reaction, counts: r.counts }; });
       setCommentLikes(map);
     });
   }, [post.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -239,21 +239,25 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
     else setSubscribed(prev);
   }
 
-  async function toggleCommentLike(commentId: string) {
+  /** Tapping the reaction you already left removes it, exactly as it does on a post. */
+  async function reactToComment(commentId: string, type: TareeqReactionType) {
     if (!user) { setShowGate(true); return; }
-    const prev = commentLikes[commentId] ?? { count: 0, liked: false };
-    const optimistic = { count: prev.liked ? prev.count - 1 : prev.count + 1, liked: !prev.liked };
-    setCommentLikes(cl => ({ ...cl, [commentId]: optimistic }));
-    const res = await fetch(`/api/tareeq/comments/${commentId}/react`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      // ⭐ إلهام, not a heart — طريق has no heart reaction anywhere else.
-      body: JSON.stringify({ type: 'inspired' }),
-    });
-    if (res.ok) {
+    setCommentPicker(null);
+    const prev = commentLikes[commentId] ?? { reaction: null, counts: {} };
+    const same = prev.reaction === type;
+    const counts = { ...prev.counts };
+    if (prev.reaction) counts[prev.reaction] = Math.max(0, (counts[prev.reaction] ?? 1) - 1);
+    if (!same) counts[type] = (counts[type] ?? 0) + 1;
+    setCommentLikes(cl => ({ ...cl, [commentId]: { reaction: same ? null : type, counts } }));
+    try {
+      const res = await fetch(`/api/tareeq/comments/${commentId}/react`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ type }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
-      const total = d.total ?? Object.values((d.counts ?? {}) as Record<string, number>).reduce((s: number, n: number) => s + n, 0);
-      setCommentLikes(cl => ({ ...cl, [commentId]: { count: total, liked: d.reaction !== null && d.reaction !== undefined } }));
-    } else {
+      setCommentLikes(cl => ({ ...cl, [commentId]: { reaction: d.reaction ?? null, counts: d.counts ?? {} } }));
+    } catch {
       setCommentLikes(cl => ({ ...cl, [commentId]: prev }));
     }
   }
@@ -732,21 +736,60 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                         </div>
                       </div>
                       <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{displayMentions(c.content)}</p>
-                      <div className="flex items-center mt-2">
-                        <button
-                          onClick={() => toggleCommentLike(c.id)}
-                          className="flex items-center gap-1 transition active:scale-90"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: commentLikes[c.id]?.liked ? 'var(--tr-gold)' : 'var(--tr-text-muted)', padding: '2px 0' }}
-                        >
-                          {/* The platform's star, matching the post reaction — this was a
-                              heart, which طريق uses nowhere else. */}
-                          <svg width={14} height={14} fill={commentLikes[c.id]?.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-                          </svg>
-                          {(commentLikes[c.id]?.count ?? 0) > 0 && (
-                            <span className="text-[11px] font-semibold">{commentLikes[c.id]?.count}</span>
-                          )}
-                        </button>
+                      {/* Same reaction set as a post, and the same gesture: tap to open,
+                          tap a face to choose, tap it again to take it back. A lone star
+                          here read as a rating and could say only one thing. */}
+                      <div className="flex items-center gap-3 mt-2 relative">
+                        {(() => {
+                          const mine = commentLikes[c.id]?.reaction ?? null;
+                          const counts = commentLikes[c.id]?.counts ?? {};
+                          const total = Object.values(counts).reduce((a, b) => a + b, 0);
+                          const chosen = mine ? REACTIONS.find(r => r.type === mine) : null;
+                          // The three most-used faces, so a reader sees what the room felt
+                          // without opening anything.
+                          const top = Object.entries(counts)
+                            .filter(([, n]) => n > 0)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 3)
+                            .map(([t]) => t);
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setCommentPicker(commentPicker === c.id ? null : c.id)}
+                                aria-label={isRtl ? 'تفاعل' : 'React'}
+                                className="flex items-center gap-1 transition active:scale-90"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontSize: 11, fontWeight: 700, color: chosen ? chosen.color : 'var(--tr-text-muted)' }}
+                              >
+                                {chosen ? (
+                                  <span style={{ fontSize: 15, lineHeight: 1 }}>{reactionEmojiFor(mine)}</span>
+                                ) : (
+                                  <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                                  </svg>
+                                )}
+                                <span>{chosen ? (isRtl ? chosen.labelAr : chosen.labelEn) : (isRtl ? 'تفاعل' : 'React')}</span>
+                              </button>
+
+                              {total > 0 && (
+                                <span className="flex items-center gap-1" style={{ fontSize: 11, color: 'var(--tr-text-muted)' }}>
+                                  <span style={{ letterSpacing: -2 }}>{top.map(t => reactionEmojiFor(t)).join('')}</span>
+                                  <span className="font-semibold">{total}</span>
+                                </span>
+                              )}
+
+                              {commentPicker === c.id && (
+                                <TareeqReactionPicker
+                                  currentReaction={mine}
+                                  onReact={t => reactToComment(c.id, t)}
+                                  onClose={() => setCommentPicker(null)}
+                                  isRtl={isRtl}
+                                  compact
+                                />
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

@@ -37,7 +37,6 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { readFileSync } from 'node:fs';
 
 const prisma = new PrismaClient();
 const DRY = process.argv.includes('--dry');
@@ -47,45 +46,14 @@ const ALL = process.argv.includes('--all');
 // `tareeqGenderSetAt` null is what marks a row as guessed rather than stated.
 const REDO = process.argv.includes('--redo');
 
-// The classifier is TypeScript; a bare node script cannot import it. Rather than keep a
-// second copy — the thing that has gone wrong repeatedly in this codebase — its lists and
-// rules are evaluated straight out of the source file.
-const src = readFileSync('src/lib/arabic-name-gender.ts', 'utf8');
-function setFrom(name) {
-  const m = new RegExp(`const ${name} = new Set\\(\\[([\\s\\S]*?)\\]\\)`).exec(src);
-  if (!m) throw new Error(`could not read ${name} from the classifier`);
-  return new Set([...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]));
-}
-const MALE = setFrom('MALE');
-const FEMALE = setFrom('FEMALE');
-const MALE_LATIN = setFrom('MALE_LATIN');
-const FEMALE_LATIN = setFrom('FEMALE_LATIN');
-function arrayFrom(name) {
-  const m = new RegExp(`const ${name} = \\[([\\s\\S]*?)\\]`).exec(src);
-  return m ? [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]) : [];
-}
-const ORG_WORDS = arrayFrom('ORG_WORDS');
-const HONORIFICS = arrayFrom('HONORIFICS');
-
-const normalise = s => s
-  .replace(/[ً-ْـ]/g, '')
-  .replace(/[إأآٱ]/g, 'ا')
-  .replace(/ى/g, 'ي')
-  .replace(/\s+/g, ' ')
-  .trim();
-
-function guess(rawName) {
-  if (!rawName) return null;
-  const full = normalise(rawName);
-  if (!full || !/^[؀-ۿ]/.test(full)) return null;
-  const first = full.split(' ')[0];
-  if (full.startsWith('ام ') || full.startsWith('أم ')) return { gender: 'female', reason: 'أم …' };
-  if (['عبد', 'ابو', 'أبو'].some(p => first.startsWith(p)) && first.length > 4) return { gender: 'male', reason: 'عبد… / أبو…' };
-  if (FEMALE.has(first)) return { gender: 'female', reason: 'قائمة الإناث' };
-  if (MALE.has(first)) return { gender: 'male', reason: 'قائمة الذكور' };
-  if (/[ةه]$/.test(first) && first.length >= 4 && !MALE.has(first)) return { gender: 'female', reason: 'تاء مربوطة' };
-  return null;
-}
+// ONE copy of the rules. This script used to hold its own `guess()` — it read the lists
+// out of the TypeScript source with a regex but re-implemented the LOGIC, and the
+// re-implementation was stale: it began `if (!/^[\u0600-\u06FF]/.test(full)) return null`,
+// so every Latin-script name was reported «غير محسوم» although the transliteration lists
+// contained it, and it checked neither honorifics nor `ORG_WORDS`. The classifier is now
+// plain JavaScript for exactly this reason — import it, never copy it.
+const { guessGenderFromName } = await import('../src/lib/arabic-name-gender.mjs');
+const guess = guessGenderFromName;
 
 try {
   if (UNDO) {

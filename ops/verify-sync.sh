@@ -135,11 +135,19 @@ if [ -n "$MEM_MB" ]; then
   # `tsc` and `next build` both need more than node's default heap on a tree this size.
   # The type check in the deploy block died of exactly this, silently, because its exit
   # code was swallowed by the pipe it was written into.
-  if [ "$MEM_MB" -lt 3000 ]; then
-    say_note "ابنِ دائماً بـ NODE_OPTIONS=\"--max-old-space-size=4096\" على هذا الحجم"
-  fi
+  # A heap ceiling at or above physical RAM is not a ceiling: node never stops itself, the
+  # kernel runs out first, and the OOM killer chooses the victim — possibly mysqld or the
+  # other project on this box.
   case "${NODE_OPTIONS:-}" in
-    *max-old-space-size*) say_ok "NODE_OPTIONS مضبوط: ${NODE_OPTIONS}" ;;
+    *max-old-space-size=*)
+      HEAP=$(printf '%s' "$NODE_OPTIONS" | sed -n 's/.*max-old-space-size=\([0-9]*\).*/\1/p')
+      if [ -n "$HEAP" ] && [ "$HEAP" -ge "$MEM_MB" ]; then
+        say_bad "حدّ الكومة ($HEAP م) ≥ رام الجهاز ($MEM_MB م) — ليس حدّاً"
+        say_note "اجعله نحو ٨٠٪ مما يتوفّر: ذاكرةٌ تنفد يحكمها OOM killer، وقد يختار mysqld أو المشروع الآخر"
+      else
+        say_ok "حدّ الكومة $HEAP م، دون رام الجهاز"
+      fi
+      ;;
     *) say_note "NODE_OPTIONS غير مضبوط في هذه الجلسة — مرّره في أمر البناء نفسه" ;;
   esac
 fi

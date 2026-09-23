@@ -15,8 +15,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# A tree this size needs more than node's default heap for both the check and the build.
-export NODE_OPTIONS="--max-old-space-size=4096"
+# More than node's default heap, and LESS than the machine has.
+#
+# This was 4096 on a box with 3653 MB of RAM — a ceiling above the whole machine, which is
+# no ceiling at all: node never stops itself, the kernel runs out first, and then the OOM
+# killer picks the victim by its own reckoning. That could be mysqld, or the OTHER project
+# sharing this server. A guard that can take down a neighbour is not a guard.
+#
+# 3072 is chosen from the measurement, not by feel: the type check died at 1822 MB under
+# node's default limit, so three gigabytes is ample, and it leaves the kernel room to
+# breathe. Raise it only after watching a build's real peak (`/usr/bin/time -v`).
+export NODE_OPTIONS="--max-old-space-size=3072"
 
 TS=$(date +%Y%m%d-%H%M%S)
 BASELINE=${TSC_BASELINE:-24}

@@ -768,6 +768,25 @@ Books are protected from download at two levels:
   - So طريق's email audience is **86 people**, and it grows with signups, not with a
     cleanup campaign. The other 2056 are reachable by phone, and that is a different
     channel, not a worse address.
+- **`User.tareeqLastSeen` means "uses طريق", and for a long time it only meant "opened a
+  DM".** It was written from one place — the heartbeat on the conversation screen — so a
+  member who signed up, posted, reacted and commented but never opened a private chat kept
+  it null. Three things read that column and all three were wrong for those people: the
+  admin panel's «مستخدمو طريق» list (`/api/tareeq-admin/users?scope=tareeq`), the admin
+  stats, and the BROADCAST AUDIENCE, where `tareeqLastSeen != null` is the only signal
+  distinguishing a طريق member from a shop-only customer. So active members were invisible
+  in the panel and were being left out of messages addressed to طريق's own members.
+  - It is now also written by `/api/tareeq/me`, which the feed fetches on every load —
+    that is the request that actually means "is using طريق".
+  - **Both writers share one five-minute throttle key** (`presence-db:<userId>` in
+    `tareeq-store`), so the two together still touch the `User` row at most once every five
+    minutes. That table serves the shop's sign-in, orders and membership, and the write
+    volume is exactly why the heartbeat was moved off it before.
+  - `ops/backfill-tareeq-lastseen.mjs` repairs the members already affected, stamping each
+    with their most recent real activity rather than `now` — stamping everyone with today
+    would claim the whole platform was active this minute and make "last seen" a lie on
+    every profile showing it. A member with no activity at all is left null, because
+    nothing in the data knows whether they ever opened طريق. One-off; run once after deploy.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

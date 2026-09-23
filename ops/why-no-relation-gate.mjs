@@ -32,6 +32,19 @@ const find = async (q) => {
   return rows;
 };
 
+/**
+ * صفّ استيراد، لا عضو. 96% من جدول المستخدمين أرقام هواتف: طلبٌ يدوي أو شراء
+ * كزائر يحتاج صفّ مستخدم، والصفّ يحتاج بريداً، فيُخترع من الرقم. يطابق
+ * isSyntheticEmail في src/lib/real-email.ts.
+ *
+ * التنبيه ليس تزييناً: أول تشغيل لهذه الأداة طابق «مارية» بصفٍّ اسمه
+ * «دومارية-الكلح شرق-ادفو-اسوان» — وهو عنوان في أسوان لا إنسان — وطبع خلاصة
+ * صحيحة عن شخصٍ غير موجود.
+ */
+const isImportedRow = (email) => !email || /\.local$/i.test(email)
+  || email.endsWith('@guest.moslimleader.com')
+  || /^(manual|guest)-/i.test(email);
+
 const label = (g) => g === 'male' ? 'رجل' : g === 'female' ? 'امرأة' : g === 'org' ? 'جهة' : '— غير محدَّد';
 
 try {
@@ -49,6 +62,15 @@ try {
   console.log('\nالمرسِل   :', a.name, `— ${label(a.tareeqGender)}`, a.tareeqGender && !a.tareeqGenderSetAt ? '(تخمين)' : '', a.role === 'admin' ? '[إدارة]' : '');
   console.log('المستقبِل :', b.name, `— ${label(b.tareeqGender)}`, b.tareeqGender && !b.tareeqGenderSetAt ? '(تخمين)' : '', b.role === 'admin' ? '[إدارة]' : '');
   console.log('خصوصية رسائل المستقبِل:', b.tareeqMessagePrivacy ?? 'everyone');
+
+  for (const r of [a, b]) {
+    if (isImportedRow(r.email)) {
+      console.log(`\n  ⚠️  «${r.name}» ليس عضواً في طريق — بريده «${r.email}» مُختلَق من`);
+      console.log('      رقم هاتف عند طلبٍ يدوي أو شراءٍ كزائر. راجِع الاسم: قد يكون عنواناً.');
+    } else if (!r.tareeqLastSeen) {
+      console.log(`\n  ℹ️  «${r.name}» حسابُ متجرٍ لم يفتح طريق قط.`);
+    }
+  }
 
   const needed = needsRelationDeclaration(a.tareeqGender, b.tareeqGender);
 

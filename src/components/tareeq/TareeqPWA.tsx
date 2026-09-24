@@ -90,6 +90,27 @@ export default function TareeqPWA() {
           if (isTextField && (el?.value ?? (el as HTMLElement | null)?.textContent ?? '').trim()) return;
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         };
+        // ASK for a new worker. Registering does not do it.
+        //
+        // `register()` on an existing registration resolves with what is already there;
+        // the browser re-fetches the script on its own schedule, and an installed PWA that
+        // stays open for days may not navigate at all. So a fixed worker sat on GitHub and
+        // on the server while every phone kept running the old one — the deploy was real
+        // and the bug was still there, which is the most confusing shape a fix can take.
+        //
+        // `update()` is the explicit re-fetch. It is one conditional request for a ~20KB
+        // file, so it is cheap enough to repeat whenever the app is brought back to the
+        // front — throttled to once a minute so returning to the tab repeatedly does not
+        // turn into a poll.
+        let lastUpdateCheck = 0;
+        const checkForUpdate = () => {
+          const now = Date.now();
+          if (now - lastUpdateCheck < 60_000) return;
+          lastUpdateCheck = now;
+          reg.update().catch(() => {});
+        };
+        checkForUpdate();
+
         if (reg.waiting) activateIfSafe();
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
@@ -99,7 +120,11 @@ export default function TareeqPWA() {
         // Re-check when the user returns to the tab — a natural, safe moment.
         // Tracked so the cleanup below can remove it: this used to leak one listener per
         // mount of TareeqPWA.
-        onVisible = () => { if (document.visibilityState === 'visible') activateIfSafe(); };
+        onVisible = () => {
+          if (document.visibilityState !== 'visible') return;
+          checkForUpdate();   // is there a newer worker at all?
+          activateIfSafe();   // and is it safe to take the one already waiting?
+        };
         document.addEventListener('visibilitychange', onVisible);
       }).catch(() => {});
 

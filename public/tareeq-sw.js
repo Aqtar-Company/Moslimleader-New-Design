@@ -1,7 +1,7 @@
-/* tareeq-v9 — Offline, Background Sync, Periodic Sync, Rich Push, Media-channel audio */
-const CACHE_STATIC  = 'tareeq-v9-static';
-const CACHE_PAGES   = 'tareeq-v9-pages';
-const CACHE_IMAGES  = 'tareeq-v9-images';
+/* tareeq-v10 — Offline, Background Sync, Periodic Sync, Rich Push, Media-channel audio */
+const CACHE_STATIC  = 'tareeq-v10-static';
+const CACHE_PAGES   = 'tareeq-v10-pages';
+const CACHE_IMAGES  = 'tareeq-v10-images';
 // Mushaf page data and the per-page QCF4 fonts. Kept in their OWN cache, never version-
 // suffixed, so a service-worker version bump does not throw away tens of megabytes the
 // user already paid to download. These files are immutable: a given page's glyph data and
@@ -69,9 +69,30 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Tareeq pages: network-first, fall back to cache → shell
-  if (url.pathname.startsWith('/tareeq') || url.pathname === '/tareeq') {
-    e.respondWith(networkFirstPage(e.request));
+  // Tareeq PAGES: network-first, fall back to cache → shell.
+  //
+  // «PAGES» means a real document navigation, and the word is the whole fix.
+  //
+  // Next's App Router does not fetch a page when it navigates on the client: it fetches an
+  // RSC payload at the SAME pathname, marked by an `RSC: 1` header and an `_rsc=` query.
+  // Those requests matched this branch, so two things happened. They were written into the
+  // page cache, and — the one that hangs — a failed fetch answered them from the cache or
+  // from the `/tareeq` shell: an HTML DOCUMENT handed to a router waiting for flight data.
+  // The router cannot parse it and does not time out. It waits forever, which on screen is
+  // the app "loading" and never responding.
+  //
+  // It struck hardest right after a notification tap, because that is the moment the phone
+  // has just woken and its radio has not finished reconnecting — precisely when the fetch
+  // fails. Same cause for both routing styles: `navigate()` before, `router.push()` now.
+  //
+  // So anything that is not a navigation goes straight to the network, untouched. An RSC
+  // fetch that fails then fails honestly, and the router reports it instead of hanging.
+  if (url.pathname === '/tareeq' || url.pathname.startsWith('/tareeq/')) {
+    const isNavigation = e.request.mode === 'navigate';
+    const isFlight = url.searchParams.has('_rsc') || e.request.headers.get('RSC') === '1';
+    if (isNavigation && !isFlight) {
+      e.respondWith(networkFirstPage(e.request));
+    }
     return;
   }
 });
@@ -92,9 +113,13 @@ async function cacheFirst(request, cacheName) {
 async function networkFirstPage(request) {
   try {
     const res = await fetch(request);
-    if (res.ok) {
-      const cache = await caches.open(CACHE_PAGES);
-      cache.put(request, res.clone());
+    // Caching must never decide what the caller receives. `Cache.put` rejects for a
+    // redirected response, and that rejection used to escape into the catch below — so a
+    // perfectly good page from the network was thrown away and a stale one, or the bare
+    // shell, returned in its place.
+    if (res.ok && !res.redirected) {
+      const copy = res.clone();
+      caches.open(CACHE_PAGES).then(c => c.put(request, copy)).catch(() => {});
     }
     return res;
   } catch {

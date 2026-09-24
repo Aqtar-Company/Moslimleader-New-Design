@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ensurePushSubscription, pushOptedOut, setPushOptedOut } from '@/lib/tareeq-push-client';
 
@@ -103,6 +104,11 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
   const initialPollDone = useRef(false);
   // When a chime last played, from ANY source (poll or service worker).
   const lastChimeAtRef = useRef(0);
+  // Held in a ref so the service-worker listener is bound once, not re-bound on every
+  // navigation — a listener that churns can miss the message it exists to receive.
+  const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
 
   // Register service worker + periodic background sync (badge update)
   useEffect(() => {
@@ -269,6 +275,17 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
       // player has no unlocked session, arrives as a `tareeq-chime-fallback` window event
       // (see the effect below) rather than as a second listener on this message.
       if (data?.type === 'TAREEQ_PLAY_SOUND') { lastChimeAtRef.current = Date.now(); return; }
+      // The worker asks the page to route itself when a notification is tapped while طريق
+      // is already open. Acknowledging comes FIRST and unconditionally: the worker waits
+      // 800ms for it and otherwise falls back to a full document navigation, which is the
+      // teardown that left the app hanging on a blank screen. An ack we send and then fail
+      // to act on costs one dead tap; an ack we withhold costs the hang back.
+      if (data?.type === 'TAREEQ_NAVIGATE' && typeof data.url === 'string') {
+        e.ports?.[0]?.postMessage({ ok: true });
+        try { routerRef.current.push(data.url); }
+        catch { window.location.assign(data.url); }
+        return;
+      }
       if (!data || data.type !== 'TAREEQ_BADGE_UPDATE') return;
       if (typeof data.notifCount === 'number') {
         prevNotifRef.current = data.notifCount; // adopt silently — the SW already notified

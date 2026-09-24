@@ -282,8 +282,19 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
       // to act on costs one dead tap; an ack we withhold costs the hang back.
       if (data?.type === 'TAREEQ_NAVIGATE' && typeof data.url === 'string') {
         e.ports?.[0]?.postMessage({ ok: true });
-        try { routerRef.current.push(data.url); }
-        catch { window.location.assign(data.url); }
+        const target = data.url as string;
+        try { routerRef.current.push(target); }
+        catch { window.location.assign(target); return; }
+        // A client-side navigation can fail silently — a rejected RSC fetch leaves the
+        // router waiting with nothing on screen but a spinner, which is the hang this
+        // whole path was reported for. If the address has not moved shortly after, stop
+        // waiting on it and load the page for real. A redundant reload is cheap; an app
+        // that never answers is not.
+        window.setTimeout(() => {
+          const want = target.split('#')[0];
+          const here = window.location.pathname + window.location.search;
+          if (here !== want) window.location.assign(target);
+        }, 2500);
         return;
       }
       if (!data || data.type !== 'TAREEQ_BADGE_UPDATE') return;

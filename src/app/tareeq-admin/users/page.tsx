@@ -16,6 +16,16 @@ interface User {
   joinedAt: string;
 }
 
+/** The counts strip — independent of the search box, the tab and the page. */
+interface Counts {
+  tareeq: number;
+  active7: number;
+  active30: number;
+  contributors: number;
+  shopOnly: number;
+  suspended: number;
+}
+
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'نشط',
   SUSPENDED: 'موقوف',
@@ -43,6 +53,18 @@ function StatusBadge({ status }: { status: string }) {
     >
       {STATUS_LABELS[status] ?? status}
     </span>
+  );
+}
+
+function StatTile({ label, value, hint, accent }: { label: string; value: number | null; hint?: string; accent?: string }) {
+  return (
+    <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '0.85rem 1rem', minWidth: 0 }}>
+      <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.75rem', fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: '0.25rem 0 0', color: accent ?? '#f1f5f9', fontSize: '1.6rem', fontWeight: 800, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
+        {value === null ? '—' : value.toLocaleString('ar-EG')}
+      </p>
+      {hint && <p style={{ margin: '0.2rem 0 0', color: '#64748b', fontSize: '0.7rem', lineHeight: 1.4 }}>{hint}</p>}
+    </div>
   );
 }
 
@@ -83,6 +105,8 @@ function UsersContent() {
   const [scope, setScope] = useState<'tareeq' | 'all'>('tareeq');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState<number | null>(null);
+  const [counts, setCounts] = useState<Counts | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchUsers = useCallback(() => {
@@ -96,6 +120,8 @@ function UsersContent() {
       .then(d => {
         setUsers(d.users ?? []);
         setTotalPages(d.pages ?? 1);
+        setTotal(typeof d.total === 'number' ? d.total : null);
+        if (d.counts) setCounts(d.counts);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -145,6 +171,24 @@ function UsersContent() {
         <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.3rem' }}>
           عرض وإدارة حسابات المستخدمين
         </p>
+      </div>
+
+      {/* Counts. Two headline numbers, because «المستخدمون الفعليون» has two honest
+          readings that are far apart: من فتح طريق، ومن كتب فيه. */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: '0.75rem',
+          marginBottom: '1rem',
+        }}
+      >
+        <StatTile label="مستخدمو طريق" value={counts?.tareeq ?? null} hint="فتحوا طريق مرة على الأقل" accent="#f59e0b" />
+        <StatTile label="شاركوا بمنشور أو تعليق" value={counts?.contributors ?? null} hint="كتبوا شيئاً فعلاً" accent="#22c55e" />
+        <StatTile label="نشطون آخر ٧ أيام" value={counts?.active7 ?? null} />
+        <StatTile label="نشطون آخر ٣٠ يوماً" value={counts?.active30 ?? null} />
+        <StatTile label="موقوفون" value={counts?.suspended ?? null} accent={counts?.suspended ? '#ef4444' : undefined} />
+        <StatTile label="حسابات المتجر فقط" value={counts?.shopOnly ?? null} hint="لم يفتحوا طريق — معظمها صفوف استيراد لطلبات يدوية" />
       </div>
 
       {/* Filters */}
@@ -208,6 +252,13 @@ function UsersContent() {
             </button>
           ))}
         </div>
+
+        {/* What the table below is actually showing — a different question from the
+            strip above, and conflating the two is how a filtered page gets read as a
+            platform total. */}
+        <span style={{ color: '#64748b', fontSize: '0.78rem', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+          {total === null ? '' : `المعروض: ${total.toLocaleString('ar-EG')}`}
+        </span>
 
         {/* Status tabs */}
         <div style={{ display: 'flex', gap: '0.25rem', background: '#0f172a', borderRadius: '8px', padding: '3px' }}>

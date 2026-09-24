@@ -1,7 +1,7 @@
-/* tareeq-v8 — Offline, Background Sync, Periodic Sync, Rich Push, Media-channel audio */
-const CACHE_STATIC  = 'tareeq-v8-static';
-const CACHE_PAGES   = 'tareeq-v8-pages';
-const CACHE_IMAGES  = 'tareeq-v8-images';
+/* tareeq-v9 — Offline, Background Sync, Periodic Sync, Rich Push, Media-channel audio */
+const CACHE_STATIC  = 'tareeq-v9-static';
+const CACHE_PAGES   = 'tareeq-v9-pages';
+const CACHE_IMAGES  = 'tareeq-v9-images';
 // Mushaf page data and the per-page QCF4 fonts. Kept in their OWN cache, never version-
 // suffixed, so a service-worker version bump does not throw away tens of megabytes the
 // user already paid to download. These files are immutable: a given page's glyph data and
@@ -299,6 +299,63 @@ self.addEventListener('notificationclose', e => {
 });
 
 // ── Notification Click: action-aware routing ─────────────────────────
+//
+// Why this does NOT call `client.navigate()` first any more.
+//
+// Tapping a notification while طريق was already open left the app on a blank screen
+// "loading" and unresponsive. `WindowClient.navigate()` is a full document navigation
+// driven by the worker: it tears down the running app and boots it again, and in an
+// installed PWA window that is the hang. Worse, `navigate()` REJECTS outright on a client
+// this worker does not control — and `includeUncontrolled: true` deliberately puts such
+// clients in the list. Nothing caught that rejection, so the tap did nothing at all.
+//
+// So the open window is asked to route ITSELF, over a MessageChannel: a client-side
+// navigation, instant, with no teardown. The worker waits briefly for an acknowledgement,
+// because an older build of the app has no listener and would swallow the tap in silence.
+// Only if no answer comes does it fall back to `navigate()`, and then to a new window.
+const ROUTE_ACK_MS = 800;
+
+function isTareeqWindow(client) {
+  try {
+    const u = new URL(client.url);
+    // `.includes('/tareeq')` also matched /tareeq-admin, a different app entirely.
+    return u.origin === self.location.origin && (u.pathname === '/tareeq' || u.pathname.startsWith('/tareeq/'));
+  } catch { return false; }
+}
+
+/** Resolves true only when the page confirms it handled the route. */
+function askClientToRoute(client, payload) {
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = ok => { if (!settled) { settled = true; clearTimeout(timer); resolve(ok); } };
+    const timer = setTimeout(() => finish(false), ROUTE_ACK_MS);
+    let channel;
+    try { channel = new MessageChannel(); } catch { finish(false); return; }
+    channel.port1.onmessage = () => finish(true);
+    try { client.postMessage(payload, [channel.port2]); } catch { finish(false); }
+  });
+}
+
+async function openFromNotification(url, callId) {
+  const target = new URL(url, self.location.origin);
+  const path = target.pathname + target.search + target.hash;
+  const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const client = list.find(isTareeqWindow);
+
+  if (client) {
+    try { await client.focus(); } catch { /* focus can be refused; routing still works */ }
+    if (await askClientToRoute(client, { type: 'TAREEQ_NAVIGATE', url: path })) {
+      // TareeqIncomingCall already listens for this; it stops waiting for its next poll.
+      if (callId) { try { client.postMessage({ type: 'TAREEQ_INCOMING_CALL', callId }); } catch { /* gone */ } }
+      return;
+    }
+    if ('navigate' in client) {
+      try { await client.navigate(target.href); return; } catch { /* uncontrolled client */ }
+    }
+  }
+  await clients.openWindow(target.href).catch(() => {});
+}
+
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   // Opening from a notification usually marks something read a moment later; the page's
@@ -306,7 +363,6 @@ self.addEventListener('notificationclick', e => {
   e.waitUntil(updateBadgeSilently());
   const notifData = e.notification.data ?? {};
   let url = notifData.url ?? '/tareeq/notifications';
-  const isCall = !!notifData.callId;
 
   // Action button overrides
   if (e.action === 'reply' && notifData.postId) {
@@ -315,34 +371,9 @@ self.addEventListener('notificationclick', e => {
     url = notifData.url ?? '/tareeq/notifications';
   }
 
-  e.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      // For calls: always navigate to the call URL so the incoming call UI shows
-      if (isCall) {
-        for (const c of list) {
-          if (c.url.includes('/tareeq')) {
-            return c.focus().then(() => {
-              if ('navigate' in c) return c.navigate(url);
-              // If navigate unavailable, post a message so TareeqIncomingCall triggers burst-poll
-              c.postMessage({ type: 'TAREEQ_INCOMING_CALL', callId: notifData.callId });
-            });
-          }
-        }
-        return clients.openWindow(url);
-      }
-
-      // Non-call notifications: prefer existing tab
-      for (const c of list) {
-        if (c.url.includes('/tareeq')) {
-          if ('navigate' in c) {
-            return c.focus().then(() => c.navigate(url));
-          }
-          return clients.openWindow(url);
-        }
-      }
-      return clients.openWindow(url);
-    })
-  );
+  // A call carries its id through, so the open page can show the incoming-call UI as soon
+  // as it has routed rather than waiting for its next poll.
+  e.waitUntil(openFromNotification(url, notifData.callId ?? null));
 });
 
 // ── IndexedDB helpers ────────────────────────────────────────────────

@@ -37,7 +37,27 @@ export async function GET(req: Request) {
       where.tareeqSuspended = false;
     }
 
-    const [users, total] = await Promise.all([
+    // ── The counts strip ──────────────────────────────────────────────────────────────
+    //
+    // Independent of the search box, the status tab and the page: the screen used to show
+    // no number at all — `total` was fetched and only `pages` was read from it — so "how
+    // many people are on طريق" had no answer anywhere in the panel, and the row count on
+    // screen answered a different question (this page of this filter).
+    //
+    // Two numbers, because "actual users" has two honest readings and they are far apart:
+    // `tareeq` is everyone who has opened طريق, and `contributors` is everyone who has
+    // written something in it. Reporting only the first overstates the place; reporting
+    // only the second understates it.
+    //
+    // `shopOnly` is the rest of the User table, and it is mostly not a mailing list or a
+    // membership: 96% of rows are phone-import rows for manual orders. It is here so a
+    // reader does not mistake the table's own row count for طريق's size.
+    const now = Date.now();
+    const since = (days: number) => new Date(now - days * 86_400_000);
+    const inTareeq = { tareeqLastSeen: { not: null } } as const;
+
+    const [users, total, tareeqCount, active7, active30, contributors, shopOnly, suspended] = await Promise.all([
+
       prisma.user.findMany({
         where,
         skip,
@@ -63,6 +83,12 @@ export async function GET(req: Request) {
         },
       }),
       prisma.user.count({ where }),
+      prisma.user.count({ where: inTareeq }),
+      prisma.user.count({ where: { tareeqLastSeen: { gte: since(7) } } }),
+      prisma.user.count({ where: { tareeqLastSeen: { gte: since(30) } } }),
+      prisma.user.count({ where: { OR: [{ tareeqPosts: { some: {} } }, { tareeqComments: { some: {} } }] } }),
+      prisma.user.count({ where: { tareeqLastSeen: null } }),
+      prisma.user.count({ where: { ...inTareeq, tareeqSuspended: true } }),
     ]);
 
     return Response.json({
@@ -70,6 +96,7 @@ export async function GET(req: Request) {
       users,
       total,
       pages: Math.ceil(total / limit),
+      counts: { tareeq: tareeqCount, active7, active30, contributors, shopOnly, suspended },
     });
   } catch (err) {
     console.error('[tareeq-admin/users]', err);

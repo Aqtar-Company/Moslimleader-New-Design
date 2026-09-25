@@ -55,7 +55,33 @@ export async function POST(req: NextRequest) {
       }, { status: 401 });
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
+    /**
+     * The exact string first, then the two invisible mutations an Android keyboard makes.
+     *
+     * The same account signed in from a desktop and was refused from a phone with a
+     * password that READ identically in the revealed field. Two things Gboard does leave
+     * no trace on screen: it appends a space after a suggestion or a double tap, and an
+     * Arabic layout's number row emits Arabic-Indic digits (٢٠٢٠), a different byte
+     * sequence from 2020. Both are byte-different to bcrypt and identical to the eye.
+     *
+     * The stored password itself is never trimmed or normalised — a member whose real
+     * password ends in a space keeps working, because their exact string is tried FIRST
+     * and wins. The variants are extra candidates, tried only when they differ from what
+     * was typed, so the common case costs one compare as before.
+     */
+    const candidates = new Set<string>([password]);
+    const trimmed = password.trim();
+    candidates.add(trimmed);
+    const asciiDigits = (v: string) => v
+      .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660))
+      .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0));
+    candidates.add(asciiDigits(password));
+    candidates.add(asciiDigits(trimmed));
+
+    let valid = false;
+    for (const candidate of candidates) {
+      if (await bcrypt.compare(candidate, user.passwordHash)) { valid = true; break; }
+    }
     if (!valid) {
       return NextResponse.json({ error: 'بيانات الدخول غير صحيحة' }, { status: 401 });
     }

@@ -1170,6 +1170,11 @@ model TareeqNotification {
 
   @@index([userId])
   @@index([userId, read])
+  // The list query is «هذا المستخدم، الأحدث أولاً». With userId alone MySQL matches the
+  // rows then sorts them on the fly; this index has them already in order. Milliseconds
+  // either way today — added because the cost grows with the row count and the fix does
+  // not.
+  @@index([userId, createdAt])
   @@index([createdAt])
 }
 

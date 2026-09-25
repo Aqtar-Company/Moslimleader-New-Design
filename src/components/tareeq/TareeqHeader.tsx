@@ -381,8 +381,11 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
         ok = true;
       }
     } catch { /* offline, or took too long */ }
-    setNotifsLoading(false);
-    setNotifsError(!ok);
+    finally {
+      // In a `finally` so no early return or throw added later can strand the flag.
+      setNotifsLoading(false);
+      setNotifsError(!ok);
+    }
     if (!ok) return;   // nothing was read, so nothing is marked read
 
     // Mark all read, then refresh the shared badge count — without this the bell kept
@@ -397,6 +400,18 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     } catch { /* offline — the badge clears on the next poll */ }
     refreshNotifCounts();
   }, [refreshNotifCounts]);
+
+  /**
+   * The spinner shows ONLY when there is nothing to show yet.
+   *
+   * It used to be drawn whenever `notifsLoading` was true, which replaced a list already
+   * on screen with a spinner on every reopen — and made a loading flag that failed to
+   * clear, for any reason at all, indistinguishable from a broken feature. The server log
+   * proved the request was answering 200 with 7.4 KB in the same second while the panel
+   * span; a rendered list cannot lie about that. So: once anything has been fetched the
+   * list stays visible and a refresh happens quietly behind it.
+   */
+  const showNotifSpinner = notifsLoading && notifs.length === 0;
 
   /** The panel's failure state. Same markup in all three places the panel is drawn. */
   const notifsErrorBox = (
@@ -775,7 +790,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             }}
             onClick={e => e.stopPropagation()}
           >
-            {notifsLoading ? (
+            {showNotifSpinner ? (
               <div className="flex justify-center py-8">
                 <div className="w-5 h-5 border-2 rounded-full animate-spin"
                   style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: 'var(--tr-gold)' }} />
@@ -1141,7 +1156,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                         </Link>
                       </div>
 
-                      {notifsLoading ? (
+                      {showNotifSpinner ? (
                         <div className="flex justify-center py-10">
                           <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
                         </div>
@@ -1433,7 +1448,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإشعارات' : 'Notifications'}</span>
                       <Link href="/tareeq/notifications" onClick={() => setShowNotifPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'عرض الكل' : 'See all'}</Link>
                     </div>
-                    {notifsLoading ? (
+                    {showNotifSpinner ? (
                       <div className="flex justify-center py-10"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
                     ) : notifsError ? (
                       notifsErrorBox

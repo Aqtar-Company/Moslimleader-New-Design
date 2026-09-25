@@ -152,7 +152,7 @@ function NotifIcon({ type }: { type: string }) {
  * which is correct — there is nobody to show.
  */
 function NotifAvatar({ n }: { n: { type: string; actorId?: string | null; actorName?: string | null; actorAvatarUrl?: string | null; actorGender?: string | null } }) {
-  if (!n.actorAvatarUrl) return <NotifAvatar n={n} />;
+  if (!n.actorAvatarUrl) return <NotifIcon type={n.type} />;
   return (
     <div className="relative shrink-0" style={{ width: 36, height: 36 }}>
       <TareeqAvatarImg
@@ -167,7 +167,7 @@ function NotifAvatar({ n }: { n: { type: string; actorId?: string | null; actorN
         className="absolute flex items-center justify-center rounded-full"
         style={{ width: 17, height: 17, bottom: -2, insetInlineEnd: -2, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', fontSize: 9, lineHeight: 1 }}
       >
-        <span style={{ transform: 'scale(0.62)', transformOrigin: 'center' }}><NotifAvatar n={n} /></span>
+        <span style={{ transform: 'scale(0.62)', transformOrigin: 'center' }}><NotifIcon type={n.type} /></span>
       </span>
     </div>
   );

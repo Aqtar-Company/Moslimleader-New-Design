@@ -24,6 +24,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'بيانات الدخول غير صحيحة' }, { status: 401 });
     }
 
+    /**
+     * An account created by signing in with Google or Facebook has NO password.
+     *
+     * Both OAuth callbacks create the row with `passwordHash: ''` (the column is not
+     * nullable), and `bcrypt.compare(anything, '')` is false for ever. So every password
+     * such a person types is refused, and the only answer they were given was «بيانات
+     * الدخول غير صحيحة» — which sends them to try their passwords one after another
+     * against a door that has no lock. It presented as «يقبل من الكمبيوتر ويرفض من
+     * الهاتف»: on the computer they had pressed the Google button.
+     *
+     * Naming the provider does disclose that an address has an account and how it signs
+     * in. Google and Facebook disclose exactly that themselves on their own sign-in
+     * screens, and the alternative here is a locked-out member with no way to find out
+     * why — so the trade is made deliberately, and the message points at the two real
+     * exits: the provider button, or a reset that actually sets a password.
+     */
+    if (!user.passwordHash) {
+      const acct = await prisma.oAuthAccount.findFirst({
+        where: { userId: user.id },
+        select: { provider: true },
+      });
+      const name = acct?.provider === 'facebook' ? 'Facebook' : acct?.provider === 'google' ? 'Google' : null;
+      return NextResponse.json({
+        error: name
+          ? `هذا الحساب يسجّل الدخول بـ ${name}. اضغط «المتابعة بـ ${name}» بالأعلى، أو «نسيت كلمة المرور؟» لتعيين كلمة مرور لهذا البريد.`
+          : 'هذا الحساب لا كلمة مرور له بعد. اضغط «نسيت كلمة المرور؟» لتعيين واحدة، أو ادخل بـ Google أو Facebook.',
+        oauthOnly: true,
+        provider: acct?.provider ?? null,
+      }, { status: 401 });
+    }
+
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: 'بيانات الدخول غير صحيحة' }, { status: 401 });

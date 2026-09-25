@@ -152,7 +152,7 @@ function AuthContent() {
                   <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
                       <label className={labelClass}>{isRtl ? 'البريد الإلكتروني' : 'Email'}</label>
-                      <input type="email" required
+                      <input type="email" required autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="email" inputMode="email"
                         value={form.email} dir="ltr"
                         onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                         placeholder="you@example.com"
@@ -217,7 +217,7 @@ function AuthContent() {
                 )}
                 <div>
                   <label className={labelClass}>{isRtl ? 'البريد الإلكتروني' : 'Email'}</label>
-                  <input type="email" required
+                  <input type="email" required autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="email" inputMode="email"
                     value={form.email} dir="ltr"
                     onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="you@example.com"
@@ -238,6 +238,7 @@ function AuthContent() {
                   <div className="relative">
                     <input
                       type={showPass ? 'text' : 'password'} required minLength={6}
+                      autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} autoCapitalize="none" autoCorrect="off" spellCheck={false}
                       value={form.password} dir="ltr"
                       onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                       placeholder={isRtl ? '٦ أحرف أو أكثر' : '6+ characters'}

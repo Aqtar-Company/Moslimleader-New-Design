@@ -111,7 +111,7 @@ function ResetPasswordContent() {
                   </label>
                   <div className="relative">
                     <input
-                      type={showPass ? 'text' : 'password'}
+                      type={showPass ? 'text' : 'password'} autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                       required minLength={6}
                       value={password} dir="ltr"
                       onChange={e => setPassword(e.target.value)}
@@ -133,7 +133,7 @@ function ResetPasswordContent() {
                     {isRtl ? 'تأكيد كلمة المرور' : 'Confirm Password'}
                   </label>
                   <input
-                    type={showPass ? 'text' : 'password'}
+                    type={showPass ? 'text' : 'password'} autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                     required minLength={6}
                     value={confirm} dir="ltr"
                     onChange={e => setConfirm(e.target.value)}

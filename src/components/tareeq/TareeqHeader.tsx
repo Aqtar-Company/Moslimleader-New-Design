@@ -351,8 +351,24 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   useEffect(() => {
     if (!showNotifPanel && !showMsgPanel) return;
     function onMouseDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (showNotifPanel && notifPanelRef.current && !notifPanelRef.current.contains(t) && notifBtnRef.current && !notifBtnRef.current.contains(t)) {
+      /**
+       * Containment is tested by ATTRIBUTE, because a React ref holds exactly ONE node
+       * and this panel is rendered TWICE — once inside the nav row, once in the header's
+       * right-hand cluster — with `ref={notifPanelRef}` on both. Whichever mounted last
+       * won the ref, so every click inside the OTHER panel counted as a click outside and
+       * shut it the instant it was touched. That is «الإشعارات مش بتفتح»: it opened and
+       * the next tap closed it, indistinguishable from a panel that never opened.
+       *
+       * The bell is likewise two buttons and the ref covered only one of them, so tapping
+       * the other one while the panel was open closed it on `mousedown` and the `click`
+       * that followed reopened it — a flicker, and no way to dismiss it.
+       *
+       * `closest()` answers for every copy that exists, now and after the next one is
+       * added. Do not go back to refs here.
+       */
+      const el = e.target instanceof Element ? e.target : null;
+      const inside = !!el?.closest('[data-notif-panel],[data-notif-btn]');
+      if (showNotifPanel && !inside) {
         setShowNotifPanel(false);
       }
       // msg panel intentionally not closed on outside click — only closes via header icon or back arrow
@@ -1107,9 +1123,13 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
               return (
                 <div key={key} className="relative">
                   {isButton ? (
+                    /* `data-notif-btn`: the bell in the nav row is a SECOND trigger for
+                       the same panel, and without the mark the close-on-outside-click
+                       above treats it as outside and fights the toggle. */
                     <button
                       onClick={onClick}
                       title={label}
+                      data-notif-btn={key === 'notifications' ? '1' : undefined}
                       className="group relative flex flex-col items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)]"
                       style={{ ...sharedBtnStyle, cursor: 'pointer' }}
                     >
@@ -1140,7 +1160,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
                   {/* Notifications dropdown panel */}
                   {key === 'notifications' && showNotifPanel && (
-                    <div ref={notifPanelRef} style={notifPanelStyle}>
+                    <div ref={notifPanelRef} data-notif-panel="1" style={notifPanelStyle}>
                       {/* Header */}
                       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
                         <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>
@@ -1434,7 +1454,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             {/* Notifications icon + panel */}
             {user && (
               <div className="relative">
-                <button ref={notifBtnRef} onClick={toggleNotifPanel} title={isRtl ? 'الإشعارات' : 'Notifications'}
+                <button ref={notifBtnRef} data-notif-btn="1" onClick={toggleNotifPanel} title={isRtl ? 'الإشعارات' : 'Notifications'}
                   className="relative flex items-center justify-center w-10 h-10 rounded-full transition-all hover:bg-[var(--tr-overlay)]"
                   style={{ color: showNotifPanel ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -1443,7 +1463,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   <Badge count={notifCount} />
                 </button>
                 {showNotifPanel && (
-                  <div ref={notifPanelRef} style={notifPanelStyle} dir="rtl">
+                  <div ref={notifPanelRef} data-notif-panel="1" style={notifPanelStyle} dir="rtl">
                     <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
                       <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإشعارات' : 'Notifications'}</span>
                       <Link href="/tareeq/notifications" onClick={() => setShowNotifPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'عرض الكل' : 'See all'}</Link>

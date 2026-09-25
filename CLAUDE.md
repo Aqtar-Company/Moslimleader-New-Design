@@ -795,6 +795,71 @@ Books are protected from download at two levels:
   image's placeholder does. Outlook also ignores CSS dimensions on images, so `width` and
   `height` must be real ATTRIBUTES. `emailLogoImg()` in `src/lib/email-template.ts` is the
   one copy; it serves `ml-logo-new.png` at 48×60, the file's own 368×460 ratio.
+- **The service worker must never answer an RSC request.** Next's App Router does not fetch
+  a page when it navigates on the client — it fetches an RSC payload at the SAME pathname,
+  marked by an `RSC: 1` header and an `_rsc=` query. Those matched the «Tareeq pages»
+  branch in `public/tareeq-sw.js`, so a failed fetch answered them from the page cache or
+  from the `/tareeq` shell: an HTML DOCUMENT handed to a router waiting for flight data. It
+  cannot parse it and **it does not time out** — it waits for ever, which on screen is an
+  app "loading" and never responding. It struck hardest right after a notification tap,
+  because that is the moment the phone has just woken and its radio has not reconnected.
+  The branch now runs only for `request.mode === 'navigate'` without those markers.
+  - `Cache.put` rejects for a **redirected** response, and that rejection used to escape
+    into the catch and discard a perfectly good page from the network. Caching must never
+    decide what the caller receives.
+  - `WindowClient.navigate()` is likewise a full document navigation and **rejects on a
+    client this worker does not control** — which `includeUncontrolled: true` deliberately
+    includes. `notificationclick` now asks the open window to route itself over a
+    MessageChannel and waits 800ms for an ack, falling back to `navigate()` then
+    `openWindow()`. The page acks FIRST and unconditionally.
+  - **`register()` does not ask for a new worker.** An installed PWA open for days may not
+    navigate at all, so a fixed worker sat on the server while every phone ran the old one
+    — a real deploy with the bug still present, the most confusing shape a fix can take.
+    `reg.update()` is now called explicitly on boot and whenever the app returns to the
+    front, throttled to once a minute.
+- **Any `fetch` a person waits on needs a deadline.** `fetch` with no `AbortSignal.timeout`
+  waits for ever, and the bell panel had none: a request that never settled left a spinner
+  with no end and no way out, reported as «نظام الإشعارات معطل» — and on screen it is
+  indistinguishable from a stopped server, an expired session or a lost signal. Every such
+  panel needs a timeout, a stated failure and a retry. And when the read fails, do NOT go
+  on to mark everything read: nothing was read.
+- **A mobile keyboard edits what it is allowed to edit, including a password.** The same
+  account signed in from a desktop and was refused from a phone. The login fields carried
+  no `autoCapitalize` / `autoCorrect` / `spellCheck`, and the decisive spot is the reveal
+  toggle: there the field becomes `type="text"` and the keyboard capitalises the first
+  letter and "corrects" what it thinks is wrong, so what is sent is not what was typed.
+  The email was already safe (`toLowerCase().trim()` in the route). **The password is never
+  trimmed** — a leading or trailing space may be part of it, and stripping it breaks an
+  account that works today.
+- **`api.quran.com`: `by_page` is under `/verses/`, NOT `/quran/verses/`.** The wrong path
+  answered 404 for every page ever requested, so the primary source never served a single
+  verse and every read paid a failed upstream call before falling through to
+  alquran.cloud. Nothing looked broken — the fallback works — so it sat in the log for
+  weeks. `ops/` has no check for this; verify with a bare `curl` on the SERVER (the dev
+  sandbox has no outbound network) and read the code, and confirm the fix by the response
+  SHAPE: quran.com returns `verse_key` / `hizb_number`, alquran.cloud does not.
+- **`catalog/opengraph-image` crashes** on an Arabic font feature satori does not implement
+  (`lookupType: 5 - substFormat: 3 is not yet supported`), and Next then crashes reading
+  `.digest` of null. So a `Cannot read properties of null (reading 'digest')` in the log is
+  **that**, not the route you are debugging — read the lines ABOVE it. Catalog link
+  previews are broken until the font or the design changes. Unfixed as of 2026-09-25.
+- **«جهة» is not an exemption.** The kind exists so a company is not sorted into man or
+  woman and its logo is not veiled. It is a button anyone may press on their own account
+  and nothing verifies it, so exempting it in both directions handed whoever pressed it the
+  best position on the platform. Messaging: a member writing TO an organisation is asked
+  nothing; an organisation writing FIRST needs a request carrying a stated PURPOSE
+  (`orgNeedsRequest` in `src/lib/tareeq-gender.ts`) — and once the member has written, the
+  conversation exists and is returned before any check, so it replies freely. Viewing: an
+  organisation **sees what a man sees**; a woman's photo stays veiled to it.
+- **`src/lib/arabic-name-gender.mjs` is plain JavaScript on purpose.** `ops/infer-gender-from-names.mjs`
+  cannot import a `.ts` module, and it used to read the name LISTS out of the TypeScript
+  source with a regex while re-implementing the RULES — and the re-implementation went
+  stale: its first line rejected every non-Arabic-script name, so `Marwa Ali` and
+  `Mostafa Orabi` came back «غير محسوم» with their names sitting in the lists. Import that
+  file; never copy its logic. `ops/why-no-relation-gate.mjs` prints why a pair was not
+  asked to declare a kinship, and warns when a matched row is a phone-import row rather
+  than a member — the first real run matched «مارية» to an address in Aswan and printed a
+  perfectly correct conclusion about a person who does not exist.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

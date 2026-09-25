@@ -10,7 +10,12 @@ export async function GET(req: NextRequest) {
 
   // Primary: quran.com API
   try {
-    const url = `https://api.quran.com/api/v4/quran/verses/by_page/${page}?per_page=50&fields=text_uthmani,verse_number,chapter_id,page_number`;
+    // `by_page` lives under /verses/, NOT under /quran/verses/. The wrong path answered
+    // 404 for every page ever requested, so the primary source never once served a verse
+    // and every read paid a failed upstream call before falling through to alquran.cloud.
+    // Nothing looked broken — the fallback works — which is why it sat in the log for
+    // weeks. Verified on the server: the old path 404, this one 200.
+    const url = `https://api.quran.com/api/v4/verses/by_page/${page}?per_page=50&fields=text_uthmani,verse_number,chapter_id,page_number`;
     const res = await fetch(url, { next: { revalidate: 86400 } });
     if (!res.ok) throw new Error(`upstream ${res.status}`);
     const data = await res.json();

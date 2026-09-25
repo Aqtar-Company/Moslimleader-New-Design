@@ -33,15 +33,15 @@ try {
   console.log(`التفعيل: ${user.emailVerified ? 'مُفعّل' : 'غير مُفعّل'}`);
   console.log('اكتب كلمة المرور ثم اضغط Enter (لن تظهر ولن تُسجَّل):');
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-  // إخفاء ما يُكتب.
-  const out = process.stdout;
-  const muted = (s) => { if (s !== '\r\n' && s !== '\n' && s !== '\r') return; out.write(s); };
-  const origWrite = out.write.bind(out);
-  out.write = (chunk, ...rest) => { if (rl.line && typeof chunk === 'string') { muted(chunk); return true; } return origWrite(chunk, ...rest); };
-
+  // Hide the typing with the terminal's own echo switch. The previous attempt wrapped
+  // `stdout.write` and called it from inside the wrapper — a recursion that blew the
+  // stack on the first keystroke.
+  const { execSync } = await import('node:child_process');
+  const stty = (arg) => { try { execSync(`stty ${arg}`, { stdio: 'inherit' }); } catch { /* not a tty */ } };
+  stty('-echo');
+  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: false });
   const pw = await new Promise(res => rl.question('', a => { rl.close(); res(a); }));
-  out.write = origWrite;
+  stty('echo');
   console.log('');
 
   const exact = await bcrypt.compare(pw, user.passwordHash);

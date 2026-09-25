@@ -44,6 +44,6 @@ jobs:
             npx prisma generate
             npx prisma db push --skip-generate
             npm run build
-            pm2 restart 1 --update-env
+            pm2 restart moslimleader --update-env
             pm2 save
             echo "=== Deployment complete! ==="

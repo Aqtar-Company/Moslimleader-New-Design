@@ -193,6 +193,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const [notifPanelVisible, setNotifPanelVisible] = useState(false);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [notifsLoading, setNotifsLoading] = useState(false);
+  /** Set when the list could not be fetched, so the panel can say so and offer a retry. */
+  const [notifsError, setNotifsError] = useState(false);
   const notifPanelRef = useRef<HTMLDivElement>(null);
   const notifBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -362,22 +364,56 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   /* ── Load notifications ── */
   const loadNotifs = useCallback(async () => {
     setNotifsLoading(true);
+    setNotifsError(false);
+    let ok = false;
     try {
-      const res = await fetch('/api/tareeq/notifications?limit=20', { credentials: 'include' });
+      // A `fetch` with no deadline waits for ever. A request that never settles left this
+      // panel spinning with no end and no way out — reported as «نظام الإشعارات معطل»,
+      // and indistinguishable on screen from a server that is down, an expired session or
+      // a phone that lost its signal. Twelve seconds, then say so and offer a retry.
+      const res = await fetch('/api/tareeq/notifications?limit=20', {
+        credentials: 'include',
+        signal: AbortSignal.timeout(12_000),
+      });
       if (res.ok) {
         const d = await res.json();
         setNotifs(d.notifications ?? []);
+        ok = true;
       }
-    } catch { /* offline */ }
+    } catch { /* offline, or took too long */ }
     setNotifsLoading(false);
+    setNotifsError(!ok);
+    if (!ok) return;   // nothing was read, so nothing is marked read
+
     // Mark all read, then refresh the shared badge count — without this the bell kept
     // showing the pre-read count for up to 30s (the next background poll) even though
     // the panel the user just opened had already cleared everything.
     try {
-      await fetch('/api/tareeq/notifications', { method: 'POST', credentials: 'include' });
-    } catch { /* offline */ }
+      await fetch('/api/tareeq/notifications', {
+        method: 'POST',
+        credentials: 'include',
+        signal: AbortSignal.timeout(12_000),
+      });
+    } catch { /* offline — the badge clears on the next poll */ }
     refreshNotifCounts();
   }, [refreshNotifCounts]);
+
+  /** The panel's failure state. Same markup in all three places the panel is drawn. */
+  const notifsErrorBox = (
+    <div className="text-center py-8 px-4">
+      <p className="text-sm font-semibold mb-2" style={{ color: 'var(--tr-text-secondary)' }}>
+        {isRtl ? 'تعذّر تحميل الإشعارات' : 'Could not load notifications'}
+      </p>
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); loadNotifs(); }}
+        className="text-xs font-bold px-3 py-1.5 rounded-full"
+        style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px solid var(--tr-border-soft)' }}
+      >
+        {isRtl ? 'أعد المحاولة' : 'Try again'}
+      </button>
+    </div>
+  );
 
   /* ── Load conversations ── */
   const loadConversations = useCallback(async () => {
@@ -744,6 +780,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                 <div className="w-5 h-5 border-2 rounded-full animate-spin"
                   style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: 'var(--tr-gold)' }} />
               </div>
+            ) : notifsError ? (
+              notifsErrorBox
             ) : notifs.filter(n => n.type !== 'message').length === 0 ? (
               <div className="rounded-2xl px-5 py-6 text-center"
                 style={{
@@ -1107,6 +1145,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                         <div className="flex justify-center py-10">
                           <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
                         </div>
+                      ) : notifsError ? (
+                        notifsErrorBox
                       ) : notifs.filter(n => n.type !== 'message').length === 0 ? (
                         <div className="text-center py-10 px-4">
                           <svg className="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
@@ -1395,6 +1435,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     </div>
                     {notifsLoading ? (
                       <div className="flex justify-center py-10"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
+                    ) : notifsError ? (
+                      notifsErrorBox
                     ) : notifs.filter(n => n.type !== 'message').length === 0 ? (
                       <div className="text-center py-10 px-4">
                         <svg className="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
-import { getMergedStaticProducts } from '@/lib/product-overrides';
+import { getMergedStaticProducts, orderProducts } from '@/lib/product-overrides';
 import type { Product } from '@/types';
 import CatalogClient from './CatalogClient';
 
@@ -18,7 +18,7 @@ async function getProducts(): Promise<Product[]> {
       getMergedStaticProducts(),
       prisma.product.findMany({ where: { source: 'admin', inStock: true }, orderBy: { createdAt: 'desc' } }),
     ]);
-    return [...mergedStatic.filter(p => p.inStock !== false), ...(dbProducts as unknown as Product[])];
+    return await orderProducts([...mergedStatic.filter(p => p.inStock !== false), ...(dbProducts as unknown as Product[])]);
   } catch {
     try { return await getMergedStaticProducts(); } catch { return []; }
   }

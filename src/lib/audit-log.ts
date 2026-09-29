@@ -22,6 +22,7 @@ export const AUDIT_ACTIONS = {
   'product.create': 'إنشاء منتج',
   'product.update': 'تعديل منتج',
   'product.delete': 'حذف منتج',
+  'product.reorder': 'تغيير ترتيب المنتجات في المتجر',
   'inventory.adjust': 'تعديل المخزون',
   // Orders & shipments
   'order.create-manual': 'إنشاء أوردر يدوي',

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getMergedStaticProducts, orderProducts } from '@/lib/product-overrides';
+import { getMergedStaticProducts, orderProducts, loadProductOrder, invalidateProductOrderCache, PRODUCT_ORDER_KEY } from '@/lib/product-overrides';
 import { requirePerm, type Permission } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
 import {
@@ -116,6 +116,18 @@ export async function POST(req: NextRequest) {
     // immediately instead of waiting up to 5 min for TTL expiry.
     invalidateAdminProductsCache();
     invalidateAssistantContext();
+
+    // A new product joins the END of the admin's display order at once, so it is never
+    // "unlisted": unlisted products take a natural order that the admin cannot see or
+    // drag, and the next reorder would fix their position wherever the table happened to
+    // show them. Last is where a fresh product lands anyway; the admin drags it up.
+    try {
+      const current = await loadProductOrder();
+      if (current.length > 0 && !current.includes(product.id)) {
+        await prisma.setting.update({ where: { key: PRODUCT_ORDER_KEY }, data: { value: [...current, product.id] } });
+        invalidateProductOrderCache();
+      }
+    } catch (e) { console.warn('[admin products POST] order append skipped:', e instanceof Error ? e.message : e); }
 
     await logActionSafe({
       actor: auth,

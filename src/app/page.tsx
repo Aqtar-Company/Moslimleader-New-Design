@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
 import ShopPageClient from './ShopPageClient';
 import { canonical, organizationJsonLd, websiteJsonLd, ORG_DESCRIPTION, ORG_OG_IMAGE } from '@/lib/seo';
-import { getMergedStaticProducts, orderProducts } from '@/lib/product-overrides';
+import { getMergedStaticProducts, loadProductOrder, applyProductOrder, orderProducts } from '@/lib/product-overrides';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import type { Product } from '@/types';
@@ -33,17 +33,24 @@ export const metadata: Metadata = {
 
 async function getProducts(): Promise<Product[]> {
   try {
-    const [mergedStatic, dbProducts] = await Promise.race([
+    // The order list is read INSIDE the 3s race like everything else — a fourth query
+    // outside it would let a slow database hold the page past the deadline.
+    const [mergedStatic, dbProducts, order] = await Promise.race([
       Promise.all([
         getMergedStaticProducts(),
         prisma.product.findMany({ where: { source: 'admin' }, orderBy: { createdAt: 'desc' } }),
+        loadProductOrder(),
       ]),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 3000),
       ),
     ]);
-    // The admin's order wins; anything not in it keeps this natural order after it.
-    return await orderProducts([...(dbProducts as unknown as Product[]), ...mergedStatic]);
+    // Static first, admin-added after — the SAME natural order as /api/products, the
+    // catalog and the admin list. It was the other way round here, so a product not yet in
+    // the admin's list sat at the bottom of the admin table and at the top of the home
+    // page, and "the order here is the order in the shop" was untrue for exactly the
+    // products the fallback exists for. The admin's list then decides everything listed.
+    return applyProductOrder([...mergedStatic, ...(dbProducts as unknown as Product[])], order);
   } catch {
     try { return await orderProducts(await getMergedStaticProducts()); } catch { return staticProducts; }
   }

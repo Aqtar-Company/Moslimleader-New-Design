@@ -23,7 +23,8 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   experimental: {
     // Keep native/ESM packages out of webpack — Node.js loads them at runtime
-    serverComponentsExternalPackages: ['pdfjs-dist', '@napi-rs/canvas', 'googleapis'],
+    // harfbuzzjs: wasm + top-level await, loaded lazily by the share-card routes only.
+    serverComponentsExternalPackages: ['pdfjs-dist', '@napi-rs/canvas', 'googleapis', 'harfbuzzjs'],
     optimizePackageImports: [
       'lucide-react',
       '@marsidev/react-turnstile',

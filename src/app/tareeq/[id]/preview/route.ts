@@ -129,6 +129,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:image" content="${esc(image)}">
 <meta property="og:image:secure_url" content="${esc(image)}">
+${media ? '' : `<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">`}
 <meta property="og:image:alt" content="${esc(title)}">
 <meta property="og:locale" content="ar_AR">
 ${post.authorName ? `<meta property="article:author" content="${esc(post.authorName)}">` : ''}

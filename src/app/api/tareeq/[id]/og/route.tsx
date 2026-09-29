@@ -44,7 +44,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   return new ImageResponse(
-    buildOgTree({ title, author: visible?.authorName, category: visible?.category }),
+    await buildOgTree({
+      title,
+      excerpt: visible?.title?.trim() ? visible.content : null,
+      author: visible?.authorName,
+      category: visible?.category,
+    }),
     {
       width: OG_WIDTH,
       height: OG_HEIGHT,

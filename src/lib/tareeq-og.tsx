@@ -88,18 +88,60 @@ function isRtlRun(text: string): boolean {
   return !m || m[0] >= '؀';
 }
 
+// ASCII/Latin punctuation only. The Arabic marks ، ؛ ؟ are Arabic-script characters and
+// satori already draws them on the right-to-left side of their word — moving them too put
+// «فيه،» back to front. Verified by rendering both ways.
+const LEADING_PUNCT = /^[«“"'(\[{]+/;
+const TRAILING_PUNCT = /[.,:;!?…»”"')\]}]+$/;
+const MIRROR: Record<string, string> = { '«': '»', '»': '«', '(': ')', ')': '(', '[': ']', ']': '[', '{': '}', '}': '{', '“': '”', '”': '“', '‹': '›', '›': '‹' };
+const mirror = (s: string) => s.split('').reverse().map(c => MIRROR[c] ?? c).join('');
+
+/**
+ * Splits on whitespace — the one tokenisation both `RtlText` and its measurer must share —
+ * and, for an Arabic run, puts each word's punctuation where a right-to-left reader expects
+ * it.
+ *
+ * satori draws every token in logical order, left to right, with no bidi. For the letters
+ * that is fine (they are shaped, and `row-reverse` orders the words). For punctuation it is
+ * exactly wrong: «الله:» came out as «:الله» with the colon on the RIGHT, and «‹‹لا» with
+ * the opening quote on the left of the word and un-mirrored. So trailing punctuation is
+ * moved to the FRONT of the token and leading punctuation to its END, each mirrored where
+ * Unicode mirrors it — then satori's left-to-right drawing lands every mark on the side an
+ * Arabic reader looks for it. A Latin run is left alone.
+ */
+export function ogWords(text: string): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!isRtlRun(text)) return words;
+  return words.map(w => {
+    const lead = LEADING_PUNCT.exec(w)?.[0] ?? '';
+    const rest = w.slice(lead.length);
+    const trail = TRAILING_PUNCT.exec(rest)?.[0] ?? '';
+    const core = rest.slice(0, rest.length - trail.length);
+    if (!core) return w;                       // a token that is only punctuation
+    return mirror(trail) + core + mirror(lead);
+  });
+}
+
 export function RtlText({
   text,
   gap,
   wrap = true,
   style,
+  widths,
 }: {
   text: string;
   gap: number;
   wrap?: boolean;
   style?: React.CSSProperties;
+  /**
+   * Shaped width of each word from `measureWords`, in px. When given, each word's box is
+   * pinned to it and satori's own (over-wide) measurement no longer decides the spacing —
+   * see `tareeq-og-measure.ts`. Without it the words fall back to padding, and the card
+   * comes out with the old gaps rather than not at all.
+   */
+  widths?: number[] | null;
 }) {
-  const words = text.split(/\s+/).filter(Boolean);
+  const words = ogWords(text);
   return (
     <div
       style={{
@@ -110,15 +152,38 @@ export function RtlText({
         ...style,
       }}
     >
-      {words.map((w, i) => (
-        <span key={i} style={{ paddingLeft: `${gap / 2}px`, paddingRight: `${gap / 2}px` }}>{w}</span>
-      ))}
+      {words.map((w, i) =>
+        widths && widths[i] != null ? (
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              width: `${widths[i] + gap}px`,
+              flexShrink: 0,
+              justifyContent: 'flex-start',
+              paddingLeft: `${gap / 2}px`,
+              whiteSpace: 'nowrap',
+              overflow: 'visible',
+            }}
+          >
+            {w}
+          </div>
+        ) : (
+          <span key={i} style={{ paddingLeft: `${gap / 2}px`, paddingRight: `${gap / 2}px` }}>{w}</span>
+        ),
+      )}
     </div>
   );
 }
 
 export type OgPost = {
   title: string;
+  /**
+   * The opening of the body, drawn under the title. A text post IS its text; a card that
+   * carries only the title tells the reader nothing about what they would open, and the
+   * ask was for the share to read as the post itself, not a headline.
+   */
+  excerpt?: string | null;
   author?: string | null;
   category?: string | null;
 };
@@ -130,9 +195,23 @@ function cutAtWord(text: string, max: number): string {
   return (lastSpace > max * 0.5 ? head.slice(0, lastSpace) : head).trimEnd() + '…';
 }
 
-export function buildOgTree({ title, author, category }: OgPost) {
+const FOOTER = 'طريق — مسلم ليدر';
+
+/**
+ * Async because the words are measured with HarfBuzz first (see `tareeq-og-measure.ts`).
+ * A failed or missing shaper yields `null` widths and the card falls back to satori's own
+ * spacing — wide, but a card.
+ */
+export async function buildOgTree({ title, excerpt, author, category }: OgPost) {
+  const { measureWords } = await import('./tareeq-og-measure');
   const cat = CATEGORY_AR[category ?? ''] ?? '';
   const clean = title.replace(/\s+/g, ' ').trim() || 'علامة في طريق';
+  const body = (excerpt ?? '').replace(/\s+/g, ' ').trim();
+  // The body is shown only when it adds something: a post with no title already puts its
+  // opening in the title slot, and repeating it underneath would be the same words twice.
+  const excerptText = body && body !== clean && !clean.startsWith(body.slice(0, 40))
+    ? (body.length <= 180 ? body : cutAtWord(body, 179))
+    : '';
 
   // Only the type size is chosen from the length; how many lines that takes is yoga's
   // problem, and the card has room for four at the smallest size.
@@ -140,7 +219,18 @@ export function buildOgTree({ title, author, category }: OgPost) {
   // «...تف», the first two letters of «تفاصيل» — and in Arabic a half-word is frequently a
   // different word, not just an ugly one.
   const head = clean.length <= 160 ? clean : cutAtWord(clean, 159);
-  const fontSize = head.length <= 42 ? 64 : head.length <= 90 ? 50 : 42;
+  // With a body underneath, the title gives up its largest size so both fit.
+  const fontSize = excerptText
+    ? (head.length <= 42 ? 52 : head.length <= 90 ? 44 : 38)
+    : (head.length <= 42 ? 64 : head.length <= 90 ? 50 : 42);
+  const EXCERPT_PX = 32, AUTHOR_PX = 30, FOOTER_PX = 28;
+
+  const [titleW, excerptW, authorW, footerW] = await Promise.all([
+    measureWords(ogWords(head), fontSize),
+    excerptText ? measureWords(ogWords(excerptText), EXCERPT_PX) : Promise.resolve(null),
+    author ? measureWords(ogWords(author), AUTHOR_PX) : Promise.resolve(null),
+    measureWords(ogWords(FOOTER), FOOTER_PX),
+  ]);
 
   return (
     <div
@@ -187,17 +277,30 @@ export function buildOgTree({ title, author, category }: OgPost) {
           ) : null}
         </div>
 
-        <RtlText
-          text={head}
-          gap={Math.round(fontSize * 0.3)}
-          style={{ width: '100%', fontSize, lineHeight: 1.5, color: '#1a1a2a' }}
-        />
+        {/* `overflow: hidden` on the text block, `flexShrink: 0` on the footer: a long body
+            used to push the author and the footer clean off the bottom of the card. */}
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', flex: 1, minHeight: 0, overflow: 'hidden', justifyContent: 'center' }}>
+          <RtlText
+            text={head}
+            gap={Math.round(fontSize * 0.3)}
+            widths={titleW}
+            style={{ width: '100%', fontSize, lineHeight: 1.5, color: '#1a1a2a' }}
+          />
+          {excerptText ? (
+            <RtlText
+              text={excerptText}
+              gap={10}
+              widths={excerptW}
+              style={{ width: '100%', fontSize: EXCERPT_PX, lineHeight: 1.6, color: '#4a4858', marginTop: '18px' }}
+            />
+          ) : null}
+        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'row-reverse', width: '100%', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', flexDirection: 'row-reverse', width: '100%', alignItems: 'flex-end', justifyContent: 'space-between', flexShrink: 0, marginTop: '16px' }}>
           {author ? (
-            <RtlText text={author} gap={10} wrap={false} style={{ fontSize: 30, color: '#7c7a8c' }} />
+            <RtlText text={author} gap={10} wrap={false} widths={authorW} style={{ fontSize: AUTHOR_PX, color: '#7c7a8c' }} />
           ) : <div style={{ display: 'flex' }} />}
-          <RtlText text="طريق — مسلم ليدر" gap={10} wrap={false} style={{ fontSize: 28, color: '#ff5c38' }} />
+          <RtlText text={FOOTER} gap={10} wrap={false} widths={footerW} style={{ fontSize: FOOTER_PX, color: '#ff5c38' }} />
         </div>
       </div>
     </div>

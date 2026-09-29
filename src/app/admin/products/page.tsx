@@ -64,16 +64,36 @@ export default function ProductsPage() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [posDraft, setPosDraft] = useState<Record<string, string>>({});
   const saveOrderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** The list waiting to be saved, so an unmount or a reload can flush it instead of losing it. */
+  const pendingOrderRef = useRef<string[] | null>(null);
+  /** Mirror of `products`, so a move computes from the latest list without a setState updater doing side effects. */
+  const productsRef = useRef<MergedProduct[]>([]);
+  useEffect(() => { productsRef.current = products; }, [products]);
+
+  const putOrder = useCallback(async (ids: string[]) => {
+    await adminJson('/api/admin/products/order', { method: 'PUT', body: JSON.stringify({ order: ids }) });
+  }, []);
+
+  /** Sends whatever is pending right now (no debounce). Used before a reload and on unmount. */
+  const flushOrder = useCallback(async () => {
+    if (saveOrderTimer.current) { clearTimeout(saveOrderTimer.current); saveOrderTimer.current = null; }
+    const ids = pendingOrderRef.current;
+    if (!ids) return;
+    pendingOrderRef.current = null;
+    await putOrder(ids);
+  }, [putOrder]);
 
   const scheduleSaveOrder = useCallback((list: MergedProduct[]) => {
     if (saveOrderTimer.current) clearTimeout(saveOrderTimer.current);
+    pendingOrderRef.current = list.map(p => p.id);
     setOrderState('saving');
     saveOrderTimer.current = setTimeout(async () => {
+      saveOrderTimer.current = null;
+      const ids = pendingOrderRef.current;
+      pendingOrderRef.current = null;
+      if (!ids) return;
       try {
-        await adminJson('/api/admin/products/order', {
-          method: 'PUT',
-          body: JSON.stringify({ order: list.map(p => p.id) }),
-        });
+        await putOrder(ids);
         setOrderState('saved');
         setTimeout(() => setOrderState(s => (s === 'saved' ? 'idle' : s)), 2500);
       } catch (err) {
@@ -81,27 +101,42 @@ export default function ProductsPage() {
         addToast(err instanceof Error ? err.message : 'فشل حفظ الترتيب', 'error');
       }
     }, 700);
-  }, [addToast]);
+  }, [addToast, putOrder]);
+
+  // A move made and the page left within 700ms used to vanish with the badge — the admin
+  // read "saving…" as done. On unmount the pending list goes out at once, with `keepalive`
+  // so a navigation away does not cancel the request mid-flight.
+  useEffect(() => () => {
+    if (saveOrderTimer.current) clearTimeout(saveOrderTimer.current);
+    const ids = pendingOrderRef.current;
+    if (!ids) return;
+    pendingOrderRef.current = null;
+    fetch('/api/admin/products/order', {
+      method: 'PUT', credentials: 'include', keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: ids }),
+    }).catch(() => {});
+  }, []);
 
   /** Moves the product with `id` so that it lands at `toIndex` (0-based, clamped). */
   const moveTo = useCallback((id: string, toIndex: number) => {
-    setProducts(prev => {
-      const from = prev.findIndex(p => p.id === id);
-      if (from === -1) return prev;
-      const to = Math.max(0, Math.min(prev.length - 1, toIndex));
-      if (to === from) return prev;
-      const next = [...prev];
-      const [item] = next.splice(from, 1);
-      next.splice(to, 0, item);
-      scheduleSaveOrder(next);
-      return next;
-    });
+    const prev = productsRef.current;
+    const from = prev.findIndex(p => p.id === id);
+    if (from === -1) return;
+    const to = Math.max(0, Math.min(prev.length - 1, toIndex));
+    if (to === from) return;
+    const next = [...prev];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    productsRef.current = next;
+    setProducts(next);
+    scheduleSaveOrder(next);
   }, [scheduleSaveOrder]);
 
   const moveBy = useCallback((id: string, delta: number) => {
-    const from = products.findIndex(p => p.id === id);
+    const from = productsRef.current.findIndex(p => p.id === id);
     if (from !== -1) moveTo(id, from + delta);
-  }, [products, moveTo]);
+  }, [moveTo]);
 
   /** The typed position is 1-based for the person; committed on Enter or blur. */
   const commitPos = useCallback((id: string) => {
@@ -421,6 +456,10 @@ export default function ProductsPage() {
 
     if (saveOk) {
       resetForm();
+      // A reorder still waiting on its 700ms goes out BEFORE the list is re-read; otherwise
+      // the reload would show the server's order and the late save would then overwrite it
+      // with a list that predates the product just created.
+      await flushOrder().catch(() => {});
       await load();
     }
     setSaving(false);
@@ -813,10 +852,11 @@ export default function ProductsPage() {
               ) : products.map((p, idx) => (
                 <tr
                   key={p.id}
-                  draggable
-                  onDragStart={e => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', p.id); }}
+                  // Only the ⠿ handle is draggable (below). A draggable <tr> stole the mouse
+                  // from the price inputs in the row: Firefox refuses text selection inside a
+                  // draggable ancestor, and Chrome starts a row drag on press-and-move in a field.
+                  // The row stays the DROP target so the whole width accepts the drop.
                   onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragOverId !== p.id) setDragOverId(p.id); }}
-                  onDragLeave={() => { if (dragOverId === p.id) setDragOverId(null); }}
                   onDrop={e => {
                     e.preventDefault();
                     const src = dragId ?? e.dataTransfer.getData('text/plain');
@@ -828,7 +868,14 @@ export default function ProductsPage() {
                 >
                   <td className="px-3 py-3">
                     <div className="flex items-center justify-center gap-1.5" dir="ltr">
-                      <span className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 select-none text-lg leading-none" title="اسحب لتغيير الترتيب" aria-hidden>⠿</span>
+                      <span
+                        draggable
+                        onDragStart={e => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', p.id); }}
+                        onDragEnd={() => { setDragId(null); setDragOverId(null); }}
+                        className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 select-none text-lg leading-none px-1"
+                        title="اسحب لتغيير الترتيب"
+                        aria-hidden
+                      >⠿</span>
                       <input
                         type="number"
                         min={1}

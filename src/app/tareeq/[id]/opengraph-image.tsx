@@ -31,10 +31,12 @@ export default async function PostOgImage({ params }: { params: { id: string } }
   // A hidden post must not leak its text through the preview card.
   const visible = post && !post.isHidden ? post : null;
   const title = visible?.title?.trim() || visible?.content?.trim() || 'علامة في طريق';
+  // The body goes on the card too, so a text post shares as the text and not as a headline.
+  const excerpt = visible?.title?.trim() ? visible.content : null;
   const font = loadOgFont();
 
   return new ImageResponse(
-    buildOgTree({ title, author: visible?.authorName, category: visible?.category }),
+    await buildOgTree({ title, excerpt, author: visible?.authorName, category: visible?.category }),
     {
       ...size,
       fonts: font ? [{ name: 'Cairo', data: font, weight: 700, style: 'normal' }] : undefined,

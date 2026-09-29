@@ -47,6 +47,23 @@ echo "═══ ٣. إيقاف العملية ═══"
 pm2 stop moslimleader
 
 echo
+echo "═══ ٣ب. الحزم ═══"
+# AFTER the stop: `npm ci` replaces node_modules wholesale, and a live process that loads
+# a module mid-swap gets half of one (the stale-Prisma-client window CLAUDE.md warns about).
+# Runs only when the lockfile changed. Skipping it when a dependency WAS added means the
+# build still passes (`ignoreBuildErrors`) and the route that needs the package crashes at
+# runtime instead. The stamp lives in node_modules, so a fresh clone always installs.
+LOCK_HASH=$(sha256sum package-lock.json | cut -c1-16)
+STAMP=node_modules/.lockfile-installed
+if [ ! -d node_modules ] || [ "$(cat "$STAMP" 2>/dev/null)" != "$LOCK_HASH" ]; then
+  echo "  package-lock.json تغيّر — npm ci"
+  npm ci --no-audit --no-fund
+  echo "$LOCK_HASH" > "$STAMP"
+else
+  echo "  ✅ الحزم مطابقة للقفل — لا تثبيت"
+fi
+
+echo
 echo "═══ ٤. قاعدة البيانات ═══"
 # `db push` asks for confirmation when it would drop data; without a tty it refuses rather
 # than guesses, which is the right way round.

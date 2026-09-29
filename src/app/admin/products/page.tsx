@@ -55,6 +55,63 @@ export default function ProductsPage() {
   const [forbidden, setForbidden] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /* ── Display order ──────────────────────────────────────────────────────────────────
+   * The list on screen IS the order the shop shows. Every move (drag, arrow, typed
+   * position) reorders `products` locally and saves the whole id list ~700ms later, so a
+   * run of arrow taps is one request. `orderState` is what the header badge shows. */
+  const [orderState, setOrderState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [posDraft, setPosDraft] = useState<Record<string, string>>({});
+  const saveOrderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleSaveOrder = useCallback((list: MergedProduct[]) => {
+    if (saveOrderTimer.current) clearTimeout(saveOrderTimer.current);
+    setOrderState('saving');
+    saveOrderTimer.current = setTimeout(async () => {
+      try {
+        await adminJson('/api/admin/products/order', {
+          method: 'PUT',
+          body: JSON.stringify({ order: list.map(p => p.id) }),
+        });
+        setOrderState('saved');
+        setTimeout(() => setOrderState(s => (s === 'saved' ? 'idle' : s)), 2500);
+      } catch (err) {
+        setOrderState('error');
+        addToast(err instanceof Error ? err.message : 'فشل حفظ الترتيب', 'error');
+      }
+    }, 700);
+  }, [addToast]);
+
+  /** Moves the product with `id` so that it lands at `toIndex` (0-based, clamped). */
+  const moveTo = useCallback((id: string, toIndex: number) => {
+    setProducts(prev => {
+      const from = prev.findIndex(p => p.id === id);
+      if (from === -1) return prev;
+      const to = Math.max(0, Math.min(prev.length - 1, toIndex));
+      if (to === from) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      scheduleSaveOrder(next);
+      return next;
+    });
+  }, [scheduleSaveOrder]);
+
+  const moveBy = useCallback((id: string, delta: number) => {
+    const from = products.findIndex(p => p.id === id);
+    if (from !== -1) moveTo(id, from + delta);
+  }, [products, moveTo]);
+
+  /** The typed position is 1-based for the person; committed on Enter or blur. */
+  const commitPos = useCallback((id: string) => {
+    const raw = posDraft[id];
+    setPosDraft(d => { const n = { ...d }; delete n[id]; return n; });
+    if (raw === undefined) return;
+    const n = parseInt(raw, 10);
+    if (Number.isFinite(n) && n >= 1) moveTo(id, n - 1);
+  }, [posDraft, moveTo]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -431,7 +488,12 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-gray-900">إدارة المنتجات</h1>
-          <p className="text-sm text-gray-500 mt-0.5">إضافة وتعديل المنتجات وأسعارها</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            إضافة وتعديل المنتجات وأسعارها — والترتيب هنا هو ترتيب ظهورها في المتجر: اسحب الصف، أو استعمل الأسهم، أو اكتب رقم المكان.
+            {orderState === 'saving' && <span className="ms-2 text-amber-600 font-bold text-xs">⏳ جارٍ حفظ الترتيب…</span>}
+            {orderState === 'saved' && <span className="ms-2 text-green-600 font-bold text-xs">✓ تم حفظ الترتيب</span>}
+            {orderState === 'error' && <span className="ms-2 text-red-600 font-bold text-xs">✗ لم يُحفظ الترتيب — أعد المحاولة</span>}
+          </p>
         </div>
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
@@ -735,6 +797,7 @@ export default function ProductsPage() {
           <table className="w-full text-sm text-right">
             <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 font-bold text-xs">
               <tr>
+                <th className="px-3 py-3.5 text-center whitespace-nowrap">الترتيب</th>
                 <th className="px-4 py-3.5">المنتج</th>
                 <th className="px-4 py-3.5">الفئة</th>
                 <th className="px-4 py-3.5">السعر</th>
@@ -744,11 +807,46 @@ export default function ProductsPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={5} className="text-center py-10 text-gray-400 text-sm">جارٍ تحميل المنتجات...</td></tr>
+                <tr><td colSpan={6} className="text-center py-10 text-gray-400 text-sm">جارٍ تحميل المنتجات...</td></tr>
               ) : products.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-10 text-gray-400 text-sm">لا توجد منتجات</td></tr>
-              ) : products.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50 transition">
+                <tr><td colSpan={6} className="text-center py-10 text-gray-400 text-sm">لا توجد منتجات</td></tr>
+              ) : products.map((p, idx) => (
+                <tr
+                  key={p.id}
+                  draggable
+                  onDragStart={e => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', p.id); }}
+                  onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragOverId !== p.id) setDragOverId(p.id); }}
+                  onDragLeave={() => { if (dragOverId === p.id) setDragOverId(null); }}
+                  onDrop={e => {
+                    e.preventDefault();
+                    const src = dragId ?? e.dataTransfer.getData('text/plain');
+                    if (src && src !== p.id) moveTo(src, idx);
+                    setDragId(null); setDragOverId(null);
+                  }}
+                  onDragEnd={() => { setDragId(null); setDragOverId(null); }}
+                  className={`transition ${dragId === p.id ? 'opacity-40' : 'hover:bg-gray-50'} ${dragOverId === p.id && dragId !== p.id ? 'bg-amber-50 shadow-[inset_0_2px_0_0_#F5C518]' : ''}`}
+                >
+                  <td className="px-3 py-3">
+                    <div className="flex items-center justify-center gap-1.5" dir="ltr">
+                      <span className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 select-none text-lg leading-none" title="اسحب لتغيير الترتيب" aria-hidden>⠿</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={products.length}
+                        value={posDraft[p.id] ?? String(idx + 1)}
+                        onChange={e => setPosDraft(d => ({ ...d, [p.id]: e.target.value }))}
+                        onBlur={() => commitPos(p.id)}
+                        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                        onClick={e => (e.target as HTMLInputElement).select()}
+                        aria-label="مكان المنتج في المتجر"
+                        className="w-12 border border-gray-200 rounded-lg px-1.5 py-1 text-xs text-center font-bold tabular-nums focus:border-amber-400 outline-none"
+                      />
+                      <div className="flex flex-col">
+                        <button type="button" onClick={() => moveBy(p.id, -1)} disabled={idx === 0} className="text-gray-400 hover:text-gray-800 disabled:opacity-20 leading-none text-[10px] px-1" title="أعلى" aria-label="أعلى">▲</button>
+                        <button type="button" onClick={() => moveBy(p.id, 1)} disabled={idx === products.length - 1} className="text-gray-400 hover:text-gray-800 disabled:opacity-20 leading-none text-[10px] px-1" title="أسفل" aria-label="أسفل">▼</button>
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
 import ShopPageClient from './ShopPageClient';
 import { canonical, organizationJsonLd, websiteJsonLd, ORG_DESCRIPTION, ORG_OG_IMAGE } from '@/lib/seo';
-import { getMergedStaticProducts } from '@/lib/product-overrides';
+import { getMergedStaticProducts, orderProducts } from '@/lib/product-overrides';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import type { Product } from '@/types';
@@ -42,9 +42,10 @@ async function getProducts(): Promise<Product[]> {
         setTimeout(() => reject(new Error('timeout')), 3000),
       ),
     ]);
-    return [...(dbProducts as unknown as Product[]), ...mergedStatic];
+    // The admin's order wins; anything not in it keeps this natural order after it.
+    return await orderProducts([...(dbProducts as unknown as Product[]), ...mergedStatic]);
   } catch {
-    try { return await getMergedStaticProducts(); } catch { return staticProducts; }
+    try { return await orderProducts(await getMergedStaticProducts()); } catch { return staticProducts; }
   }
 }
 

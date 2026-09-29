@@ -93,6 +93,52 @@ export async function getMergedStaticProducts(): Promise<Product[]> {
     .filter((p): p is Product => p !== null);
 }
 
+/**
+ * The admin's display order for the shop — one list of product ids, in the order they
+ * should appear, stored in the `product-order` Setting row.
+ *
+ * One list for both kinds of product (static and admin-added), because the shop shows
+ * them as one grid and the owner drags them as one grid. Ids missing from the list keep
+ * their natural order AFTER the listed ones — so a product added tomorrow appears and is
+ * not lost, and a list saved once does not have to be maintained on every addition.
+ */
+export const PRODUCT_ORDER_KEY = 'product-order';
+
+let orderCache: { value: string[]; expiresAt: number; warm: boolean } | null = null;
+
+export function invalidateProductOrderCache(): void {
+  orderCache = null;
+}
+
+export async function loadProductOrder(): Promise<string[]> {
+  if (orderCache && Date.now() < orderCache.expiresAt) return orderCache.value;
+  try {
+    const row = await prisma.setting.findUnique({ where: { key: PRODUCT_ORDER_KEY } });
+    const value = Array.isArray(row?.value) ? (row!.value as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+    orderCache = { value, expiresAt: Date.now() + OVERRIDES_TTL_MS, warm: true };
+    return value;
+  } catch (err) {
+    console.error('[loadProductOrder]', err);
+    if (orderCache?.warm) return orderCache.value;
+    return [];
+  }
+}
+
+/** Stable: listed ids first in list order, everything else after in its incoming order. */
+export function applyProductOrder<T extends { id: string }>(products: T[], order: string[]): T[] {
+  if (order.length === 0) return products;
+  const rank = new Map(order.map((id, i) => [id, i]));
+  return products
+    .map((p, i) => ({ p, key: rank.has(p.id) ? rank.get(p.id)! : order.length + i }))
+    .sort((a, b) => a.key - b.key)
+    .map(x => x.p);
+}
+
+/** `applyProductOrder` with the stored list — the one call every product listing makes. */
+export async function orderProducts<T extends { id: string }>(products: T[]): Promise<T[]> {
+  return applyProductOrder(products, await loadProductOrder());
+}
+
 // Single-product lookup by id or slug. Used by the per-slug detail route.
 export async function getMergedStaticProduct(
   idOrSlug: string,

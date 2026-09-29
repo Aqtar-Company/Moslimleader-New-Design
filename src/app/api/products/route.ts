@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
-import { getMergedStaticProducts } from '@/lib/product-overrides';
+import { getMergedStaticProducts, orderProducts } from '@/lib/product-overrides';
 import type { Product } from '@/types';
 
 export async function GET(req: NextRequest) {
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       prisma.product.findMany({ where: { source: 'admin' }, orderBy: { createdAt: 'desc' } }),
     ]);
 
-    let allProducts: Product[] = [...mergedStatic, ...(dbProducts as unknown as Product[])];
+    let allProducts: Product[] = await orderProducts([...mergedStatic, ...(dbProducts as unknown as Product[])]);
 
     if (category) allProducts = allProducts.filter(p => p.category === category);
     if (featured === 'true') allProducts = allProducts.filter(p => p.featured);

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getMergedStaticProducts } from '@/lib/product-overrides';
+import { getMergedStaticProducts, orderProducts } from '@/lib/product-overrides';
 import { requirePerm, type Permission } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
 import {
@@ -59,7 +59,8 @@ export async function GET(req: NextRequest) {
     const mergedStaticTagged = mergedStatic.map(p => ({ ...p, isAdded: false }));
     const adminProducts = dbProducts.map((p: (typeof dbProducts)[number]) => ({ ...p, isAdded: true }));
 
-    const payload = { products: [...mergedStaticTagged, ...adminProducts] };
+    // Same order the shop shows, so what the admin drags is what the visitor sees.
+    const payload = { products: await orderProducts([...mergedStaticTagged, ...adminProducts]) };
     setAdminProductsCache(payload);
 
     const lite = req.nextUrl.searchParams.get('lite') === 'true';

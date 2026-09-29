@@ -76,6 +76,18 @@ export const CATEGORY_AR: Record<string, string> = {
  * `row-reverse` row was dropped between some pairs outright, fusing words
  * ("تجربتيمع", "الفاشلةوالدروس").
  */
+/**
+ * The direction of a run, from its first strong character — the same rule Unicode's bidi
+ * algorithm uses for a paragraph. `RtlText` used to reverse every string it was given,
+ * which is right for Arabic and exactly wrong for a Latin one: an author called
+ * «Marwa Ali» came out on the card as «Ali Marwa». A run that begins with a Latin letter
+ * is laid out left to right; only a run that begins with Arabic is reversed.
+ */
+function isRtlRun(text: string): boolean {
+  const m = /[A-Za-z؀-ۿݐ-ݿࢠ-ࣿ]/.exec(text);
+  return !m || m[0] >= '؀';
+}
+
 export function RtlText({
   text,
   gap,
@@ -92,7 +104,7 @@ export function RtlText({
     <div
       style={{
         display: 'flex',
-        flexDirection: 'row-reverse',
+        flexDirection: isRtlRun(text) ? 'row-reverse' : 'row',
         flexWrap: wrap ? 'wrap' : 'nowrap',
         alignItems: 'baseline',
         ...style,

@@ -55,12 +55,24 @@ async function getShaper(): Promise<Shaper | null> {
 export async function measureWords(words: string[], fontSize: number): Promise<number[] | null> {
   const s = await getShaper();
   if (!s) return null;
-  return words.map(w => {
-    const b = new s.hb.Buffer();
-    b.addText(w);
-    b.guessSegmentProperties();
-    s.hb.shape(s.font, b);
-    const adv = b.getGlyphPositions().reduce((sum, p) => sum + p.xAdvance, 0);
-    return Math.ceil((adv / s.upem) * fontSize);
-  });
+  try {
+    return words.map(w => {
+      const b = new s.hb.Buffer();
+      try {
+        b.addText(w);
+        b.guessSegmentProperties();
+        s.hb.shape(s.font, b);
+        const adv = b.getGlyphPositions().reduce((sum, p) => sum + p.xAdvance, 0);
+        return Math.ceil((adv / s.upem) * fontSize);
+      } finally {
+        // Free the wasm-side buffer now rather than when the GC gets round to it: a
+        // scraper burst renders dozens of cards a minute, each with tens of words.
+        (b as unknown as { destroy?: () => void }).destroy?.();
+      }
+    });
+  } catch (e) {
+    // One pathological string must cost the old spacing, not a 500 for that card.
+    console.warn('[tareeq-og] shaping failed, card falls back to padded words:', e instanceof Error ? e.message : e);
+    return null;
+  }
 }

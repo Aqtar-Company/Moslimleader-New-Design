@@ -15,6 +15,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Whatever fails after `pm2 stop`, the site must not stay down because a script exited.
+# `npm ci`, `prisma db push` and `npm run build` all run while the process is stopped, and
+# under `set -e` any of them failing used to end the script with nothing restarting it.
+# The trap restarts the OLD build (still on disk until `next build` rewrites .next).
+# Caveat printed for the one case a restart cannot fix: a half-finished `npm ci` leaves a
+# partial node_modules — re-run it, then restart.
+trap 'echo; echo "❌ فشل النشر في خطوةٍ ما. أُعيد تشغيل النسخة القديمة كي لا يبقى الموقع متوقفاً."; echo "   لو كان الفشل في npm ci فـ node_modules ناقصة: شغّل npm ci ثم pm2 restart moslimleader --update-env"; pm2 start moslimleader --update-env || true' ERR
+
 # More than node's default heap, and LESS than the machine has.
 #
 # This was 4096 on a box with 3653 MB of RAM — a ceiling above the whole machine, which is

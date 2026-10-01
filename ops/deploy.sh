@@ -36,7 +36,7 @@ trap 'echo; echo "❌ فشل النشر في خطوةٍ ما. أُعيد تشغ�
 export NODE_OPTIONS="--max-old-space-size=3072"
 
 TS=$(date +%Y%m%d-%H%M%S)
-BASELINE=${TSC_BASELINE:-24}
+BASELINE=${TSC_BASELINE:-12}
 
 echo "═══ ١. نسخة احتياطية ═══"
 mkdir -p /root/backups
@@ -81,10 +81,16 @@ echo
 echo "═══ ٥. فحص الأنواع ═══"
 # NOT in a pipe. The exit status has to be tsc's own, and its output has to survive for
 # the count below.
+# The ERR trap is lifted around this one command: tsc exits non-zero whenever there is
+# ANY error, and the baseline below EXPECTS some — `set +e` does not stop an ERR trap
+# from firing, so without this the trap announced a failed deploy and restarted the old
+# build on every single run, before the gate had even counted.
+trap - ERR
 set +e
 npx tsc --noEmit > /tmp/tsc-out.txt 2>&1
 TSC_RC=$?
 set -e
+trap 'echo; echo "❌ فشل النشر في خطوةٍ ما. أُعيد تشغيل النسخة القديمة كي لا يبقى الموقع متوقفاً."; echo "   لو كان الفشل في npm ci فـ node_modules ناقصة: شغّل npm ci ثم pm2 restart moslimleader --update-env"; pm2 start moslimleader --update-env || true' ERR
 ERRORS=$(grep -c 'error TS' /tmp/tsc-out.txt || true)
 echo "  أخطاء: $ERRORS   (المتوقّع: $BASELINE)"
 if [ "$TSC_RC" -gt 2 ] || grep -q 'heap out of memory' /tmp/tsc-out.txt; then

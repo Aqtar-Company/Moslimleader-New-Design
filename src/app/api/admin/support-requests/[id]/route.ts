@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: { id: string } },
 ) {
   const denied = await requirePerm('support-requests.read');
-  if (denied) return denied;
+  if ('response' in denied) return denied.response;
 
   const request = await prisma.supportRequest.findUnique({
     where: { id: params.id },

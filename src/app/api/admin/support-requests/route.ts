@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
   const denied = await requirePerm('support-requests.read');
-  if (denied) return denied;
+  if ('response' in denied) return denied.response;
 
   const { searchParams } = new URL(req.url);
   const status    = searchParams.get('status') ?? undefined;

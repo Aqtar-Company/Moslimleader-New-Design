@@ -12,12 +12,18 @@ import { resolvePrice } from '@/lib/geo-pricing';
 import { formatAgeLabel } from '@/lib/book-age';
 import { Turnstile } from '@marsidev/react-turnstile';
 
-// Simple device fingerprint based on browser properties
+// Device fingerprint from browser properties.
+//
+// Orientation-independent on purpose. `screen.width x screen.height` SWAPS when an Android
+// phone is turned sideways, so the same phone produced two fingerprints — and the first
+// real lockout investigated was exactly that: two "devices", both one Samsung. The two
+// dimensions are sorted before hashing so portrait and landscape agree.
 async function generateFingerprint(): Promise<string> {
   const ua = navigator.userAgent;
   const lang = navigator.language;
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const screen = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+  const [a, b] = [window.screen.width, window.screen.height].sort((x, y) => x - y);
+  const screen = `${a}x${b}x${window.screen.colorDepth}`;
   const raw = `${ua}|${lang}|${tz}|${screen}`;
   // Use SubtleCrypto if available, else fallback to simple hash
   if (window.crypto && window.crypto.subtle) {
@@ -233,18 +239,31 @@ function BookPageInner() {
     return () => clearTimeout(t);
   }, [shareMsg]);
 
-  // Session ping every 90 seconds to detect concurrent access from another IP
+  // Session ping every 90 seconds to detect concurrent access from ANOTHER DEVICE.
+  //
+  // The ping carries this device's fingerprint, and the server now tells devices apart by
+  // it rather than by IP. A phone changes IP constantly — Wi-Fi to 4G, carrier NAT
+  // rotation — so an IP-keyed check saw the reader's OWN previous session as "another
+  // device" and raised the alarm at them every 90 seconds. The alert is also shown once
+  // per visit, not on every ping: a popup every minute and a half IS the book not working.
   useEffect(() => {
     if (!isVerified) return;
+    let warned = false;
+    let fpPromise: Promise<string> | null = null;
     const ping = async () => {
       try {
+        fpPromise ??= generateFingerprint().catch(() => '');
+        const fingerprint = await fpPromise;
         const res = await fetch(`/api/books/${id}/session`, {
           method: 'POST',
           credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fingerprint }),
         });
         if (res.ok) {
           const data = await res.json();
-          if (data.conflict) {
+          if (data.conflict && !warned) {
+            warned = true;
             alert(data.message || 'يبدو أن حسابك مفتوح على جهاز آخر في نفس الوقت.');
           }
         }

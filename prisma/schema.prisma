@@ -807,6 +807,10 @@ model BookSession {
   userId    String
   bookId    String
   ipAddress String?
+  /// The reading device, from the same fingerprint the device route stores. Sessions used
+  /// to be told apart by IP alone, and a phone's IP changes every few minutes.
+  fingerprint String?
+  userAgent   String?  @db.Text
   startedAt DateTime @default(now())
   lastPing  DateTime @default(now())
 

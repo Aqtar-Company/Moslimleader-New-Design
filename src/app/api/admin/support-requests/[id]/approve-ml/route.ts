@@ -10,7 +10,7 @@ export async function POST(
   { params }: { params: { id: string } },
 ) {
   const denied = await requirePerm('support-requests.write');
-  if (denied) return denied;
+  if ('response' in denied) return denied.response;
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 

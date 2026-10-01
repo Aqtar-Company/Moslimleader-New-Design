@@ -12,7 +12,7 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   const denied = await requirePerm('sponsors.write');
-  if (denied) return denied;
+  if ('response' in denied) return denied.response;
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 

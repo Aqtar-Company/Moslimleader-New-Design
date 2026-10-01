@@ -8,7 +8,7 @@ import { logActionSafe } from '@/lib/audit-log';
 
 export async function GET(req: NextRequest) {
   const denied = await requirePerm('sponsors.read');
-  if (denied) return denied;
+  if ('response' in denied) return denied.response;
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get('search') ?? undefined;
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const denied = await requirePerm('sponsors.write');
-  if (denied) return denied;
+  if ('response' in denied) return denied.response;
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 

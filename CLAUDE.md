@@ -376,6 +376,17 @@ systemctl start nginx
 ```
 > لا تستخدم `certbot renew` بدون إيقاف ليتسبيد أولاً — سيفشل لأنه يحاول يعيد تشغيل نجينكس بينما ليتسبيد شايل المنفذ.
 
+> **الشهادة انتهت فعلاً يوم 2026-10-01 والموقع وقف** (ومعه waqfelafkar.com وapi.waqfelafkar.com).
+> السبب لم يكن ليتسبيد — كان على 8443 كما ينبغي — بل أن كل شهادات `standalone` مسجَّلة
+> في `/etc/letsencrypt/renewal/*.conf` **بلا `pre_hook`/`post_hook`**: التجديد التلقائي
+> (timer + cron) يحاول فتح 443 ونجينكس ماسكه، فيفشل بصمت كل ليلة حتى تنتهي الشهادة.
+> الإصلاح الدائم: كل ملف تجديد `standalone` يحمل
+> `pre_hook = systemctl stop nginx` و`post_hook = systemctl start nginx`.
+> و`reels.moslimleader.com` و`solh.kaleemai.com` كانتا `webroot` بمسارٍ لا يخدمه نجينكس
+> وحُوِّلتا إلى standalone بالـhooks نفسها. **الفحص الذي يُثبت أن التجديد سيعمل:**
+> `certbot renew --dry-run` يجب أن ينتهي بـ`all simulated renewals succeeded` — شغّله بعد
+> أي تغيير في نجينكس أو إضافة دومين. ملاحظة: `--cert-name` مرتين في أمرٍ واحد يأخذ الأخير فقط.
+
 ### السيرفر عمل ريبوت والمواقع كلها مش بتفتح (حصل 2026-09-15)
 
 سببان اتجمعوا في نفس الوقت، وكل واحد لازم يتفحص لوحده:

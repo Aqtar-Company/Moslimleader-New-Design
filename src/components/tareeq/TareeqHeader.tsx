@@ -9,6 +9,7 @@ import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
 import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 import { notificationHref } from '@/lib/tareeq-notif-link';
+import { NotifText } from '@/lib/tareeq-notif-text';
 import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 
 interface Props {
@@ -64,8 +65,8 @@ function timeAgo(iso: string, isRtl: boolean): string {
   return isRtl ? `${Math.floor(diff / 86400)} ي` : `${Math.floor(diff / 86400)}d`;
 }
 
-const REACTION_EMOJIS: Record<string, string> = { inspired: '⭐', thanks: '🙏', agree: '✊', yarabb: '🤲' };
-const REACTION_COLORS: Record<string, string> = { inspired: '#f59e0b', thanks: '#10b981', agree: '#3b82f6', yarabb: '#8b5cf6' };
+const REACTION_EMOJIS: Record<string, string> = { inspired: '⭐', thanks: '🙏', agree: '✊', yarabb: '🤲', mashaallah: '🌴' };
+const REACTION_COLORS: Record<string, string> = { inspired: '#f59e0b', thanks: '#10b981', agree: '#3b82f6', yarabb: '#8b5cf6', mashaallah: '#16a34a' };
 
 function NotifIcon({ type }: { type: string }) {
   if (REACTION_EMOJIS[type]) {
@@ -129,7 +130,18 @@ function NotifIcon({ type }: { type: string }) {
       />
     </div>
   );
-  /* default / message */
+  // The envelope is ONLY for a private message. It used to be the default for every type
+  // this function did not name — a mention, a reply on a followed mark, a post update, a
+  // missed call, «ماشاء الله» — so each of those wore mail's icon beside the words «رسالة
+  // من فلان», and the member opened an empty inbox. The picture made the same false promise
+  // as the text. Each kind now has its own glyph; the unknown kind gets a plain bell.
+  if (type === 'share')       return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(59,130,246,0.40)' }}>🔁</div>;
+  if (type === 'post_update') return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(20,184,166,0.18)', border: '1px solid rgba(20,184,166,0.40)' }}>📝</div>;
+  if (type === 'call')        return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(239,68,68,0.18)', border: '1px solid rgba(239,68,68,0.40)' }}>📞</div>;
+  if (type === 'perk_new')    return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(212,168,83,0.25)', border: '1px solid rgba(212,168,83,0.50)' }}>🎁</div>;
+  if (type === 'product_new') return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(212,168,83,0.25)', border: '1px solid rgba(212,168,83,0.50)' }}>🛍️</div>;
+  if (type !== 'message')     return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(148,163,184,0.18)', border: '1px solid rgba(148,163,184,0.40)' }}>🔔</div>;
+  /* message — the envelope, and only here */
   return (
     <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(212,168,83,0.25)', border: '1px solid rgba(212,168,83,0.50)' }}>
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" style={{ color: '#d4a853' }}>
@@ -847,42 +859,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   <NotifAvatar n={n} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.90)' }}>
-                      {n.type === 'like' && (
-                        <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}
-                          {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
-                      )}
-                      {n.type === 'inspired' && (
-                        <>{isRtl ? `${n.actorName || 'شخص ما'} ألهمته علامتك ⭐` : `${n.actorName || 'Someone'} was inspired by your mark ⭐`}
-                          {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
-                      )}
-                      {n.type === 'thanks' && (
-                        <>{isRtl ? `${n.actorName || 'شخص ما'} شكرك على علامتك 🙏` : `${n.actorName || 'Someone'} thanked you for your mark 🙏`}
-                          {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
-                      )}
-                      {n.type === 'agree' && (
-                        <>{isRtl ? `${n.actorName || 'شخص ما'} يتفق مع علامتك ✊` : `${n.actorName || 'Someone'} agreed with your mark ✊`}
-                          {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
-                      )}
-                      {n.type === 'yarabb' && (
-                        <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك بسبب علامتك 🤲` : `${n.actorName || 'Someone'} made du'a for your mark 🤲`}
-                          {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
-                      )}
-                      {n.type === 'comment' && (
-                        <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}
-                          {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}
-                          {n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
-                      )}
-                      {n.type === 'share' && (
-                        <>{isRtl ? `${n.actorName || 'شخص ما'} شارك علامتك 🔁` : `${n.actorName || 'Someone'} shared your mark 🔁`}
-                          {n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
-                      )}
-                      {n.type === 'follow' && (
-                        <>{isRtl ? `${n.actorName || 'شخص ما'} بدأ متابعتك` : `${n.actorName || 'Someone'} started following you`}</>
-                      )}
-                      {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && n.type !== 'share' && (
-                        <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}
-                          {n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
-                      )}
+                      <NotifText n={n} isRtl={isRtl} previewClassName="block opacity-60 truncate mt-0.5" previewStyle={{}} />
                     </p>
                     <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
                       {timeAgo(n.createdAt, isRtl)}
@@ -1203,15 +1180,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                               <NotifAvatar n={n} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-primary)' }}>
-                                  {n.type === 'like' && <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                  {n.type === 'inspired' && <>{isRtl ? `${n.actorName || 'شخص ما'} ألهمته علامتك ⭐` : `${n.actorName || 'Someone'} was inspired ⭐`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                  {n.type === 'thanks' && <>{isRtl ? `${n.actorName || 'شخص ما'} شكرك على علامتك 🙏` : `${n.actorName || 'Someone'} thanked you 🙏`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                  {n.type === 'agree' && <>{isRtl ? `${n.actorName || 'شخص ما'} يتفق مع علامتك ✊` : `${n.actorName || 'Someone'} agreed ✊`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                  {n.type === 'yarabb' && <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك 🤲` : `${n.actorName || 'Someone'} made du'a 🤲`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                  {n.type === 'comment' && <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
-                                  {n.type === 'share' && <>{isRtl ? `${n.actorName || 'شخص ما'} شارك علامتك 🔁` : `${n.actorName || 'Someone'} shared your mark 🔁`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
-                                  {n.type === 'follow' && <>{isRtl ? `${n.actorName || 'شخص ما'} بدأ متابعتك` : `${n.actorName || 'Someone'} started following you`}</>}
-                                  {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && n.type !== 'share' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
+                                  <NotifText n={n} isRtl={isRtl} previewClassName="block opacity-60 truncate mt-0.5" previewStyle={{}} />
                                 </p>
                                 <p className="text-[10px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
                               </div>
@@ -1489,15 +1458,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                             <NotifAvatar n={n} />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-primary)' }}>
-                                {n.type === 'like' && <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                {n.type === 'inspired' && <>{isRtl ? `${n.actorName || 'شخص ما'} ألهمته علامتك ⭐` : `${n.actorName || 'Someone'} was inspired ⭐`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                {n.type === 'thanks' && <>{isRtl ? `${n.actorName || 'شخص ما'} شكرك على علامتك 🙏` : `${n.actorName || 'Someone'} thanked you 🙏`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                {n.type === 'agree' && <>{isRtl ? `${n.actorName || 'شخص ما'} يتفق مع علامتك ✊` : `${n.actorName || 'Someone'} agreed ✊`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                {n.type === 'yarabb' && <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك 🤲` : `${n.actorName || 'Someone'} made du'a 🤲`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                {n.type === 'comment' && <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
-                                  {n.type === 'share' && <>{isRtl ? `${n.actorName || 'شخص ما'} شارك علامتك 🔁` : `${n.actorName || 'Someone'} shared your mark 🔁`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
-                                {n.type === 'follow' && <>{isRtl ? `${n.actorName || 'شخص ما'} بدأ متابعتك` : `${n.actorName || 'Someone'} started following you`}</>}
-                                {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && n.type !== 'share' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
+                                <NotifText n={n} isRtl={isRtl} previewClassName="block opacity-60 truncate mt-0.5" previewStyle={{}} />
                               </p>
                               <p className="text-[10px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
                             </div>

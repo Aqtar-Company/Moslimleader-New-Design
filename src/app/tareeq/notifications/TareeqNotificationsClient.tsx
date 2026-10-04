@@ -2,6 +2,7 @@
 import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 import { useState, useEffect } from 'react';
 import { notificationHref } from '@/lib/tareeq-notif-link';
+import { NotifText } from '@/lib/tareeq-notif-text';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -97,117 +98,6 @@ function NotifAvatar({ n }: { n: { type: string; actorId?: string | null; actorN
   );
 }
 
-
-function NotifText({ n, isRtl }: { n: TareeqNotif; isRtl: boolean }) {
-  const actor = n.actorName || (isRtl ? 'شخص ما' : 'Someone');
-  const title = n.postTitle ? `«${n.postTitle}»` : '';
-  if (n.type === 'like') {
-    return <span>{isRtl ? `${actor} أعجب بعلامتك ${title}` : `${actor} liked your mark ${title}`}</span>;
-  }
-  if (n.type === 'inspired') {
-    return <span>{isRtl ? `${actor} ألهمه علامتك ${title} ⭐` : `${actor} was inspired by your mark ${title} ⭐`}</span>;
-  }
-  if (n.type === 'thanks') {
-    return <span>{isRtl ? `${actor} شكرك على علامتك ${title} 🙏` : `${actor} thanked you for ${title} 🙏`}</span>;
-  }
-  if (n.type === 'agree') {
-    return <span>{isRtl ? `${actor} اتفق معك في علامتك ${title} ✊` : `${actor} agreed with your mark ${title} ✊`}</span>;
-  }
-  if (n.type === 'yarabb') {
-    return <span>{isRtl ? `${actor} قال يارب على علامتك ${title} 🤲` : `${actor} said Yarabb on your mark ${title} 🤲`}</span>;
-  }
-  if (n.type === 'comment') {
-    return (
-      <span>
-        {isRtl ? `${actor} علّق على ${title}` : `${actor} commented on ${title}`}
-        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
-      </span>
-    );
-  }
-  if (n.type === 'share') {
-    return (
-      <span>
-        {isRtl ? `${actor} شارك علامتك 🔁` : `${actor} shared your mark 🔁`}
-        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
-      </span>
-    );
-  }
-  if (n.type === 'follow') {
-    return <span>{isRtl ? `${actor} بدأ متابعتك` : `${actor} started following you`}</span>;
-  }
-  if (n.type.startsWith('admin_')) {
-    // A message from the administration: the title is the headline, the body a preview.
-    // `actorName` is the admin's display name ("إدارة طريق" by default).
-    const label = n.type === 'admin_update' ? (isRtl ? 'تحديث' : 'Update')
-      : n.type === 'admin_announcement' ? (isRtl ? 'إعلان' : 'Announcement')
-      : n.type === 'admin_reminder' ? (isRtl ? 'تذكير' : 'Reminder')
-      : (isRtl ? 'ملاحظة' : 'Note');
-    return (
-      <span>
-        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full me-1.5 align-middle" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>{label}</span>
-        <span className="font-bold">{n.postTitle || actor}</span>
-        {n.body && <span className="block text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
-      </span>
-    );
-  }
-  if (n.type === 'perk_new') {
-    return (
-      <span>
-        {isRtl ? '✨ ميزة جديدة في عضويتك' : '✨ New membership benefit'}
-        {n.body && <span className="block text-xs mt-0.5 truncate font-semibold" style={{ color: 'var(--tr-gold)' }}>{n.body}</span>}
-      </span>
-    );
-  }
-  if (n.type === 'product_new') {
-    return (
-      <span>
-        {isRtl ? '🛍️ منتج جديد في المتجر' : '🛍️ New product in the store'}
-        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
-      </span>
-    );
-  }
-  /**
-   * Everything below used to land on "رسالة جديدة من فلان" / "New message from X".
-   * Four real notification types went through it — a mention, a reply on a thread you
-   * follow, an update to a post you engaged with, and a missed call — and all four told the
-   * user they had a private message they did not have. The fallback now only covers types
-   * that genuinely have no wording of their own.
-   */
-  if (n.type === 'mention') {
-    return (
-      <span>
-        {isRtl ? `${actor} ذكرك في ${title}` : `${actor} mentioned you in ${title}`}
-        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
-      </span>
-    );
-  }
-  if (n.type === 'subscribed_comment') {
-    return (
-      <span>
-        {isRtl ? `تعليق جديد على ${title}` : `New comment on ${title}`}
-        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
-      </span>
-    );
-  }
-  if (n.type === 'post_update') {
-    return (
-      <span>
-        {isRtl ? `${actor} أضاف تحديثاً على ${title}` : `${actor} posted an update on ${title}`}
-        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
-      </span>
-    );
-  }
-  if (n.type === 'call') {
-    return <span>{isRtl ? `مكالمة فائتة من ${actor} 📞` : `Missed call from ${actor} 📞`}</span>;
-  }
-
-  return (
-    <span>
-      {isRtl ? `رسالة جديدة من ${actor}` : `New message from ${actor}`}
-      {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
-    </span>
-  );
-}
 
 function PushPermissionBanner({ isRtl }: { isRtl: boolean }) {
   const [perm, setPerm] = useState<NotificationPermission | null>(null);

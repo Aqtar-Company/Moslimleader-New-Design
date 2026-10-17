@@ -77,6 +77,13 @@ echo "═══ ٤. قاعدة البيانات ═══"
 # than guesses, which is the right way round.
 npx prisma db push --skip-generate
 
+# The client must be regenerated BEFORE the type check, not only by `npm run build` after
+# it. With `--skip-generate` the check ran against the OLD client, so every new model was
+# "Property 'x' does not exist on type 'PrismaClient'" and a correct deploy was refused —
+# that is what happened with TareeqHiddenPost (18 errors against a baseline of 12).
+# The process is stopped here, so swapping the generated client is safe.
+npx prisma generate
+
 echo
 echo "═══ ٥. فحص الأنواع ═══"
 # NOT in a pipe. The exit status has to be tsc's own, and its output has to survive for
@@ -99,8 +106,12 @@ if [ "$TSC_RC" -gt 2 ] || grep -q 'heap out of memory' /tmp/tsc-out.txt; then
   exit 1
 fi
 if [ "$ERRORS" -gt "$BASELINE" ]; then
-  echo "  ❌ أخطاء جديدة — أول عشرة:"
-  grep 'error TS' /tmp/tsc-out.txt | head -10 | sed 's/^/     /'
+  # Per FILE, not the first ten lines: the old errors sort first, so "the first ten"
+  # showed only the known baseline and hid the new ones entirely.
+  echo "  ❌ أخطاء جديدة — عدد الأخطاء في كل ملف:"
+  grep 'error TS' /tmp/tsc-out.txt | cut -d'(' -f1 | sort | uniq -c | sed 's/^/     /'
+  echo "  الملفات التي ليست في القائمة المعروفة (membership / totp / tareeq/u) هي الجديدة:"
+  grep 'error TS' /tmp/tsc-out.txt | grep -v -e 'api/membership/' -e 'totp/setup' -e 'tareeq/u/\[userId\]/page.tsx' | head -10 | sed 's/^/     /'
   echo "  العملية ستعود للعمل بالبناء القديم. صحّح أولاً."
   pm2 start moslimleader --update-env
   exit 1

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import TareeqImageViewer from './TareeqImageViewer';
 import TareeqVideo from './TareeqVideo';
 import TareeqAvatarImg from './TareeqAvatarImg';
 import Link from 'next/link';
@@ -479,6 +480,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   // when the rest were unified.
   const [inlineCommentReacts, setInlineCommentReacts] = useState<Record<string, { reaction: string | null; counts: Record<string, number> }>>({});
   const [inlineCommentPicker, setInlineCommentPicker] = useState<string | null>(null);
+  /** Gallery picture opened full screen from the card, or null. */
+  const [galleryZoom, setGalleryZoom] = useState<number | null>(null);
   /** Inline comment showing its «حذف؟» confirmation, and one being deleted. */
   const [inlineConfirmDelete, setInlineConfirmDelete] = useState<string | null>(null);
   const [inlineDeleting, setInlineDeleting] = useState<string | null>(null);
@@ -1202,13 +1205,17 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     const extra = allImages.length - 4;
     const totalCount = allImages.length;
 
+    // Tapping a picture opens THAT picture full screen, with the rest a swipe away. It used
+    // to open the post, whose page then showed only the first image.
+    const openAt = (i: number) => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setGalleryZoom(i); };
+
     function GalleryGrid() {
       const count = shown.length;
       if (count === 2) {
         return (
           <div className="grid grid-cols-2 gap-1">
             {shown.map((url, i) => (
-              <div key={i} className="relative aspect-square overflow-hidden">
+              <div key={i} className="relative aspect-square overflow-hidden cursor-zoom-in" onClick={openAt(i)}>
                 <img src={url} alt={i === 0 ? (post.imageAlt ?? '') : ''} className="w-full h-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />
               </div>
             ))}
@@ -1220,11 +1227,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         // Use explicit row height so all browsers agree.
         return (
           <div className="grid grid-cols-2 gap-1" style={{ gridTemplateRows: '120px 120px' }}>
-            <div className="relative overflow-hidden" style={{ gridRow: 'span 2' }}>
+            <div className="relative overflow-hidden cursor-zoom-in" style={{ gridRow: 'span 2' }} onClick={openAt(0)}>
               <img src={shown[0]} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
             </div>
             {shown.slice(1).map((url, i) => (
-              <div key={i} className="relative overflow-hidden">
+              <div key={i} className="relative overflow-hidden cursor-zoom-in" onClick={openAt(i + 1)}>
                 <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
               </div>
             ))}
@@ -1235,7 +1242,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       return (
         <div className="grid grid-cols-2 gap-1">
           {shown.map((url, i) => (
-            <div key={i} className="relative aspect-square overflow-hidden">
+            <div key={i} className="relative aspect-square overflow-hidden cursor-zoom-in" onClick={openAt(i)}>
               <img src={url} alt="" className="w-full h-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />
               {i === 3 && extra > 0 && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-1" style={{ background: 'rgba(0,0,0,0.62)' }}>
@@ -1376,6 +1383,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
 {showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null, authorGender: post.user?.tareeqGender ?? null, authorId: post.user?.id ?? post.userId ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
+        {galleryZoom !== null && (
+          <TareeqImageViewer images={allImages} startIndex={galleryZoom} alt={post.imageAlt} isRtl={isRtl} onClose={() => setGalleryZoom(null)} />
+        )}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onFeedRemove={onFeedRemove} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
         {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}

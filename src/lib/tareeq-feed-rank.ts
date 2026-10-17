@@ -36,12 +36,11 @@
  *
  * ## Paging
  *
- * The ranking is computed over a window (the last 21 days, at most 400 posts) and paged by
- * OFFSET inside a snapshot: the cursor carries the snapshot time, every page re-ranks the
- * same set (posts created after it are excluded, "seen" counts only views before it), so
- * pages do not reshuffle under the reader. Counters still move a little between pages; the
- * client drops duplicate ids, so the worst case is one post shifting a slot. Past the
- * window the feed continues chronologically — nothing older becomes unreachable.
+ * The ranking is computed once per snapshot over a window (the last 21 days by
+ * publication, at most 400 posts), and the ranked id list is CACHED (src/lib/tareeq-feed.ts).
+ * Pages slice that list by offset, so a hide, a mute or a reaction during scrolling cannot
+ * reorder what is still to come — re-ranking per page did exactly that and skipped posts.
+ * Past the window the feed continues chronologically, so nothing older is unreachable.
  */
 
 export const FOR_YOU_WINDOW_DAYS = 21;
@@ -119,9 +118,19 @@ export type ForYouCursor =
 
 export function parseForYouCursor(c: string | undefined): ForYouCursor | null {
   if (!c) return null;
-  let m = /^fy:(\d+):(\d+)$/.exec(c);
-  if (m) return { kind: 'ranked', snapshot: Number(m[1]), offset: Number(m[2]) };
-  m = /^fyold:(\d+)(?::([A-Za-z0-9_-]+))?$/.exec(c);
-  if (m) return { kind: 'old', boundary: Number(m[1]), afterId: m[2] ?? null };
+  // Times must be real instants: an absurd number becomes an Invalid Date, and Prisma
+  // throws on it — a 500 from a hand-edited URL. Offsets are capped by the pool.
+  const okTime = (n: number) => Number.isSafeInteger(n) && n > 1_500_000_000_000 && n < Date.now() + 86_400_000;
+  let m = /^fy:(\d{1,16}):(\d{1,4})$/.exec(c);
+  if (m) {
+    const snapshot = Number(m[1]);
+    const offset = Number(m[2]);
+    return okTime(snapshot) && offset <= FOR_YOU_POOL ? { kind: 'ranked', snapshot, offset } : null;
+  }
+  m = /^fyold:(\d{1,16})(?::([A-Za-z0-9_-]{1,64}))?$/.exec(c);
+  if (m) {
+    const boundary = Number(m[1]);
+    return okTime(boundary) ? { kind: 'old', boundary, afterId: m[2] ?? null } : null;
+  }
   return null;
 }

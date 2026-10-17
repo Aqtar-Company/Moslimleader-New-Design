@@ -879,8 +879,18 @@ Books are protected from download at two levels:
   (`fy:<snapshotMs>:<offset>`), then chronological past the window (`fyold:<boundary>[:id]`).
   «جديد» is still the plain chronological list. Unfollow therefore has a visible effect: the
   author leaves «أتابع» and loses the boost in «لك». A mute or «إخفاء هذا المنشور» removes the
-  cards on the spot (`onFeedRemove`); a hidden post is a `TareeqMute` row with `postId`
-  (`/api/tareeq/hide-post/[postId]`), excluded from every list except the author's page.
+  cards on the spot (`onFeedRemove`); a hidden post is a `TareeqHiddenPost` row
+  (`/api/tareeq/hide-post/[postId]`, with «تراجع»), excluded from every list except the
+  author's page. **Never store a hide in `TareeqMute.postId`** — that column means "mute this
+  thread's notifications" and would silence replies to the reader's own comment.
+  The ranking lives in `src/lib/tareeq-feed.ts` and is used by BOTH the API and the
+  server-rendered first page (`src/app/tareeq/page.tsx`) — the page rendering its own
+  newest-first query is what made «لك» show «جديد». The ranked id list is cached per
+  reader+snapshot in `tareeq-store` (30 min; signed-out readers share one per 5 min) and
+  pages slice it; re-ranking per page let every hide/mute/reaction shift the order and SKIP
+  posts. Hidden/muted posts are dropped from the page being served, never from the list.
+- **`fetch(dataUrl)` is blocked on this site** — the CSP's `connect-src` has no `data:`. Use
+  `dataUrlToBlob()` (`src/lib/data-url.ts`). The composer's video covers were failing on it.
 - **One unbroken run of characters in a comment used to widen the whole page.** `break-word`
   breaks the line but does not lower the text's MIN-content width, so inside a flex row the
   row grew to fit it. `renderRichText()` now wraps its output in `overflow-wrap: anywhere`;

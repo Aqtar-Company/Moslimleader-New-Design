@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
-import { prisma } from '@/lib/prisma';
 import TareeqClient from './TareeqClient';
-import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
+import { getAuthUser } from '@/lib/jwt';
+import { forYouPage, loadFeedExclusions } from '@/lib/tareeq-feed';
 
 export const metadata: Metadata = {
   title: 'طريق',
@@ -26,32 +26,25 @@ export default async function TareeqPage() {
   let initialPosts: any[] = [];
   let initialCursor: string | null = null;
 
+  // The first page of «لك», ranked for THIS reader with their blocks, mutes and hidden
+  // posts applied — the same function the client calls for every page after it. This
+  // used to be a plain newest-first query with no exclusions: the tab said «لك» while the
+  // screen showed «جديد», and a post hidden a moment ago reappeared on reload.
   try {
-    const posts = await prisma.tareeqPost.findMany({
-      where: { isHidden: false, isDraft: false },
-      orderBy: { createdAt: 'desc' },
-      take: 13,
-      select: {
-        id: true, title: true, summary: true, content: true,
-        category: true, tags: true, imageUrl: true, imageAlt: true, videoUrl: true, thumbnailUrl: true, authorName: true,
-        likeCount: true, commentCount: true, createdAt: true, userId: true,
-        user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
-        ...SHARED_FROM_SELECT,
-        reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
-      },
-    });
-    const hasMore = posts.length > 12;
-    initialPosts = hasMore ? posts.slice(0, 12) : posts;
-    initialCursor = hasMore ? initialPosts[initialPosts.length - 1].id : null;
-  } catch { /* show empty state */ }
+    const viewer = await getAuthUser().catch(() => null);
+    const viewerId = viewer?.userId ?? null;
+    const excl = await loadFeedExclusions(viewerId);
+    const page = await forYouPage({ viewerId, limit: 12, excl });
+    initialPosts = page.posts;
+    initialCursor = page.nextCursor;
+  } catch { /* show empty state; the client can still load */ }
 
   return (
     <TareeqClient
       initialPosts={initialPosts.map(p => ({
         ...p,
-        createdAt: p.createdAt.toISOString(),
-        topReactions: p.reactions?.map((r: { type: string }) => r.type) ?? [],
-        sharedFrom: normalizeSharedFrom(p.sharedFrom),
+        createdAt: p.createdAt instanceof Date ? p.createdAt.toISOString() : p.createdAt,
+        postUpdateAt: p.postUpdateAt instanceof Date ? p.postUpdateAt.toISOString() : (p.postUpdateAt ?? null),
       }))}
       initialCursor={initialCursor}
     />

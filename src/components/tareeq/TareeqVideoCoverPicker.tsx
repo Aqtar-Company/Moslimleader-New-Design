@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/compress-image';
 import { captureVideoFrames } from '@/lib/tareeq-video-frames';
+import { dataUrlToBlob } from '@/lib/data-url';
 
 /**
  * Changing the cover of a video that is ALREADY published.
@@ -57,7 +58,13 @@ export default function TareeqVideoCoverPicker({ videoUrl, coverUrl, isRtl, onCh
   }
 
   async function pickFrame(dataUrl: string, i: number) {
-    const blob = await (await fetch(dataUrl)).blob();
+    let blob: Blob;
+    try {
+      blob = dataUrlToBlob(dataUrl);
+    } catch {
+      setError(isRtl ? 'تعذّر استخدام هذه اللقطة — ارفع صورة بدلاً منها' : 'Could not use this frame — upload an image instead');
+      return;
+    }
     await upload(new File([blob], 'cover.jpg', { type: 'image/jpeg' }), `frame-${i}`);
   }
 

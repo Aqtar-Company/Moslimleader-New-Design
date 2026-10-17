@@ -9,7 +9,7 @@ import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-selec
 import { postSearchWhere } from '@/lib/tareeq-search';
 import { notifyTareeq } from '@/lib/tareeq-notify';
 import { computeHotScore } from '@/lib/tareeq-rank';
-import { FOR_YOU_POOL, FOR_YOU_WINDOW_DAYS, diversify, parseForYouCursor, scoreForReader } from '@/lib/tareeq-feed-rank';
+import { forYouPage, loadFeedExclusions } from '@/lib/tareeq-feed';
 
 // GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=foryou|newest|liked|following|useful
 export async function GET(req: NextRequest) {
@@ -20,7 +20,9 @@ export async function GET(req: NextRequest) {
   const userId = searchParams.get('userId') || undefined;
   const likedBy = searchParams.get('likedBy') || undefined;
   const sort = searchParams.get('sort') ?? 'newest';
-  const limit = Math.min(Number(searchParams.get('limit') ?? 12), 30);
+  // Clamped on BOTH sides. `Math.min` alone let `limit=-1` through, and the ranked feed
+  // slices by it — `slice(0, -1)` is the whole 400-post pool in one response. NaN → 12.
+  const limit = Math.max(1, Math.min(Math.floor(Number(searchParams.get('limit') ?? 12)) || 12, 30));
   // Cursor pagination (`cursor: { id }, skip: 1` below) needs the orderBy to fully and
   // deterministically order the table — otherwise rows tied on the leading sort key(s)
   // can land on either side of the cursor boundary unpredictably between requests,
@@ -47,39 +49,12 @@ export async function GET(req: NextRequest) {
   // main feed AND skipped entirely whenever `userId` was set, so a blocked viewer could
   // still read a blocker's entire timeline via /api/tareeq?userId=<blocker>.
   const viewerForBlocks = await getAuthUser().catch(() => null);
-  let blockedIds: string[] = [];
-  let mutedIds: string[] = [];
-  /** Single posts the viewer chose «إخفاء هذا المنشور» on (TareeqMute rows with a postId). */
-  let hiddenPostIds: string[] = [];
-  if (viewerForBlocks) {
-    const blocks = await prisma.tareeqBlock.findMany({
-      where: { OR: [{ blockerId: viewerForBlocks.userId }, { blockedId: viewerForBlocks.userId }] },
-      select: { blockerId: true, blockedId: true },
-    });
-    blockedIds = blocks.map(b => (b.blockerId === viewerForBlocks.userId ? b.blockedId : b.blockerId));
-
-    // Mutes are kept in their OWN list, not folded into blockedIds. Two differences that
-    // matter:
-    //  - A mute is one-directional: being muted does not hide that person from you, so
-    //    this reads muterId only.
-    //  - A mute hides someone from your FEED, not from their own page. Folding it into
-    //    blockedIds made the guard below return an empty timeline when you deliberately
-    //    opened a muted person's profile, which is not what muting means.
-    const mutes = await prisma.tareeqMute.findMany({
-      where: { muterId: viewerForBlocks.userId, mutedId: { not: null } },
-      select: { mutedId: true },
-    });
-    mutedIds = mutes.map(m => m.mutedId!).filter(Boolean);
-
-    // A hidden post leaves every feed list. It stays reachable by its own link and on its
-    // author's page — hiding is about what the feed pushes at you, not about erasing it.
-    const hiddenPosts = await prisma.tareeqMute.findMany({
-      where: { muterId: viewerForBlocks.userId, postId: { not: null } },
-      select: { postId: true },
-      take: 2000,
-    });
-    hiddenPostIds = hiddenPosts.map(h => h.postId!).filter(Boolean);
-  }
+  // Blocks (either direction), mutes, and single hidden posts — one loader shared with the
+  // server-rendered first page (src/lib/tareeq-feed.ts), so the two cannot disagree.
+  //  - A mute is one-directional and hides someone from your FEED, not from their own
+  //    page: it is not applied when `userId` is set.
+  //  - A hidden post leaves every list except its author's page; its link still opens it.
+  const { blockedIds, mutedIds, hiddenPostIds } = await loadFeedExclusions(viewerForBlocks?.userId ?? null);
   // A blocked author is never visible, even when explicitly requested by id.
   if (userId && blockedIds.includes(userId)) {
     return NextResponse.json({ posts: [], nextCursor: null });
@@ -190,145 +165,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ posts: items, nextCursor });
   }
 
-  // ── «لك»: ranked per reader (src/lib/tareeq-feed-rank.ts) ─────────────────────────
+  // ── «لك»: ranked per reader (src/lib/tareeq-feed.ts + tareeq-feed-rank.ts) ────────────
   // Not for a person's own page (`userId`): a profile is that person's timeline, in order.
   if (sort === 'foryou' && !userId) {
-    const viewerId = viewerForBlocks?.userId ?? null;
-    const parsed = parseForYouCursor(cursor);
-    const baseWhere = {
-      isHidden: false,
-      isDraft: false,
-      ...(category ? { category } : {}),
-      ...(hiddenPostIds.length ? { id: { notIn: hiddenPostIds } } : {}),
-      AND: [
-        ...(blockedIds.length ? [{ userId: { notIn: blockedIds } }] : []),
-        ...(mutedIds.length ? [{ userId: { notIn: mutedIds } }] : []),
-      ],
-      ...postSearchWhere(search),
-    };
-    function fetchFull(where: object, extra: object = {}) {
-      return prisma.tareeqPost.findMany({
-        where,
-        ...extra,
-        select: {
-          id: true, title: true, summary: true, content: true,
-          category: true, tags: true, imageUrl: true, imageAlt: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
-          likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
-          pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
-          seriesId: true, seriesTitle: true, seriesOrder: true,
-          ...SHARED_FROM_SELECT,
-          user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
-          reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
-        },
-      });
-    }
-    type FullRow = Awaited<ReturnType<typeof fetchFull>>[number];
-    const shape = (rows: FullRow[]) => rows.map(p => ({
-      ...p,
-      topReactions: p.reactions.map((r: { type: string }) => r.type),
-      reactions: undefined,
-      sharedFrom: normalizeSharedFrom(p.sharedFrom),
-    }));
-
-    // Past the ranked window: plain chronological, older than the oldest ranked post.
-    if (parsed?.kind === 'old') {
-      const rows = await fetchFull(
-        { ...baseWhere, createdAt: { lt: new Date(parsed.boundary) } },
-        {
-          orderBy: [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
-          take: limit + 1,
-          ...(parsed.afterId ? { cursor: { id: parsed.afterId }, skip: 1 } : {}),
-        },
-      );
-      const more = rows.length > limit;
-      const items = shape(more ? rows.slice(0, limit) : rows);
-      return NextResponse.json({
-        posts: items,
-        nextCursor: more ? `fyold:${parsed.boundary}:${items[items.length - 1].id}` : null,
-      });
-    }
-
-    const snapshot = parsed?.kind === 'ranked' ? parsed.snapshot : Date.now();
-    const offset = parsed?.kind === 'ranked' ? parsed.offset : 0;
-    const windowStart = new Date(snapshot - FOR_YOU_WINDOW_DAYS * 24 * 3600 * 1000);
-
-    const candidates = await prisma.tareeqPost.findMany({
-      where: { ...baseWhere, createdAt: { gte: windowStart, lte: new Date(snapshot) } },
-      orderBy: [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
-      take: FOR_YOU_POOL,
-      select: {
-        id: true, userId: true, createdAt: true, publishedAt: true,
-        likeCount: true, commentCount: true, savedCount: true, shareCount: true,
-        imageUrl: true, videoUrl: true,
-      },
+    const page = await forYouPage({
+      viewerId: viewerForBlocks?.userId ?? null,
+      category, search, cursor, limit,
+      excl: { blockedIds, mutedIds, hiddenPostIds },
     });
-
-    // The reader's signals. Each is best-effort: a failed query ranks without that signal
-    // rather than failing the feed.
-    const following = new Set<string>();
-    const affinity = new Map<string, number>();
-    const seen = new Set<string>();
-    if (viewerId && candidates.length) {
-      const since = new Date(snapshot - 60 * 24 * 3600 * 1000);
-      const ids = candidates.map(c => c.id);
-      const [follows, myReactions, myComments, views, reactedHere] = await Promise.all([
-        prisma.tareeqFollow.findMany({ where: { followerId: viewerId }, select: { followingId: true } }).catch(() => []),
-        prisma.tareeqReaction.findMany({
-          where: { userId: viewerId, createdAt: { gte: since } },
-          orderBy: { createdAt: 'desc' }, take: 500,
-          select: { post: { select: { userId: true } } },
-        }).catch(() => []),
-        prisma.tareeqComment.findMany({
-          where: { userId: viewerId, createdAt: { gte: since } },
-          orderBy: { createdAt: 'desc' }, take: 300,
-          select: { post: { select: { userId: true } } },
-        }).catch(() => []),
-        prisma.tareeqPostView.findMany({
-          where: { userId: viewerId, postId: { in: ids }, createdAt: { lt: new Date(snapshot) } },
-          select: { postId: true },
-        }).catch(() => []),
-        prisma.tareeqReaction.findMany({
-          where: { userId: viewerId, postId: { in: ids }, createdAt: { lt: new Date(snapshot) } },
-          select: { postId: true },
-        }).catch(() => []),
-      ]);
-      for (const f of follows) following.add(f.followingId);
-      for (const r of [...myReactions, ...myComments]) {
-        const a = r.post?.userId;
-        if (a && a !== viewerId) affinity.set(a, (affinity.get(a) ?? 0) + 1);
-      }
-      for (const v of views) seen.add(v.postId);
-      for (const r of reactedHere) seen.add(r.postId);
-    }
-
-    const signals = { viewerId, following, affinity, seen };
-    const ranked = diversify(
-      candidates
-        .map(c => ({ ...c, score: scoreForReader(c, signals, snapshot) }))
-        .sort((a, b) => b.score - a.score || (a.id < b.id ? 1 : -1)),
-    );
-
-    const pageIds = ranked.slice(offset, offset + limit).map(c => c.id);
-    const rows = pageIds.length ? await fetchFull({ id: { in: pageIds } }) : [];
-    const byId = new Map(rows.map(r => [r.id, r]));
-    const items = shape(pageIds.map(id => byId.get(id)).filter((r): r is NonNullable<typeof r> => !!r));
-
-    let nextCursor: string | null = null;
-    if (offset + limit < ranked.length) {
-      nextCursor = `fy:${snapshot}:${offset + limit}`;
-    } else {
-      // The ranked window is spent. Continue with everything older than its oldest post —
-      // the window's own start, or the oldest candidate if the pool cap cut it short.
-      const boundary = candidates.length >= FOR_YOU_POOL
-        ? candidates[candidates.length - 1].createdAt.getTime()
-        : windowStart.getTime();
-      const older = await prisma.tareeqPost.findFirst({
-        where: { ...baseWhere, createdAt: { lt: new Date(boundary) } },
-        select: { id: true },
-      });
-      if (older) nextCursor = `fyold:${boundary}`;
-    }
-    return NextResponse.json({ posts: items, nextCursor });
+    return NextResponse.json(page);
   }
 
   const where = {

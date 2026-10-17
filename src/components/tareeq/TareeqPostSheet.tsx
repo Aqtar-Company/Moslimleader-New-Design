@@ -4,6 +4,7 @@ import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import TareeqImageViewer from './TareeqImageViewer';
+import { postImages } from '@/lib/tareeq-post-images';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -57,6 +58,7 @@ interface Post {
   title: string | null;
   content: string;
   imageUrl: string | null;
+  imageUrls?: unknown;
   imageAlt?: string | null;
   authorName: string;
   likeCount: number;
@@ -86,7 +88,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
 
   const [post, setPost] = useState<Post | null>(null);
   /** The image opened full-screen. A picture that carries the post's text needs zooming. */
-  const [zoomed, setZoomed] = useState<string | null>(null);
+  /** Index of the image open full screen, or null. */
+  const [zoomed, setZoomed] = useState<number | null>(null);
   /** The comment being edited, and its working text. */
   const [editingComment, setEditingComment] = useState<{ id: string; text: string } | null>(null);
   const [commentBusy, setCommentBusy] = useState<string | null>(null);
@@ -1034,20 +1037,27 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                   only reason to open it. On طريق that is not a cosmetic loss: a post is
                   often a written page photographed, so `cover` at 300px was cutting off
                   both the top of the image and the end of the text. Tap opens it full. */}
-              {post.imageUrl && (
-                <div style={{ marginBottom: 12, background: 'var(--tr-overlay)' }}>
-                  <img
-                    src={post.imageUrl}
-                    alt={post.imageAlt ?? ''}
-                    onClick={() => setZoomed(post.imageUrl!)}
-                    style={{
-                      width: '100%',
-                      maxHeight: '70vh',
-                      objectFit: 'contain',
-                      display: 'block',
-                      cursor: 'zoom-in',
-                    }}
-                  />
+              {/* All of them — this showed only the first, so the second image of a post
+                  could not be seen from the sheet at all. */}
+              {postImages(post).length > 0 && (
+                <div style={{ marginBottom: 12, background: 'var(--tr-overlay)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {postImages(post).map((url, i) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={url + i}
+                      src={url}
+                      alt={i === 0 ? (post.imageAlt ?? '') : ''}
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                      onClick={() => setZoomed(i)}
+                      style={{
+                        width: '100%',
+                        maxHeight: '70vh',
+                        objectFit: 'contain',
+                        display: 'block',
+                        cursor: 'zoom-in',
+                      }}
+                    />
+                  ))}
                 </div>
               )}
 
@@ -1382,8 +1392,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
       {reportCommentId && <ReportModal targetType="comment" targetId={reportCommentId} isRtl={isRtl} onClose={() => setReportCommentId(null)} />}
 
-      {zoomed && (
-        <TareeqImageViewer src={zoomed} alt={post?.imageAlt} isRtl={isRtl} onClose={() => setZoomed(null)} />
+      {zoomed !== null && post && (
+        <TareeqImageViewer images={postImages(post)} startIndex={zoomed} alt={post.imageAlt} isRtl={isRtl} onClose={() => setZoomed(null)} />
       )}
     </>
   );

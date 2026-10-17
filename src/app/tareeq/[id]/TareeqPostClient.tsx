@@ -334,7 +334,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       if (res.ok) {
         // The API counts top-level comments only; a reply must not move the number.
         const wasTopLevel = !comments.find(c => c.id === commentId)?.parentId;
-        setComments(prev => prev.filter(c => c.id !== commentId));
+        // Its replies go with it — the database cascades them, so the page must too.
+        setComments(prev => prev.filter(c => c.id !== commentId && c.parentId !== commentId));
         if (wasTopLevel) setCommentCount(c => Math.max(0, c - 1));
         if (pinnedCommentId === commentId) setPinnedCommentId(null);
         setConfirmDeleteCommentId(null);

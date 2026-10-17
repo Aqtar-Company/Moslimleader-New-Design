@@ -131,15 +131,29 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
     v.load();
   };
 
+  /** How far the browser has buffered past the playhead — grows while bytes arrive. */
+  const bufferedAhead = (v: HTMLVideoElement): number => {
+    for (let i = 0; i < v.buffered.length; i++) {
+      if (v.buffered.start(i) <= v.currentTime + 0.25 && v.buffered.end(i) >= v.currentTime) return v.buffered.end(i);
+    }
+    return v.currentTime;
+  };
+
   const armStallWatch = () => {
     const v = ref.current;
     if (!v || v.paused || stallTimerRef.current) return;
     const t0 = v.currentTime;
-    slowTimerRef.current = setTimeout(() => setSlow(true), 4000);
+    // A stall is "no data arriving", not "the clock has not moved": on a slow line the
+    // first buffering after play or a seek can outlast 12 seconds while bytes still flow,
+    // and reopening then would THROW AWAY that download and start it again — turning a
+    // slow video into one that never plays. So progress in the buffer counts as progress.
+    const b0 = bufferedAhead(v);
+    if (!slowTimerRef.current) slowTimerRef.current = setTimeout(() => setSlow(true), 4000);
     stallTimerRef.current = setTimeout(() => {
       stallTimerRef.current = null;
       const cur = ref.current;
       if (!cur || cur.paused || cur.currentTime !== t0) { clearStall(); return; }
+      if (bufferedAhead(cur) > b0 + 0.05) { armStallWatch(); return; }
       if (recoveriesRef.current < 2) {
         recoveriesRef.current += 1;
         clearStall();

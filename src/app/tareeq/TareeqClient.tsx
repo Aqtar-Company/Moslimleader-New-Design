@@ -109,7 +109,10 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   // Monotonic id so a slow response for an abandoned filter can't overwrite a newer one.
   const feedRequestIdRef = useRef(0);
   // Identifies which (category, search, sort) an in-flight feed request belongs to.
-  const feedKeyRef = useRef('');
+  // Starts as the key of what the server rendered (no category, no search, «لك»), so the
+  // first infinite-scroll append is accepted. It started as '' — which matched no key, so
+  // the append path bailed and scrolling past the first page loaded nothing.
+  const feedKeyRef = useRef('\u0000\u0000foryou');
   const categoryRef = useRef(category);
   const searchValRef = useRef(search);
   const sortRef = useRef<FeedSort>(sort);

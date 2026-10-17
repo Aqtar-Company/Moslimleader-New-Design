@@ -1948,6 +1948,8 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
   const [deleting, setDeleting] = useState(false);
   const [muting, setMuting] = useState(false);
   const [hiding, setHiding] = useState(false);
+  /** The follow endpoint TOGGLES: a second tap while the first is in flight re-follows. */
+  const [unfollowing, setUnfollowing] = useState(false);
   /**
    * Whether the viewer follows this author, read when the sheet opens. The sheet used to
    * show «إلغاء المتابعة» to everyone and only find out on tap — so for most posts the
@@ -1964,10 +1966,41 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
     return () => { cancelled = true; };
   }, [isOwn, postUserId]);
 
+  /** Pending close, so «تراجع» can cancel it. */
+  const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Offered for a few seconds after hiding a post — the only way back from a hide. */
+  const [undoHide, setUndoHide] = useState(false);
+  /** The removal waiting on the timer — applied at once if the sheet is closed early. */
+  const pendingRemovalRef = useRef<FeedRemoveSelector | null>(null);
+  const onFeedRemoveRef = useRef(onFeedRemove);
+  onFeedRemoveRef.current = onFeedRemove;
+  useEffect(() => () => {
+    if (finishTimerRef.current) clearTimeout(finishTimerRef.current);
+    // Tapping outside closes the sheet before the timer fires. The action already
+    // happened on the server, so the cards must still leave the feed.
+    if (pendingRemovalRef.current) onFeedRemoveRef.current?.(pendingRemovalRef.current);
+  }, []);
+
   /** Close after a message, THEN take the cards away, so the reader sees what happened. */
   function finish(message: string, sel?: FeedRemoveSelector, ms = 1500) {
     setDone(message);
-    setTimeout(() => { onClose(); if (sel) onFeedRemove?.(sel); }, ms);
+    if (finishTimerRef.current) clearTimeout(finishTimerRef.current);
+    pendingRemovalRef.current = sel ?? null;
+    finishTimerRef.current = setTimeout(() => {
+      finishTimerRef.current = null;
+      const pending = pendingRemovalRef.current;
+      pendingRemovalRef.current = null;
+      onClose();
+      if (pending) onFeedRemove?.(pending);
+    }, ms);
+  }
+
+  async function handleUndoHide() {
+    if (finishTimerRef.current) { clearTimeout(finishTimerRef.current); finishTimerRef.current = null; }
+    pendingRemovalRef.current = null;
+    setUndoHide(false);
+    const res = await fetch(`/api/tareeq/hide-post/${postId}`, { method: 'DELETE', credentials: 'include' }).catch(() => null);
+    finish(res?.ok ? (isRtl ? 'أُعيد المنشور' : 'Post restored') : (isRtl ? 'تعذّر التراجع' : 'Could not undo'), undefined, 1100);
   }
 
   async function handleHidePost() {
@@ -1975,7 +2008,8 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
     try {
       const res = await fetch(`/api/tareeq/hide-post/${postId}`, { method: 'POST', credentials: 'include' });
       if (!res.ok) { finish(isRtl ? 'تعذّر الإخفاء، حاول مرة أخرى' : 'Could not hide — try again', undefined, 2000); return; }
-      finish(isRtl ? 'تم إخفاء المنشور من صفحتك' : 'Post hidden from your feed', { reason: 'hide', postId }, 1100);
+      setUndoHide(true);
+      finish(isRtl ? 'تم إخفاء المنشور من صفحتك' : 'Post hidden from your feed', { reason: 'hide', postId }, 3500);
     } catch {
       finish(isRtl ? 'لا يوجد اتصال' : 'No connection', undefined, 2000);
     } finally {
@@ -2001,6 +2035,8 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
   }
 
   async function handleUnfollow() {
+    if (unfollowing) return;
+    setUnfollowing(true);
     try {
       // The endpoint TOGGLES. Re-check right before calling it, so a stale sheet can
       // never turn an intended unfollow into a follow.
@@ -2022,6 +2058,8 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
     } catch {
       finish(isRtl ? 'حدث خطأ، حاول مجدداً' : 'Something went wrong');
     }
+    // Deliberately never reset: the sheet closes after the message, and a button that
+    // re-enables in the meantime is exactly the second tap this guards against.
   }
 
   /**
@@ -2090,8 +2128,17 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
         <div className="md:hidden" style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '12px auto 8px' }} />
 
         {done ? (
-          <div className="flex items-center justify-center py-6 px-4">
+          <div className="flex items-center justify-center gap-3 py-6 px-4 flex-wrap">
             <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{done}</p>
+            {undoHide && (
+              <button
+                onClick={handleUndoHide}
+                className="text-sm font-bold px-3 py-1 rounded-full"
+                style={{ color: 'var(--tr-gold)', background: 'var(--tr-gold-glow)', border: 'none', cursor: 'pointer' }}
+              >
+                {isRtl ? 'تراجع' : 'Undo'}
+              </button>
+            )}
           </div>
         ) : isOwn ? (
           /* ── Own post: delete only ── */
@@ -2205,6 +2252,7 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
             {isFollowing && (
             <button
               onClick={handleUnfollow}
+              disabled={unfollowing}
               className={row}
               style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)' }}
             >

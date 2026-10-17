@@ -10,6 +10,7 @@ import { compressImage } from '@/lib/compress-image';
 import { captureVideoFrames } from '@/lib/tareeq-video-frames';
 import { compressVideo, canCompressVideo, detectVideoCodec, type CompressFailure } from '@/lib/tareeq-video-compress';
 import { transcodeVideo, canTranscodeWithWebCodecs } from '@/lib/tareeq-video-transcode';
+import { dataUrlToBlob } from '@/lib/data-url';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -367,7 +368,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   /** Uploads a JPEG data URL (a captured frame) as a cover image; resolves to its URL. */
   async function uploadCoverDataUrl(dataUrl: string): Promise<string | null> {
     try {
-      const blob = await (await fetch(dataUrl)).blob();
+      const blob = dataUrlToBlob(dataUrl);
       const file = new File([blob], 'cover.jpg', { type: 'image/jpeg' });
       const compressed = await compressImage(file, { maxWidth: 1280, maxHeight: 720, quality: 0.82 });
       const form = new FormData();

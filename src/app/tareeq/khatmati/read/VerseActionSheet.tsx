@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SURAH_NAMES_AR } from '@/lib/quran-data';
+import { dataUrlToBlob } from '@/lib/data-url';
 
 export interface TappedVerse { chapterId: number; verseNumber: number; text: string; }
 
@@ -199,7 +200,7 @@ export default function VerseActionSheet({ verse, onClose, onListen }: Props) {
   async function handleShare() {
     if (!cardUrl) return;
     try {
-      const blob = await (await fetch(cardUrl)).blob();
+      const blob = dataUrlToBlob(cardUrl);
       const file = new File([blob], `ayah-${verseKey}.png`, { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: `${surahName} ﴿${verse.verseNumber}﴾` });

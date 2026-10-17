@@ -95,6 +95,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [editError, setEditError] = useState<string | null>(null);
   /** The video's cover in the editor. Sent only if it differs from the saved one. */
   const [editCover, setEditCover] = useState<string | null>(post.thumbnailUrl ?? null);
+  /** The mark's kind (قصة، تجربة…) in the editor; '' is «بلا تصنيف». Sent only if changed. */
+  const [editCategory, setEditCategory] = useState<string>(post.category ?? '');
 
   useEffect(() => {
     fetch(`/api/tareeq/${post.id}/react`)
@@ -225,6 +227,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
     setEditError(null);
     try {
       const coverChanged = !!post.videoUrl && editCover && editCover !== (post.thumbnailUrl ?? null);
+      const categoryChanged = editCategory !== (post.category ?? '');
       const res = await fetch(`/api/tareeq/${post.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -233,6 +236,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
           content: editContent.trim(),
           title: editTitle.trim() || null,
           ...(coverChanged ? { thumbnailUrl: editCover } : {}),
+          // The route has accepted `category` all along; the editor never offered it, so a
+          // mark filed as a story when it was an experience stayed misfiled for good.
+          ...(categoryChanged ? { category: editCategory } : {}),
         }),
       });
       if (res.ok) { setEditing(false); router.refresh(); return; }
@@ -472,6 +478,30 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   className="w-full rounded-xl px-4 py-3 text-sm resize-none focus:outline-none leading-relaxed transition"
                   style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
                 />
+                <div>
+                  <p className="text-xs font-bold mb-2" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'نوع العلامة' : 'Kind of mark'}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[]).map(key => {
+                      const active = editCategory === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          aria-pressed={active}
+                          // Tapping the chosen kind again clears it, same as the composer.
+                          onClick={() => setEditCategory(active ? '' : key)}
+                          className="text-xs font-bold px-3 py-1.5 rounded-full transition flex items-center gap-1"
+                          style={active
+                            ? { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }
+                            : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+                        >
+                          <span>{CATEGORY_ICONS[key]}</span>
+                          <span>{isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 {post.videoUrl && (
                   <TareeqVideoCoverPicker
                     videoUrl={post.videoUrl}
@@ -490,7 +520,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   >
                     {editSaving ? '...' : (isRtl ? 'حفظ' : 'Save')}
                   </button>
-                  <button onClick={() => { setEditing(false); setEditCover(post.thumbnailUrl ?? null); setEditError(null); }} className="px-5 py-2 rounded-xl text-sm transition" style={{ color: 'var(--tr-text-secondary)', background: 'var(--tr-raised)' }}>
+                  <button onClick={() => { setEditing(false); setEditCover(post.thumbnailUrl ?? null); setEditCategory(post.category ?? ''); setEditError(null); }} className="px-5 py-2 rounded-xl text-sm transition" style={{ color: 'var(--tr-text-secondary)', background: 'var(--tr-raised)' }}>
                     {isRtl ? 'إلغاء' : 'Cancel'}
                   </button>
                 </div>

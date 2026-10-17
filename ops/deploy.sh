@@ -13,6 +13,9 @@
 # هنا `set -euo pipefail`، ويُكتب ناتجُ الفحص إلى ملف ثم يُقرأ، ولا يُمرَّر في أنبوب.
 
 set -euo pipefail
+# Absolute, taken BEFORE the cd below, so the self-restart further down finds this file
+# wherever the script was started from.
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$0")/.."
 
 # Whatever fails after `pm2 stop`, the site must not stay down because a script exited.
@@ -38,16 +41,35 @@ export NODE_OPTIONS="--max-old-space-size=3072"
 TS=$(date +%Y%m%d-%H%M%S)
 BASELINE=${TSC_BASELINE:-12}
 
-echo "═══ ١. نسخة احتياطية ═══"
-mkdir -p /root/backups
-mysqldump --single-transaction --routines moslimleader | gzip > "/root/backups/db-$TS.sql.gz"
-ls -lh "/root/backups/db-$TS.sql.gz"
+# This script updates ITSELF in step 2 (`git reset` rewrites ops/deploy.sh), but bash keeps
+# running the copy it already read. So a fix to the deploy steps took effect only on the
+# NEXT run — the run right after such a fix still used the old steps and failed the same
+# way. When step 2 changes this file, the script restarts itself on the new version,
+# skipping the backup and the fetch it has just done.
+if [ "${DEPLOY_REEXEC:-}" != "1" ]; then
+  SELF_HASH_BEFORE=$(sha256sum "$SELF" | cut -c1-16)
 
-echo
-echo "═══ ٢. جلب الكود ═══"
-git fetch origin main
-git reset --hard origin/main
-git log --oneline -1
+  echo "═══ ١. نسخة احتياطية ═══"
+  mkdir -p /root/backups
+  mysqldump --single-transaction --routines moslimleader | gzip > "/root/backups/db-$TS.sql.gz"
+  ls -lh "/root/backups/db-$TS.sql.gz"
+
+  echo
+  echo "═══ ٢. جلب الكود ═══"
+  git fetch origin main
+  git reset --hard origin/main
+  git log --oneline -1
+
+  if [ "$(sha256sum "$SELF" | cut -c1-16)" != "$SELF_HASH_BEFORE" ]; then
+    echo
+    echo "  ↻ سكربت النشر نفسه تغيّر — إعادة التشغيل بالنسخة الجديدة"
+    trap - ERR
+    exec env DEPLOY_REEXEC=1 bash "$SELF"
+  fi
+else
+  echo "═══ ١–٢. (تمّا قبل إعادة التشغيل) ═══"
+  git log --oneline -1
+fi
 
 echo
 echo "═══ ٣. إيقاف العملية ═══"

@@ -39,10 +39,20 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
   fit?: 'contain' | 'cover';
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   // True from the first play() onwards — see the `controls` note on the element.
   const [started, setStarted] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
+  /** Within reach of the screen. Until then nothing is fetched — see the preload note. */
+  const [near, setNear] = useState(false);
+  /** Playback stopped for good: the automatic recoveries were spent, or the file failed. */
+  const [failed, setFailed] = useState(false);
+  /** Waiting for data for long enough that the reader deserves to be told. */
+  const [slow, setSlow] = useState(false);
+  const recoveriesRef = useRef(0);
+  const stallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { style, className, onPlay, onPause, onEnded, onLoadedMetadata, fit, ...rest } = props;
   // Callers that already say `object-cover` in their className (the inbox/group tiles) get
   // cover without having to change; everyone else gets contain.
@@ -52,6 +62,103 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
   useEffect(() => {
     if (props.autoPlay) { setPlaying(true); setStarted(true); }
   }, [props.autoPlay]);
+
+  /*
+   * ## Why a video could «load for ever»
+   *
+   * Three things, all fixed here:
+   *
+   * 1. **Every video in the feed was fetching at once.** Each card mounted with
+   *    `preload="metadata"`, so a feed page with eight videos opened eight downloads before
+   *    anyone pressed anything, and the one the reader actually wanted queued behind the
+   *    other seven on a phone's connection. Now nothing is fetched until the player is
+   *    within ~one screen of the viewport.
+   * 2. **A video kept downloading after it scrolled away.** Playing, then scrolling on, left
+   *    it running off-screen, taking the bandwidth the next one needed. It now pauses when
+   *    it leaves the screen, like every feed does.
+   * 3. **A stall was never recovered.** Mobile networks drop a long download half-way
+   *    (a Wi-Fi→4G hand-over, a carrier NAT reset). The element then sits in `waiting`
+   *    indefinitely, spinner and all — it does not retry by itself and fires no error. A
+   *    watchdog now notices that the clock has not moved for 12 seconds, reopens the file
+   *    at the same second, and only after two failed reopenings shows a retry button.
+   */
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setNear(true); return; }
+    const io = new IntersectionObserver(
+      entries => { if (entries.some(e => e.isIntersecting)) setNear(true); },
+      { rootMargin: '600px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(entries => {
+      const v = ref.current;
+      // Fullscreen moves the video out of its box's geometry; never pause that.
+      if (!v || document.fullscreenElement || (v as HTMLVideoElement & { webkitDisplayingFullscreen?: boolean }).webkitDisplayingFullscreen) return;
+      if (entries.every(e => !e.isIntersecting) && !v.paused) v.pause();
+    }, { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => () => {
+    if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+    if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+  }, []);
+
+  const clearStall = () => {
+    if (stallTimerRef.current) { clearTimeout(stallTimerRef.current); stallTimerRef.current = null; }
+    if (slowTimerRef.current) { clearTimeout(slowTimerRef.current); slowTimerRef.current = null; }
+    setSlow(false);
+  };
+
+  /** Reopen the file and continue from where it stopped. */
+  const reopen = (autoplay: boolean) => {
+    const v = ref.current;
+    if (!v) return;
+    const at = v.currentTime || 0;
+    const resume = () => {
+      v.removeEventListener('loadedmetadata', resume);
+      try { if (at > 0) v.currentTime = at; } catch { /* not seekable yet */ }
+      if (autoplay) void v.play().catch(() => {});
+    };
+    v.addEventListener('loadedmetadata', resume);
+    v.load();
+  };
+
+  const armStallWatch = () => {
+    const v = ref.current;
+    if (!v || v.paused || stallTimerRef.current) return;
+    const t0 = v.currentTime;
+    slowTimerRef.current = setTimeout(() => setSlow(true), 4000);
+    stallTimerRef.current = setTimeout(() => {
+      stallTimerRef.current = null;
+      const cur = ref.current;
+      if (!cur || cur.paused || cur.currentTime !== t0) { clearStall(); return; }
+      if (recoveriesRef.current < 2) {
+        recoveriesRef.current += 1;
+        clearStall();
+        reopen(true);
+      } else {
+        clearStall();
+        setFailed(true);
+      }
+    }, 12_000);
+  };
+
+  const retry = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    recoveriesRef.current = 0;
+    setFailed(false);
+    setStarted(true);
+    reopen(true);
+  };
 
   const start = (e: React.SyntheticEvent) => {
     // A card wraps its media in click handlers that open the post. Starting a video is
@@ -67,7 +174,7 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
   return (
     // Sized by the caller's `style`/`className` exactly as the bare element was, so no
     // existing layout moves. The overlay is absolutely positioned inside.
-    <div className={`tr-video${className ? ` ${className}` : ''}`} style={{ position: 'relative', display: 'block', lineHeight: 0, overflow: 'hidden', ...style }}>
+    <div ref={boxRef} className={`tr-video${className ? ` ${className}` : ''}`} style={{ position: 'relative', display: 'block', lineHeight: 0, overflow: 'hidden', ...style }}>
       {/* iOS Safari paints its own large play glyph in the centre of a paused video with
           controls — on top of ours, so the phone showed two. Desktop browsers do not. The
           WebKit pseudo-element is the only handle on it; hiding it leaves one button, ours,
@@ -84,8 +191,10 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
         // flips `controls` on and starts playback; from then on the browser owns the UI
         // (scrubbing, volume, fullscreen, and its own play/pause when paused).
         controls={rest.controls ? started : undefined}
-        // Metadata must load even without controls, or the duration badge never appears.
-        preload={rest.preload ?? 'metadata'}
+        // Metadata must load even without controls, or the duration badge never appears —
+        // but only once the player is near the screen (see the note above). A video that
+        // was started is always allowed to load, whatever the observer says.
+        preload={near || started ? (rest.preload ?? 'metadata') : 'none'}
         // `max-height: inherit` takes the wrapper's COMPUTED max-height — whether it came
         // from a `style` prop or a Tailwind `max-h-*` class — so the constraint the caller
         // put on "the video" still lands on the video. Without it a tall portrait clip
@@ -97,15 +206,53 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
         // `contain` for <video>. Result: the picture was STRETCHED to the box, and in
         // fullscreen — where the box is the whole screen — visibly distorted.
         style={{ width: '100%', height: '100%', maxHeight: 'inherit', objectFit, display: 'block', background: '#000', borderRadius: 'inherit' }}
-        onPlay={e => { setPlaying(true); setStarted(true); onPlay?.(e); }}
-        onPause={e => { setPlaying(false); onPause?.(e); }}
-        onEnded={e => { setPlaying(false); onEnded?.(e); }}
+        onPlay={e => { setPlaying(true); setStarted(true); setFailed(false); onPlay?.(e); }}
+        onPause={e => { setPlaying(false); clearStall(); onPause?.(e); }}
+        onEnded={e => { setPlaying(false); clearStall(); onEnded?.(e); }}
+        onWaiting={armStallWatch}
+        onStalled={armStallWatch}
+        onPlaying={() => { clearStall(); }}
+        // Not resetting the recovery count here on purpose: the seek after a reopen fires
+        // `timeupdate` too, and resetting then would retry every 12 seconds for ever and
+        // never show the button. Two silent reopenings per player, then the reader decides.
+        onTimeUpdate={() => { if (stallTimerRef.current) clearStall(); }}
+        onError={() => {
+          // A network error mid-file is worth one silent reopen; a file the browser cannot
+          // decode at all is not, and gets the retry button straight away.
+          const code = ref.current?.error?.code;
+          if (started && code === 2 /* MEDIA_ERR_NETWORK */ && recoveriesRef.current < 2) {
+            recoveriesRef.current += 1;
+            reopen(true);
+          } else if (started) {
+            setFailed(true);
+          }
+        }}
         onLoadedMetadata={e => {
           const d = e.currentTarget.duration;
           setDuration(Number.isFinite(d) && d > 0 ? d : null);
           onLoadedMetadata?.(e);
         }}
       />
+
+      {started && (slow || failed) && (
+        <div
+          style={{ position: 'absolute', top: 10, insetInlineStart: 10, insetInlineEnd: 10, display: 'flex', justifyContent: 'center', pointerEvents: 'none', lineHeight: 1.4 }}
+        >
+          {failed ? (
+            <button
+              type="button"
+              onClick={retry}
+              style={{ pointerEvents: 'auto', padding: '6px 14px', borderRadius: 999, background: 'rgba(0,0,0,0.75)', color: '#fff', fontSize: 13, fontWeight: 700, border: '1px solid rgba(255,255,255,0.35)', cursor: 'pointer' }}
+            >
+              تعذّر إكمال التحميل — إعادة المحاولة ↻
+            </button>
+          ) : (
+            <span style={{ padding: '4px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 12, fontWeight: 600 }}>
+              الاتصال بطيء — جارٍ التحميل…
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Only where there are native controls to hand over to. A tile with no `controls`
           is a thumbnail, not a player: giving it a play button starts a video that can

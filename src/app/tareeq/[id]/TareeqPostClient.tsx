@@ -5,6 +5,7 @@ import TareeqAvatarImg from '@/components/tareeq/TareeqAvatarImg';
 import { useTareeqViewer } from '@/context/TareeqViewerContext';
 import { useState, useEffect } from 'react';
 import TareeqVideo from '@/components/tareeq/TareeqVideo';
+import TareeqVideoCoverPicker from '@/components/tareeq/TareeqVideoCoverPicker';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import TareeqReactionPicker from '@/components/tareeq/TareeqReactionPicker';
@@ -22,7 +23,7 @@ import { timeAgo } from '@/lib/tareeq-utils';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { displayMentions } from '@/lib/tareeq-mentions';
 
-interface Comment { id: string; content: string; createdAt: string; userId: string; user: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } | null; }
+interface Comment { id: string; content: string; createdAt: string; userId: string; parentId?: string | null; user: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } | null; }
 interface Post {
   id: string; title: string | null; content: string; summary: string | null;
   category: string | null; tags: string[] | null; imageUrl: string | null; imageAlt?: string | null; videoUrl: string | null;
@@ -71,6 +72,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [deleting, setDeleting] = useState(false);
   const [pinnedCommentId, setPinnedCommentId] = useState<string | null>(post.pinnedCommentId ?? null);
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
+  /** The comment showing its «حذف؟» row, and the one whose delete is in flight. */
+  const [confirmDeleteCommentId, setConfirmDeleteCommentId] = useState<string | null>(null);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   // Per comment: which reaction I left, and the count of each. A boolean `liked` could
   // only ever express the single star this used to be.
   const [commentLikes, setCommentLikes] = useState<Record<string, { reaction: string | null; counts: Record<string, number> }>>({});
@@ -88,6 +92,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [editTitle, setEditTitle] = useState(post.title ?? '');
   const [editContent, setEditContent] = useState(post.content);
   const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  /** The video's cover in the editor. Sent only if it differs from the saved one. */
+  const [editCover, setEditCover] = useState<string | null>(post.thumbnailUrl ?? null);
 
   useEffect(() => {
     fetch(`/api/tareeq/${post.id}/react`)
@@ -215,14 +222,28 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   async function saveEdit() {
     if (editContent.trim().length < editMinLen) return;
     setEditSaving(true);
-    const res = await fetch(`/api/tareeq/${post.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ content: editContent.trim(), title: editTitle.trim() || null }),
-    });
-    setEditSaving(false);
-    if (res.ok) { setEditing(false); router.refresh(); }
+    setEditError(null);
+    try {
+      const coverChanged = !!post.videoUrl && editCover && editCover !== (post.thumbnailUrl ?? null);
+      const res = await fetch(`/api/tareeq/${post.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          content: editContent.trim(),
+          title: editTitle.trim() || null,
+          ...(coverChanged ? { thumbnailUrl: editCover } : {}),
+        }),
+      });
+      if (res.ok) { setEditing(false); router.refresh(); return; }
+      // A refused save used to do nothing at all — the button simply stopped spinning.
+      const d = await res.json().catch(() => ({}));
+      setEditError(d.error || (isRtl ? 'تعذّر حفظ التعديل' : 'Could not save the edit'));
+    } catch {
+      setEditError(isRtl ? 'لا يوجد اتصال' : 'No connection');
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   async function deletePost() {
@@ -295,6 +316,37 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   async function removeUpdate() {
     const res = await fetch(`/api/tareeq/${post.id}/update`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) setPostUpdate(null);
+  }
+
+  /**
+   * Delete a comment — the writer's own, or ANY comment on the viewer's own post.
+   *
+   * The API has allowed the post's owner to remove comments all along (it answers
+   * `deletedBy: 'post-owner'`), and the comments sheet offered it; this page — where a
+   * shared link lands — offered nothing at all, not even the writer's own delete. A space
+   * whose owner cannot clear an abusive reply under their own words is not theirs.
+   */
+  async function deleteComment(commentId: string) {
+    if (deletingCommentId) return;
+    setDeletingCommentId(commentId);
+    try {
+      const res = await fetch(`/api/tareeq/comments/${commentId}`, { method: 'DELETE', credentials: 'include' });
+      if (res.ok) {
+        // The API counts top-level comments only; a reply must not move the number.
+        const wasTopLevel = !comments.find(c => c.id === commentId)?.parentId;
+        setComments(prev => prev.filter(c => c.id !== commentId));
+        if (wasTopLevel) setCommentCount(c => Math.max(0, c - 1));
+        if (pinnedCommentId === commentId) setPinnedCommentId(null);
+        setConfirmDeleteCommentId(null);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || (isRtl ? 'تعذّر حذف التعليق' : 'Could not delete the comment'));
+      }
+    } catch {
+      alert(isRtl ? 'لا يوجد اتصال' : 'No connection');
+    } finally {
+      setDeletingCommentId(null);
+    }
   }
 
   async function submitComment() {
@@ -419,6 +471,15 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   className="w-full rounded-xl px-4 py-3 text-sm resize-none focus:outline-none leading-relaxed transition"
                   style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
                 />
+                {post.videoUrl && (
+                  <TareeqVideoCoverPicker
+                    videoUrl={post.videoUrl}
+                    coverUrl={editCover}
+                    isRtl={isRtl}
+                    onChange={setEditCover}
+                  />
+                )}
+                {editError && <p className="text-xs font-semibold" style={{ color: '#ef4444' }}>{editError}</p>}
                 <div className="flex gap-2">
                   <button
                     onClick={saveEdit}
@@ -428,7 +489,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   >
                     {editSaving ? '...' : (isRtl ? 'حفظ' : 'Save')}
                   </button>
-                  <button onClick={() => setEditing(false)} className="px-5 py-2 rounded-xl text-sm transition" style={{ color: 'var(--tr-text-secondary)', background: 'var(--tr-raised)' }}>
+                  <button onClick={() => { setEditing(false); setEditCover(post.thumbnailUrl ?? null); setEditError(null); }} className="px-5 py-2 rounded-xl text-sm transition" style={{ color: 'var(--tr-text-secondary)', background: 'var(--tr-raised)' }}>
                     {isRtl ? 'إلغاء' : 'Cancel'}
                   </button>
                 </div>
@@ -450,7 +511,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
             {/* Uploaded video */}
             {!editing && post.videoUrl && (
               <div className="mt-6 rounded-2xl overflow-hidden bg-black">
-                <TareeqVideo src={post.videoUrl} controls playsInline className="w-full max-h-[60vw] sm:max-h-[500px]" />
+                <TareeqVideo src={post.videoUrl} poster={post.thumbnailUrl ?? undefined} controls playsInline preload="metadata" className="w-full max-h-[60vw] sm:max-h-[500px]" />
               </div>
             )}
 
@@ -711,7 +772,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                       fallbackStyle={{ background: isPinned ? 'rgba(212,168,83,0.18)' : 'var(--tr-overlay)', color: isPinned ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}
                     />
                     </Link>
-                    <div className="flex-1 rounded-xl px-4 py-3"
+                    <div className="flex-1 min-w-0 rounded-xl px-4 py-3"
                       style={{ background: isPinned ? 'rgba(212,168,83,0.06)' : 'var(--tr-raised)', border: isPinned ? '1px solid rgba(212,168,83,0.22)' : 'none' }}>
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         {c.user?.id
@@ -748,9 +809,46 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                               </svg>
                             </button>
                           )}
+                          {user && (user.id === c.userId || isOwner) && (
+                            <button
+                              onClick={() => setConfirmDeleteCommentId(confirmDeleteCommentId === c.id ? null : c.id)}
+                              title={user.id === c.userId ? (isRtl ? 'حذف تعليقي' : 'Delete my comment') : (isRtl ? 'حذف التعليق من منشورك' : 'Remove from your post')}
+                              aria-label={isRtl ? 'حذف التعليق' : 'Delete comment'}
+                              className="transition opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                              style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                              <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{renderRichText(displayMentions(c.content))}</p>
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap' }}>{renderRichText(displayMentions(c.content))}</p>
+                      {confirmDeleteCommentId === c.id && (
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <span className="text-xs" style={{ color: 'var(--tr-text-secondary)' }}>
+                            {user?.id === c.userId
+                              ? (isRtl ? 'حذف تعليقك نهائياً؟' : 'Delete your comment?')
+                              : (isRtl ? 'حذف هذا التعليق من منشورك؟' : 'Remove this comment from your post?')}
+                          </span>
+                          <button
+                            onClick={() => deleteComment(c.id)}
+                            disabled={deletingCommentId === c.id}
+                            className="text-xs font-bold px-3 py-1 rounded-full disabled:opacity-50"
+                            style={{ background: '#f43f5e', color: '#fff', border: 'none', cursor: 'pointer' }}
+                          >
+                            {deletingCommentId === c.id ? '...' : (isRtl ? 'احذف' : 'Delete')}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteCommentId(null)}
+                            className="text-xs font-semibold px-3 py-1 rounded-full"
+                            style={{ background: 'var(--tr-surface)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)', cursor: 'pointer' }}
+                          >
+                            {isRtl ? 'إلغاء' : 'Cancel'}
+                          </button>
+                        </div>
+                      )}
                       {/* Same reaction set as a post, and the same gesture: tap to open,
                           tap a face to choose, tap it again to take it back. A lone star
                           here read as a rating and could say only one thing. */}

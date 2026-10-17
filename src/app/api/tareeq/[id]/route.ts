@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { recordPostView } from '@/lib/tareeq-views';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
-import { filterContent } from '@/lib/tareeq-content-filter';
+import { filterContent, validateMediaUrl } from '@/lib/tareeq-content-filter';
 import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 
 // GET /api/tareeq/[id] — returns post + userLiked + userBookmarked
@@ -119,11 +119,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   // auto-hidden at creation time, with no re-check at all.
   const filterResult = filterContent([content, title].filter(Boolean).join(' '));
 
+  // A new cover for a video post. `undefined` leaves it alone. Only a video post has a
+  // cover to change, and the URL must be one of our own uploads — the same check create
+  // runs, so an edit cannot point a post's preview image at an arbitrary host.
+  let thumbnailUrl: string | undefined;
+  if (body.thumbnailUrl !== undefined && body.thumbnailUrl !== null) {
+    const t = String(body.thumbnailUrl).trim();
+    if (!post.videoUrl) return NextResponse.json({ error: 'لا يوجد فيديو لتغيير غلافه' }, { status: 400 });
+    if (!t || !validateMediaUrl(t, 'image')) return NextResponse.json({ error: 'رابط الغلاف غير مسموح به' }, { status: 400 });
+    thumbnailUrl = t;
+  }
+
   await prisma.tareeqPost.update({
     where: { id: params.id },
     data: {
       content, title, updatedAt: new Date(),
       ...(category !== undefined ? { category } : {}),
+      ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}),
       ...(filterResult.flagged ? { isHidden: true, hiddenReason: filterResult.reason ?? 'auto-filter' } : {}),
     },
   });

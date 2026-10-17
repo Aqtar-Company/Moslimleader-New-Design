@@ -91,5 +91,13 @@ export function renderRichText(text: string): React.ReactNode {
   }
 
   if (last < text.length) segments.push(text.slice(last));
-  return segments.length ? segments : text;
+  // `overflow-wrap: anywhere` is what keeps one unbroken run — «ههههههههه…», a row of
+  // emoji, a pasted hash — inside its box. Without it the run's whole length is the
+  // text's MINIMUM width, every flex parent up the tree grows to fit it, and a single
+  // comment widened the post, the sheet and the page past the screen: «لو حد عمل كومنت
+  // وطوّل السطر الرسبونسيف بيبوظ». `break-word` alone (what the call sites had, and only
+  // some of them) breaks the line but does NOT lower that minimum, so it never helped
+  // inside a flex row. Done here, once, because this function renders every comment and
+  // every post body in طريق.
+  return <span style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{segments.length ? segments : text}</span>;
 }

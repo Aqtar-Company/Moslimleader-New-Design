@@ -86,7 +86,7 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
         orderBy: { createdAt: 'asc' },
         take: 100,
         select: {
-          id: true, content: true, createdAt: true, userId: true,
+          id: true, content: true, createdAt: true, userId: true, parentId: true,
           user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
         },
       },

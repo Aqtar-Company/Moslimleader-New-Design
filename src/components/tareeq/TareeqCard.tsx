@@ -370,7 +370,16 @@ interface Props {
   initialBookmarked?: boolean;
   onMobileOpen?: (postId: string, focusComments?: boolean) => void;
   onDeleted?: (postId: string) => void;
+  /**
+   * The viewer asked for this post — or everything by its author — to leave their feed.
+   * The feed removes the cards at once; the server already excludes them from the next
+   * load. Without this the card stayed on screen after «كتم», which is why muting looked
+   * like it did nothing.
+   */
+  onFeedRemove?: (sel: { reason: 'hide' | 'mute' | 'unfollow'; postId?: string; authorId?: string }) => void;
 }
+
+export type FeedRemoveSelector = Parameters<NonNullable<Props['onFeedRemove']>>[0];
 
 // One list for the whole platform — posts AND comments. See TAREEQ_REACTIONS.
 const REACTIONS = TAREEQ_REACTIONS;
@@ -414,7 +423,7 @@ function IconBookmark({ filled = false, size = 18 }: { filled?: boolean; size?: 
 
 /* ── Reaction picker popup ─────────────────────────────────────────── */
 
-export default function TareeqCard({ post, initialLiked = false, initialReaction = null, initialBookmarked = false, onMobileOpen, onDeleted }: Props) {
+export default function TareeqCard({ post, initialLiked = false, initialReaction = null, initialBookmarked = false, onMobileOpen, onDeleted, onFeedRemove }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const { trackPost } = useSatisfactionCounter();
@@ -470,6 +479,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   // when the rest were unified.
   const [inlineCommentReacts, setInlineCommentReacts] = useState<Record<string, { reaction: string | null; counts: Record<string, number> }>>({});
   const [inlineCommentPicker, setInlineCommentPicker] = useState<string | null>(null);
+  /** Inline comment showing its «حذف؟» confirmation, and one being deleted. */
+  const [inlineConfirmDelete, setInlineConfirmDelete] = useState<string | null>(null);
+  const [inlineDeleting, setInlineDeleting] = useState<string | null>(null);
 
   async function reactInlineComment(commentId: string, type: ReactionType) {
     setInlineCommentPicker(null);
@@ -682,6 +694,56 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     }
   }
 
+  /** The writer's own comment, or any comment on the viewer's own post — same rule as the API. */
+  async function deleteInlineComment(commentId: string, parentId: string | null) {
+    if (inlineDeleting) return;
+    setInlineDeleting(commentId);
+    try {
+      const res = await fetch(`/api/tareeq/comments/${commentId}`, { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setCommentError(d.error || (isRtl ? 'تعذّر حذف التعليق' : 'Could not delete the comment'));
+        return;
+      }
+      if (parentId) {
+        setRepliesMap(prev => ({ ...prev, [parentId]: (prev[parentId] ?? []).filter(r => r.id !== commentId) }));
+        setInlineComments(prev => prev.map(c => c.id === parentId ? { ...c, replyCount: Math.max(0, (c.replyCount ?? 1) - 1) } : c));
+      } else {
+        setInlineComments(prev => prev.filter(c => c.id !== commentId));
+        // The API counts top-level comments only, so only those move the card's number.
+        setCommentCount(c => Math.max(0, c - 1));
+      }
+      setInlineConfirmDelete(null);
+    } catch {
+      setCommentError(isRtl ? 'لا يوجد اتصال' : 'No connection');
+    } finally {
+      setInlineDeleting(null);
+    }
+  }
+
+  /** «حذف» beside «رد», then an inline confirmation in its place. */
+  function inlineDeleteControl(commentId: string, commentUserId: string | null | undefined, parentId: string | null) {
+    if (!user || !(user.id === commentUserId || user.id === post.userId)) return null;
+    const btn: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', margin: '-4px -8px', fontSize: 11, fontWeight: 600 };
+    if (inlineConfirmDelete !== commentId) {
+      return (
+        <button type="button" style={{ ...btn, color: 'var(--tr-text-muted)' }} onClick={() => setInlineConfirmDelete(commentId)}>
+          {isRtl ? 'حذف' : 'Delete'}
+        </button>
+      );
+    }
+    return (
+      <span className="flex items-center gap-3">
+        <button type="button" disabled={inlineDeleting === commentId} style={{ ...btn, color: '#f43f5e', fontWeight: 700 }} onClick={() => deleteInlineComment(commentId, parentId)}>
+          {inlineDeleting === commentId ? '...' : (isRtl ? 'تأكيد الحذف' : 'Confirm delete')}
+        </button>
+        <button type="button" style={{ ...btn, color: 'var(--tr-text-muted)' }} onClick={() => setInlineConfirmDelete(null)}>
+          {isRtl ? 'إلغاء' : 'Cancel'}
+        </button>
+      </span>
+    );
+  }
+
   async function loadReplies(commentId: string) {
     if (repliesLoading[commentId]) return;
     setRepliesLoading(prev => ({ ...prev, [commentId]: true }));
@@ -811,6 +873,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                     >
                       {isRtl ? 'رد' : 'Reply'}
                     </button>
+                    {inlineDeleteControl(c.id, c.userId, null)}
                   </div>
                 </div>
               </div>
@@ -839,7 +902,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>{r.user?.name ?? '—'}</p>
-                            <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.content}</p>
+                            <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(displayMentions(r.content))}</p>
+                            <div className="mt-0.5">{inlineDeleteControl(r.id, r.userId, c.id)}</div>
                           </div>
                         </div>
                       ))}
@@ -1312,7 +1376,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
 {showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null, authorGender: post.user?.tareeqGender ?? null, authorId: post.user?.id ?? post.userId ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
-        {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
+        {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onFeedRemove={onFeedRemove} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
         {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
       </>
@@ -1489,7 +1553,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
 {showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null, authorGender: post.user?.tareeqGender ?? null, authorId: post.user?.id ?? post.userId ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
-        {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
+        {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onFeedRemove={onFeedRemove} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
         {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
       </>
@@ -1757,7 +1821,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
 {showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null, authorGender: post.user?.tareeqGender ?? null, authorId: post.user?.id ?? post.userId ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
-      {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
+      {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} canEdit={canEditPost(post.createdAt, user as { id: string; role?: string | null } | null, post.userId)} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onFeedRemove={onFeedRemove} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
       {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
     </>
@@ -1869,7 +1933,7 @@ function canEditPost(createdAt: string, user: { id: string; role?: string | null
   return Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
 }
 
-function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onDeleted, onClose }: {
+function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onDeleted, onFeedRemove, onClose }: {
   isRtl: boolean;
   postId: string;
   postUserId: string;
@@ -1877,11 +1941,47 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
   canEdit: boolean;
   onReport: () => void;
   onDeleted: () => void;
+  onFeedRemove?: (sel: FeedRemoveSelector) => void;
   onClose: () => void;
 }) {
   const [done, setDone] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [muting, setMuting] = useState(false);
+  const [hiding, setHiding] = useState(false);
+  /**
+   * Whether the viewer follows this author, read when the sheet opens. The sheet used to
+   * show «إلغاء المتابعة» to everyone and only find out on tap — so for most posts the
+   * button's one effect was the message «أنت لا تتابع هذا الشخص».
+   */
+  const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (isOwn || !postUserId) return;
+    let cancelled = false;
+    fetch(`/api/tareeq/follow/${postUserId}`, { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled && d) setIsFollowing(!!d.isFollowing); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isOwn, postUserId]);
+
+  /** Close after a message, THEN take the cards away, so the reader sees what happened. */
+  function finish(message: string, sel?: FeedRemoveSelector, ms = 1500) {
+    setDone(message);
+    setTimeout(() => { onClose(); if (sel) onFeedRemove?.(sel); }, ms);
+  }
+
+  async function handleHidePost() {
+    setHiding(true);
+    try {
+      const res = await fetch(`/api/tareeq/hide-post/${postId}`, { method: 'POST', credentials: 'include' });
+      if (!res.ok) { finish(isRtl ? 'تعذّر الإخفاء، حاول مرة أخرى' : 'Could not hide — try again', undefined, 2000); return; }
+      finish(isRtl ? 'تم إخفاء المنشور من صفحتك' : 'Post hidden from your feed', { reason: 'hide', postId }, 1100);
+    } catch {
+      finish(isRtl ? 'لا يوجد اتصال' : 'No connection', undefined, 2000);
+    } finally {
+      setHiding(false);
+    }
+  }
   const [confirmDelete, setConfirmDelete] = useState(false);
   const router = useRouter();
 
@@ -1902,20 +2002,25 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
 
   async function handleUnfollow() {
     try {
+      // The endpoint TOGGLES. Re-check right before calling it, so a stale sheet can
+      // never turn an intended unfollow into a follow.
       const check = await fetch(`/api/tareeq/follow/${postUserId}`, { credentials: 'include' });
       const data = await check.json();
       if (!data.isFollowing) {
-        setDone(isRtl ? 'أنت لا تتابع هذا الشخص' : 'You are not following this person');
-        setTimeout(onClose, 1500);
+        finish(isRtl ? 'أنت لا تتابع هذا الشخص' : 'You are not following this person');
         return;
       }
       const res = await fetch(`/api/tareeq/follow/${postUserId}`, { method: 'POST', credentials: 'include' });
       if (!res.ok) throw new Error('failed');
-      setDone(isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed');
-      setTimeout(onClose, 1300);
+      // Say exactly what changed. Unfollowing does not hide anyone — their posts leave
+      // «أتابع» and lose the ranking boost in «لك», and that is what the message says.
+      finish(
+        isRtl ? 'تم إلغاء المتابعة — لن تظهر منشوراته في «أتابع» وستقلّ في «لك»' : 'Unfollowed — gone from Following, less of them in For you',
+        { reason: 'unfollow', authorId: postUserId },
+        1800,
+      );
     } catch {
-      setDone(isRtl ? 'حدث خطأ، حاول مجدداً' : 'Something went wrong');
-      setTimeout(onClose, 1500);
+      finish(isRtl ? 'حدث خطأ، حاول مجدداً' : 'Something went wrong');
     }
   }
 
@@ -1941,9 +2046,9 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
         setTimeout(onClose, 2200);
         return;
       }
-      setDone(isRtl ? 'تم الكتم. لن تظهر منشوراته في صفحتك' : "Muted. Their posts will no longer appear in your feed");
-      // The card is still on screen behind the sheet; the feed drops it on next load.
-      setTimeout(onClose, 1800);
+      // The cards go NOW. They used to stay on screen until the next reload, so the
+      // promise «لن تظهر منشوراته» was broken in front of the reader's eyes.
+      finish(isRtl ? 'تم الكتم. لن تظهر منشوراته في صفحتك' : 'Muted. Their posts will no longer appear in your feed', { reason: 'mute', authorId: postUserId }, 1500);
     } catch {
       setDone(isRtl ? 'لا يوجد اتصال' : 'No connection');
       setTimeout(onClose, 2200);
@@ -2072,6 +2177,17 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
               <span className="font-semibold text-sm">{isRtl ? 'تبليغ عن المحتوى' : 'Report Content'}</span>
             </button>
             <button
+              onClick={handleHidePost}
+              disabled={hiding}
+              className={row}
+              style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)', opacity: hiding ? 0.5 : 1 }}
+            >
+              <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+              </svg>
+              <span className="text-sm">{hiding ? (isRtl ? 'جارٍ الإخفاء...' : 'Hiding...') : (isRtl ? 'إخفاء هذا المنشور' : 'Hide this post')}</span>
+            </button>
+            <button
               onClick={handleNotInterested}
               disabled={muting}
               className={row}
@@ -2086,6 +2202,7 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
                   : (isRtl ? 'كتم هذا الشخص — لن يعرف' : "Mute this person — they won't know")}
               </span>
             </button>
+            {isFollowing && (
             <button
               onClick={handleUnfollow}
               className={row}
@@ -2096,6 +2213,7 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, canEdit, onReport, onD
               </svg>
               <span className="text-sm">{isRtl ? 'إلغاء المتابعة' : 'Unfollow'}</span>
             </button>
+            )}
             <button onClick={onClose} className="w-full py-4 text-center text-sm font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
               {isRtl ? 'إلغاء' : 'Cancel'}
             </button>

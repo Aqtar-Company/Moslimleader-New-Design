@@ -15,6 +15,8 @@ import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
 import { consumeCameraFile } from '@/lib/tareeq-camera-store';
 
+/** The feed's orderings. `foryou` is ranked per reader on the server. */
+type FeedSort = 'foryou' | 'newest' | 'following' | 'useful';
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
 /** SVG icon per category */
@@ -57,7 +59,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [category, setCategory] = useState<string>('');
-  const [sort, setSort] = useState<'newest' | 'following' | 'useful'>('newest');
+  /**
+   * «لك» is the default: ranked per reader (src/lib/tareeq-feed-rank.ts). «جديد» keeps the
+   * plain chronological list for whoever wants it.
+   */
+  const [sort, setSort] = useState<FeedSort>('foryou');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -106,7 +112,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const feedKeyRef = useRef('');
   const categoryRef = useRef(category);
   const searchValRef = useRef(search);
-  const sortRef = useRef<'newest' | 'following' | 'useful'>(sort);
+  const sortRef = useRef<FeedSort>(sort);
   const PULL_THRESHOLD = 72;
 
   // Offline detection + reading cache
@@ -158,7 +164,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       .catch(() => {});
   }, [user]);
 
-  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'following' | 'useful' = 'newest') => {
+  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: FeedSort = 'foryou') => {
     // The filter triple this request belongs to. A replace load claims it immediately, so
     // an infinite-scroll append that was already in flight for the previous filter is
     // dropped instead of being appended under the new one.
@@ -243,12 +249,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   function handleCategoryChange(key: string) {
     setCategory(key);
-    const effectiveSort = sort === 'following' ? 'newest' : sort;
-    if (sort === 'following') setSort('newest');
+    const effectiveSort: FeedSort = sort === 'following' ? 'foryou' : sort;
+    if (sort === 'following') setSort('foryou');
     loadPosts(key, search, null, effectiveSort);
   }
 
-  function handleSortChange(newSort: 'newest' | 'following' | 'useful') {
+  function handleSortChange(newSort: FeedSort) {
     setSort(newSort);
     loadPosts(category, search, null, newSort);
   }
@@ -258,19 +264,19 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
    *  state right after setCategory('') would still give the old value. */
   function handleDiscoverAll() {
     setCategory('');
-    setSort('newest');
-    loadPosts('', search, null, 'newest');
+    setSort('foryou');
+    loadPosts('', search, null, 'foryou');
   }
 
   function handleFollowingCircleClick() {
     if (!user) { setShowGate(true); return; }
-    if (sort === 'following') { handleSortChange('newest'); } else { handleSortChange('following'); }
+    if (sort === 'following') { handleSortChange('foryou'); } else { handleSortChange('following'); }
   }
 
   function handleResetFilters() {
     setCategory('');
-    setSort('newest');
-    loadPosts('', search, null, 'newest');
+    setSort('foryou');
+    loadPosts('', search, null, 'foryou');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -373,8 +379,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   useEffect(() => {
     const h = () => {
       setCategory('');
-      setSort('newest');
-      loadPosts('', search, null, 'newest');
+      setSort('foryou');
+      loadPosts('', search, null, 'foryou');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     window.addEventListener('tareeq-reset-filters', h);
@@ -525,6 +531,16 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                   initialBookmarked={bookmarkedIds.has(post.id)}
                   onMobileOpen={(postId, focusComments) => { setSheetPostId(postId); setSheetFocusComments(!!focusComments); }}
                   onDeleted={(id) => setPosts(prev => prev.filter(p => p.id !== id))}
+                  onFeedRemove={sel => setPosts(prev => prev.filter(p => {
+                    if (sel.postId && p.id === sel.postId) return false;
+                    // A mute takes the author out of every feed; an unfollow only out of
+                    // «أتابع», where following is the reason the post is there at all.
+                    if (sel.authorId && p.userId === sel.authorId) {
+                      if (sel.reason === 'mute') return false;
+                      if (sel.reason === 'unfollow' && sortRef.current === 'following') return false;
+                    }
+                    return true;
+                  }))}
                 />
               </div>
             ))}
@@ -813,8 +829,9 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             <h1 className="font-black text-xl shrink-0 me-1" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'اكتشف' : 'Discover'}
             </h1>
-            {(['newest', 'useful', ...(user ? ['following'] : [])] as ('newest' | 'useful' | 'following')[]).map(s => {
+            {(['foryou', 'newest', 'useful', ...(user ? ['following'] : [])] as FeedSort[]).map(s => {
               const labels: Record<string, { full: string; short: string }> = {
+                foryou:    { full: isRtl ? 'لك' : 'For you',     short: isRtl ? 'لك' : 'For you' },
                 newest:    { full: isRtl ? 'جديد' : 'New',        short: isRtl ? 'جديد' : 'New' },
                 useful:    { full: isRtl ? 'الأكثر نفعًا' : 'Most Useful', short: isRtl ? 'الأنفع ✦' : 'Top ✦' },
                 following: { full: isRtl ? 'أتابع' : 'Feed',      short: isRtl ? 'أتابع' : 'Feed' },
@@ -859,7 +876,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               </button>
             )}
 
-            <button onClick={() => { setSort(s => s === 'following' ? 'newest' : s); handleCategoryChange(''); }} className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform">
+            <button onClick={() => { setSort(s => s === 'following' ? 'foryou' : s); handleCategoryChange(''); }} className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform">
               {(() => {
                 const allActive = !category && sort !== 'following';
                 return (

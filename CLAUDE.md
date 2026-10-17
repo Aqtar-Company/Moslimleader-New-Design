@@ -871,6 +871,25 @@ Books are protected from download at two levels:
   asked to declare a kinship, and warns when a matched row is a phone-import row rather
   than a member — the first real run matched «مارية» to an address in Aswan and printed a
   perfectly correct conclusion about a person who does not exist.
+- **طريق's default feed is «لك», ranked per reader — not by clock.** `sort=foryou` in
+  `src/app/api/tareeq/route.ts`, scoring in `src/lib/tareeq-feed-rank.ts`: engagement
+  (log) × gravity freshness × relationship (follow ×2.5, plus recent reactions/comments to
+  that author) × novelty (×0.3 once opened or reacted to), then no author twice in three
+  slots. Ranked over the last 21 days (≤400 posts), paged by OFFSET inside a snapshot
+  (`fy:<snapshotMs>:<offset>`), then chronological past the window (`fyold:<boundary>[:id]`).
+  «جديد» is still the plain chronological list. Unfollow therefore has a visible effect: the
+  author leaves «أتابع» and loses the boost in «لك». A mute or «إخفاء هذا المنشور» removes the
+  cards on the spot (`onFeedRemove`); a hidden post is a `TareeqMute` row with `postId`
+  (`/api/tareeq/hide-post/[postId]`), excluded from every list except the author's page.
+- **One unbroken run of characters in a comment used to widen the whole page.** `break-word`
+  breaks the line but does not lower the text's MIN-content width, so inside a flex row the
+  row grew to fit it. `renderRichText()` now wraps its output in `overflow-wrap: anywhere`;
+  any new text surface in طريق should render through it.
+- **`TareeqVideo` loads lazily and recovers stalls.** `preload="none"` until within ~600px of
+  the screen, pauses when scrolled off, and a 12-second no-progress watchdog reopens the file
+  at the same second (twice) before showing «إعادة المحاولة». Editing a video post can change
+  its cover (`TareeqVideoCoverPicker`): frames from the stored file need CORS on the R2
+  bucket; without it the strip says so and the image upload still works.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

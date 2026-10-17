@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { compressImage } from '@/lib/compress-image';
+import { captureVideoFrames } from '@/lib/tareeq-video-frames';
 import { compressVideo, canCompressVideo, detectVideoCodec, type CompressFailure } from '@/lib/tareeq-video-compress';
 import { transcodeVideo, canTranscodeWithWebCodecs } from '@/lib/tareeq-video-transcode';
 
@@ -379,53 +380,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     }
   }
 
-  /**
-   * Pulls `count` evenly spaced frames out of a local video file, as small JPEG data URLs.
-   *
-   * This is what "choose a cover" should have been from the start: the frames are already
-   * on the device, the element can seek to them in a few hundred milliseconds each, and a
-   * frame FROM the video is almost always the cover the author wants. Uploading a separate
-   * image stays available for the cases where it is not.
-   */
+  /** Frames from the local file — the shared helper, read through an object URL. */
   function captureFrames(file: File, count: number): Promise<string[]> {
-    return new Promise((resolve) => {
-      const video = document.createElement('video');
-      video.muted = true;
-      video.playsInline = true;
-      video.preload = 'auto';
-      const url = URL.createObjectURL(file);
-      const out: string[] = [];
-      const finish = () => { URL.revokeObjectURL(url); resolve(out); };
-      // A file that never yields metadata or a frame must not hang the effect forever.
-      const guard = setTimeout(finish, 20_000);
-      video.onerror = () => { clearTimeout(guard); finish(); };
-      video.onloadedmetadata = () => {
-        const d = video.duration;
-        if (!Number.isFinite(d) || d <= 0) { clearTimeout(guard); return finish(); }
-        const canvas = document.createElement('canvas');
-        const scale = Math.min(1, 480 / Math.max(1, video.videoWidth));
-        canvas.width = Math.max(2, Math.round(video.videoWidth * scale));
-        canvas.height = Math.max(2, Math.round(video.videoHeight * scale));
-        const ctx = canvas.getContext('2d');
-        let i = 0;
-        const next = () => {
-          if (i >= count || !ctx) { clearTimeout(guard); return finish(); }
-          // Centred in each slot, so the first frame is not a black lead-in and the last
-          // is not the fade-out.
-          video.currentTime = Math.min(d - 0.05, ((i + 0.5) / count) * d);
-        };
-        video.onseeked = () => {
-          try {
-            ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-            out.push(canvas.toDataURL('image/jpeg', 0.72));
-          } catch { /* a frame that will not draw is skipped */ }
-          i++;
-          next();
-        };
-        next();
-      };
-      video.src = url;
-    });
+    const url = URL.createObjectURL(file);
+    return captureVideoFrames(url, count).finally(() => URL.revokeObjectURL(url));
   }
 
   // Default cover: once a video has uploaded and the first-frame poster exists, upload

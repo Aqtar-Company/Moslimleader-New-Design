@@ -63,3 +63,14 @@ export function absoluteMediaUrl(u: string | null, site: string): string | null 
   if (!u) return null;
   return /^https?:\/\//.test(u) ? u : `${site.replace(/\/+$/, '')}${u}`;
 }
+
+/** The newest published items, for the strip on the home page. */
+export async function loadLatestMedia(limit = 8): Promise<PublicMediaItem[]> {
+  const rows = await prisma.freeMedia.findMany({
+    where: { isPublished: true },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: limit,
+    select: PUBLIC_MEDIA_SELECT,
+  });
+  return rows.map(toPublic).filter((i): i is PublicMediaItem => !!i);
+}

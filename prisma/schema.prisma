@@ -636,18 +636,47 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+/// One file in the public media library at /media.
+/// `type`: 'mp3' (any audio — the name predates the other formats), 'video', 'image', 'pdf'.
+/// `url`/`coverUrl` are either a legacy `/free-media/...` disk path or an R2 URL; new
+/// uploads go to R2, because production Next.js serves only the `public/` files that
+/// existed at BUILD time — a file written there afterwards 404s until the next build.
 model FreeMedia {
-  id            Int      @id @default(autoincrement())
+  id            Int                @id @default(autoincrement())
   title         String
   titleEn       String?
   type          String
   url           String
   coverUrl      String?
-  description   String?  @db.Text
-  descriptionEn String?  @db.Text
-  sortOrder     Int      @default(0)
-  isPublished   Boolean  @default(false)
-  createdAt     DateTime @default(now())
+  description   String?            @db.Text
+  descriptionEn String?            @db.Text
+  sortOrder     Int                @default(0)
+  isPublished   Boolean            @default(false)
+  categoryId    Int?
+  category      FreeMediaCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  /// Read from the file in the admin's browser at upload time; null when unknown.
+  durationSec   Int?
+  viewCount     Int                @default(0)
+  downloadCount Int                @default(0)
+  createdAt     DateTime           @default(now())
+
+  @@index([isPublished, type])
+  @@index([categoryId])
+}
+
+/// A shelf inside one kind of media — «أناشيد», «قصص قبل النوم»… Categories belong to a
+/// KIND ('audio' | 'video' | 'image' | 'pdf') so the audio chips never list video shelves.
+/// Deleting one leaves its items uncategorised (SetNull), never deletes them.
+model FreeMediaCategory {
+  id        Int         @id @default(autoincrement())
+  kind      String
+  name      String
+  nameEn    String?
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  items     FreeMedia[]
+
+  @@index([kind, sortOrder])
 }
 
 model Book {

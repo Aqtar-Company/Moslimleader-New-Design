@@ -900,6 +900,19 @@ Books are protected from download at two levels:
   at the same second (twice) before showing «إعادة المحاولة». Editing a video post can change
   its cover (`TareeqVideoCoverPicker`): frames from the stored file need CORS on the R2
   bucket; without it the strip says so and the image upload still works.
+- **The free media library is a public page, `/media`, not a tab in the account.** Admin:
+  `/admin/free-media` — one tab per kind (فيديوهات / صوتيات / رسومات / PDF), each with its own
+  categories (`FreeMediaCategory.kind`; deleting one leaves its items uncategorised). Public:
+  `/media` (kind tabs + category chips, state in the URL) and `/media/[id]` (player, share,
+  «التالي» list, autoplay switch in localStorage, sleep timer in sessionStorage with a fade).
+  Watching is open to everyone; **download needs an account** — `/api/media/[id]/download`
+  answers 401 without one and streams the file with `Content-Disposition` when signed in
+  (a plain cross-origin link would open the video instead of saving it). That gate is a
+  doorway, not a vault: what plays can be saved by other means. New uploads go to R2 under
+  `free-media/` (`src/lib/free-media.ts`); legacy rows keep their `/free-media/...` disk paths
+  and every reader accepts both. Video upload size = `NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB`, the
+  same number nginx enforces. Routes use `requirePerm('free-media.*')` — they used to check
+  `role === 'admin'` while the nav granted the page to staff with the permission.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

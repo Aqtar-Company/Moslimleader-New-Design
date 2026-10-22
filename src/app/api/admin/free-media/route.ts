@@ -1,27 +1,24 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { requirePerm } from '@/lib/permissions';
+import { parseMediaItem } from '@/lib/free-media-input';
 
-const VALID_TYPES = ['mp3', 'pdf', 'image'] as const;
-
-function assertSafeFreeMediaPath(p: string | undefined | null) {
-  if (!p) return;
-  if (!p.startsWith('/free-media/') || p.includes('..')) {
-    throw new Error('Invalid media path');
-  }
-}
-
+// The permission the admin nav already used for this page. The routes checked
+// `role === 'admin'` instead, so a staff member granted «الوسائط المجانية» saw the page
+// and then got «غير مصرح» from every request on it.
 export async function GET() {
+  const guard = await requirePerm(['free-media.read', 'free-media.write', 'books.read']);
+  if ('response' in guard) return guard.response;
   try {
-    const user = await getAuthUser();
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-    }
-    const items = await prisma.freeMedia.findMany({
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
-    });
-    return NextResponse.json({ items });
+    const [items, categories] = await Promise.all([
+      prisma.freeMedia.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }] }),
+      prisma.freeMediaCategory.findMany({
+        orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+        include: { _count: { select: { items: true } } },
+      }),
+    ]);
+    return NextResponse.json({ items, categories });
   } catch (err) {
     console.error('[admin free-media GET]', err);
     return NextResponse.json({ error: 'خطأ في الخادم' }, { status: 500 });
@@ -29,38 +26,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await requirePerm(['free-media.write', 'books.write']);
+  if ('response' in guard) return guard.response;
   try {
-    const user = await getAuthUser();
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-    }
-    const body = await req.json();
-    const { title, titleEn, type, url, coverUrl, description, descriptionEn, sortOrder, isPublished } = body;
-    if (!title || !type || !url) {
-      return NextResponse.json({ error: 'العنوان والنوع والملف مطلوبون' }, { status: 400 });
-    }
-    if (!VALID_TYPES.includes(type)) {
-      return NextResponse.json({ error: 'نوع الوسيط غير صالح' }, { status: 400 });
-    }
-    try {
-      assertSafeFreeMediaPath(url);
-      assertSafeFreeMediaPath(coverUrl);
-    } catch {
-      return NextResponse.json({ error: 'مسار الملف غير صالح' }, { status: 400 });
-    }
-    const item = await prisma.freeMedia.create({
-      data: {
-        title,
-        titleEn: titleEn || null,
-        type,
-        url,
-        coverUrl: coverUrl || null,
-        description: description || null,
-        descriptionEn: descriptionEn || null,
-        sortOrder: Number(sortOrder) || 0,
-        isPublished: !!isPublished,
-      },
-    });
+    const parsed = await parseMediaItem(await req.json().catch(() => ({})));
+    if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const item = await prisma.freeMedia.create({ data: parsed.data });
     return NextResponse.json({ item });
   } catch (err) {
     console.error('[admin free-media POST]', err);

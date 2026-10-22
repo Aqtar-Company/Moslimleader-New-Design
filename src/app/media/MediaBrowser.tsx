@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { MEDIA_KINDS, KIND_LABEL, isMediaKind, type MediaKind } from '@/lib/free-media-shared';
 import type { PublicMediaCategory, PublicMediaItem } from '@/lib/free-media-query';
 import MediaThumb from '@/components/media/MediaThumb';
+import MediaPlaylist from './MediaPlaylist';
 import Icon from '@/components/media/Icon';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
 
@@ -17,7 +18,6 @@ import { useMediaDownload } from '@/components/media/useMediaDownload';
 export default function MediaBrowser({ items, categories, heroUrl }: { items: PublicMediaItem[]; categories: PublicMediaCategory[]; heroUrl: string | null }) {
   const { lang } = useLang();
   const isEn = lang === 'en';
-  const router = useRouter();
   const params = useSearchParams();
 
   const kinds = useMemo(() => MEDIA_KINDS.filter(k => items.some(i => i.kind === k)), [items]);
@@ -38,11 +38,21 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
   // Typing filters as you go; leaving the page and coming back should not keep a stale term.
   useEffect(() => { setQuery(''); }, [kind]);
 
-  const setParam = (next: { kind?: MediaKind; cat?: number | null }) => {
+  // Audio and video open on a player with the category as a playlist; «خلايا» switches to
+  // the grid (`view=grid`). The other kinds have nothing to play through and stay a grid.
+  const playable = kind === 'audio' || kind === 'video';
+  const view: 'player' | 'grid' = playable && params.get('view') !== 'grid' ? 'player' : 'grid';
+
+  const setParam = (next: { kind?: MediaKind; cat?: number | null; view?: 'player' | 'grid'; play?: number }) => {
     const sp = new URLSearchParams(params.toString());
-    if (next.kind) { sp.set('kind', next.kind); sp.delete('cat'); }
-    if (next.cat !== undefined) sp.set('cat', next.cat ? String(next.cat) : 'all');
-    router.replace(`/media${sp.toString() ? `?${sp}` : ''}`, { scroll: false });
+    if (next.kind) { sp.set('kind', next.kind); sp.delete('cat'); sp.delete('view'); sp.delete('play'); }
+    if (next.cat !== undefined) { sp.set('cat', next.cat ? String(next.cat) : 'all'); sp.delete('play'); }
+    if (next.view) { if (next.view === 'grid') sp.set('view', 'grid'); else sp.delete('view'); }
+    if (next.play) sp.set('play', String(next.play));
+    // Everything on this page is already in the browser, so the URL is updated in place
+    // (Next 14.1+ keeps useSearchParams in step) — router.replace would ask the server for
+    // the whole library again on every tab, chip and track.
+    window.history.replaceState(null, '', `/media${sp.toString() ? `?${sp}` : ''}`);
   };
 
   const q = query.trim().toLowerCase();
@@ -51,6 +61,8 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
     (!cat || i.categoryId === cat) &&
     (!q || i.title.toLowerCase().includes(q) || (i.titleEn ?? '').toLowerCase().includes(q) || (i.description ?? '').toLowerCase().includes(q)),
   );
+  const playId = Number(params.get('play'));
+  const playing = view === 'player' ? (shown.find(i => i.id === playId) ?? shown[0] ?? null) : null;
   const portrait = kind === 'image' || kind === 'pdf' || kind === 'reel';
   const t = (ar: string, en: string) => (isEn ? en : ar);
 
@@ -114,9 +126,10 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
               ))}
             </div>
 
-            {/* Category chips */}
-            {kindCats.length > 0 && (
-              <div className="flex gap-2 mb-6 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {/* Category chips, and the player / cells switch for what can be played */}
+            {(kindCats.length > 0 || playable) && (
+            <div className="flex items-start gap-3 mb-6">
+              <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
                 {[...kindCats.map(c => ({ id: c.id as number | null, label: isEn && c.nameEn ? c.nameEn : c.name })), { id: null as number | null, label: t('الكل', 'All') }].map(chip => {
                   const active = cat === chip.id;
                   return (
@@ -131,10 +144,29 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
                   );
                 })}
               </div>
+              {playable && (
+                <div className="shrink-0 flex rounded-lg bg-[#EFEBE2] p-0.5" role="group" aria-label={t('طريقة العرض', 'View')}>
+                  {([['player', 'list', t('قائمة تشغيل', 'Playlist')], ['grid', 'grid', t('خلايا', 'Grid')]] as const).map(([v, icon, label]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setParam({ view: v })}
+                      aria-pressed={view === v}
+                      title={label}
+                      className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${view === v ? 'bg-[#1a1a2e] text-[#F5C518]' : 'text-[#1a1a2e] hover:bg-[#E5DFD2]'}`}
+                    >
+                      <Icon name={icon} size={16} /><span className="hidden sm:inline">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             )}
 
             {shown.length === 0 ? (
               <p className="text-center text-gray-400 py-16">{t('لا نتائج هنا.', 'Nothing here.')}</p>
+            ) : playing ? (
+              <MediaPlaylist items={shown} current={playing} onPick={id => setParam({ play: id })} isEn={isEn} />
             ) : (
               <div className={`grid gap-x-4 gap-y-7 ${portrait ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
                 {shown.map(item => {

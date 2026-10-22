@@ -136,10 +136,12 @@ export default function FreeMediaAdminPage() {
     e.target.value = '';
     if (!file) return;
     setCoverPct(0);
-    const url = await uploadCover(file, setCoverPct);
+    setError('');
+    const r = await uploadCover(file, setCoverPct);
     setCoverPct(null);
-    if (url) setForm(f => ({ ...f, coverUrl: url }));
-    else setError('تعذّر رفع الصورة المصغّرة');
+    // The server's own reason, not a generic failure — «HEIC», «too big», «not an image».
+    if (typeof r === 'string') setForm(f => ({ ...f, coverUrl: r }));
+    else setError(`الصورة المصغّرة: ${r.error}`);
   }
 
   async function save() {

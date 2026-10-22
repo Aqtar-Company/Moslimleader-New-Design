@@ -71,6 +71,12 @@ export async function transcodeVideo(
      * the finished file was then uploaded to a post that no longer existed.
      */
     signal?: AbortSignal;
+    /** Longer sources are refused; default 10 minutes (طريق's posts). The media library
+     *  passes more — a bedtime story or a lesson runs well past ten minutes. */
+    maxDurationSeconds?: number;
+    /** Video bitrate; default 1.5 Mbps. The media library lowers it for long videos so the
+     *  result fits under the upload cap nginx enforces. */
+    videoBitrate?: number;
   },
 ): Promise<File | null> {
   const fail = (reason: CompressFailure, detail?: string): null => {
@@ -112,7 +118,8 @@ export async function transcodeVideo(
 
     const duration = await input.computeDuration();
     if (!Number.isFinite(duration) || duration <= 0) return fail('unreadable', `duration=${duration}`);
-    if (duration > MAX_DURATION_SECONDS) return fail('too-long', `${Math.round(duration)}s`);
+    if (duration > (opts?.maxDurationSeconds ?? MAX_DURATION_SECONDS)) return fail('too-long', `${Math.round(duration)}s`);
+    const bitrate = opts?.videoBitrate ?? VIDEO_BITS_PER_SECOND;
 
     // Can this browser DECODE the source? An iPhone HEVC clip on Chrome/Android cannot be,
     // and it is far better to know now than after a full pass.
@@ -137,7 +144,7 @@ export async function transcodeVideo(
       : { width: even(longEdge * dw / dh), height: even(longEdge) };
     const codec = await getFirstEncodableVideoCodec(['avc', 'vp9', 'vp8'], {
       ...probeDims,
-      quality: new Quality({ bitrate: VIDEO_BITS_PER_SECOND }),
+      quality: new Quality({ bitrate }),
     });
     if (!codec) return fail('unsupported-browser', 'no encodable video codec');
 
@@ -158,7 +165,7 @@ export async function transcodeVideo(
         ...size,
         fit: 'contain',
         codec,
-        quality: new Quality({ bitrate: VIDEO_BITS_PER_SECOND }),
+        quality: new Quality({ bitrate }),
         // Seeking lands on a keyframe; two seconds keeps the scrubber responsive without
         // bloating the file. (Also forces a real transcode, which is the point.)
         keyFrameInterval: 2,

@@ -88,12 +88,25 @@ export function uploadFile(file: Blob, type: string, onProgress: (p: number) => 
 }
 
 /** Compress (client-side) and upload a cover image. */
-export async function uploadCover(file: File | Blob, onProgress: (p: number) => void): Promise<string | null> {
-  const asFile = file instanceof File ? file : new File([file], 'cover.jpg', { type: 'image/jpeg' });
-  const small = await compressImage(asFile, { maxWidth: 1280, maxHeight: 1280, quality: 0.8 }).catch(() => asFile);
-  const r = await uploadFile(small, 'cover', onProgress, 'cover.jpg');
-  return r.url ?? null;
+/**
+ * Compress (client-side) and upload a cover image. Resolves to its URL, or `{ error }` with
+ * the server's reason — a cover that failed used to vanish without a word.
+ *
+ * The file goes up under ITS OWN name. It used to be renamed «cover.jpg» whatever it was,
+ * and a PNG or WebP (which compressImage keeps in its format, or returns untouched) was
+ * then refused by the server as a mismatched extension.
+ */
+export async function uploadCover(file: File | Blob, onProgress: (p: number) => void): Promise<string | { error: string }> {
+  const asFile = file instanceof File ? file : new File([file], 'cover.jpg', { type: file.type || 'image/jpeg' });
+  const small = await compressImage(asFile, { maxWidth: 1600, maxHeight: 1600, quality: 0.82 }).catch(() => asFile);
+  const r = await uploadFile(small, 'cover', onProgress, small.name || asFile.name);
+  return r.url ?? { error: r.error ?? 'تعذّر رفع الصورة' };
 }
+
+/** The largest upload the server accepts (nginx's limit; see CLAUDE.md). */
+export const MAX_UPLOAD_MB = Number(process.env.NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB) || 50;
+/** The largest SOURCE video accepted for compression in the browser. */
+export const MAX_SOURCE_VIDEO_MB = 4096;
 
 export async function prepareAndUpload(
   file: File,
@@ -105,11 +118,41 @@ export async function prepareAndUpload(
   const waveform = kind === 'audio' ? await computeWaveform(file) : null;
 
   let body: File = file;
-  if ((kind === 'video' || kind === 'reel') && file.size > COMPRESS_VIDEO_OVER && canTranscodeWithWebCodecs()) {
-    onStage('compressing', 0);
-    const out = await transcodeVideo(file, p => onStage('compressing', Math.round(p)));
-    if (out && out.size < file.size) body = out;
-    else onStage('compressing', 100, 'تعذّر الضغط — يُرفع الأصل');
+  if (kind === 'video' || kind === 'reel') {
+    const MB = 1024 * 1024;
+    const limit = MAX_UPLOAD_MB * MB;
+    if (file.size > MAX_SOURCE_VIDEO_MB * MB) return { error: `الفيديو أكبر من ${MAX_SOURCE_VIDEO_MB / 1024} جيجا — قسّمه لأجزاء` };
+
+    /*
+     * Bigger sources are welcome now: anything over the upload cap is compressed in this
+     * browser until it fits. The bitrate is chosen from the DURATION so a long video lands
+     * under the cap — 1.5 Mbps for short clips (clean 720p), lower for long ones, never
+     * below 450 kbps (under that, faces and text in a lesson turn to mush). 10% headroom
+     * and 128 kbps for the audio track.
+     */
+    if (file.size > COMPRESS_VIDEO_OVER || file.size > limit) {
+      if (!canTranscodeWithWebCodecs()) {
+        if (file.size > limit) return { error: `الفيديو أكبر من ${MAX_UPLOAD_MB} ميجا ويحتاج ضغطاً، وهذا المتصفح لا يضغط الفيديو — افتح الأدمن من كروم أو إيدج` };
+      } else {
+        const secs = durationSec ?? 0;
+        const fit = secs > 0 ? Math.floor(((limit * 0.9 * 8) / secs) - 128_000) : 1_500_000;
+        const bitrate = Math.max(450_000, Math.min(1_500_000, fit));
+        const expectMb = secs > 0 ? Math.round(((bitrate + 128_000) * secs) / 8 / MB) : null;
+        onStage('compressing', 0, expectMb ? `من ${Math.round(file.size / MB)} ميجا إلى نحو ${expectMb} ميجا` : undefined);
+        const out = await transcodeVideo(
+          file,
+          p => onStage('compressing', Math.round(p), expectMb ? `من ${Math.round(file.size / MB)} ميجا إلى نحو ${expectMb} ميجا` : undefined),
+          undefined,
+          { maxDurationSeconds: 3 * 60 * 60, videoBitrate: bitrate },
+        );
+        if (out && out.size < file.size) body = out;
+        else if (file.size > limit) return { error: 'تعذّر ضغط هذا الفيديو في المتصفح وهو أكبر من حد الرفع — جرّب ملفاً بصيغة MP4' };
+        else onStage('compressing', 100, 'تعذّر الضغط — يُرفع الأصل');
+      }
+    }
+    if (body.size > limit) {
+      return { error: `حتى بعد الضغط حجمه ${Math.round(body.size / MB)} ميجا، والحد ${MAX_UPLOAD_MB} ميجا — قسّمه لجزأين` };
+    }
   }
 
   onStage('uploading', 0);
@@ -122,7 +165,10 @@ export async function prepareAndUpload(
   if (kind === 'video' || kind === 'reel') {
     const local = URL.createObjectURL(body);
     const frames = await captureVideoFrames(local, 1).finally(() => URL.revokeObjectURL(local));
-    if (frames[0]) coverUrl = await uploadCover(dataUrlToBlob(frames[0]), () => {});
+    if (frames[0]) {
+      const c = await uploadCover(dataUrlToBlob(frames[0]), () => {});
+      coverUrl = typeof c === 'string' ? c : null;
+    }
   }
 
   return { url: up.url, coverUrl, previewUrl: up.previewUrl ?? null, durationSec, waveform };

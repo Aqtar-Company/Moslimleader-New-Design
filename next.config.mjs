@@ -103,6 +103,22 @@ const nextConfig = {
           { key: 'Expires', value: '0' },
         ],
       },
+      // FILES, after the HTML rule — and that order is the whole point. When two rules match
+      // and set the same key, the LAST one wins; the HTML rule's pattern matches every path
+      // that is not _next/api, which includes every picture and media file in public/. So
+      // the «cache images for a day» rule above was silently overwritten with no-store, and
+      // every visit re-downloaded every image — measured on /media: 19 thumbnails, 28.6 MB,
+      // on every page view. These two rules restore caching for files only; HTML stays
+      // uncached (stale Server Action protection, see CLAUDE.md).
+      {
+        source: '/(.*\\.(?:jpg|jpeg|png|gif|webp|avif|svg|ico))',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' }],
+      },
+      {
+        // Media-library files on disk: written once under a random name, never changed.
+        source: '/free-media/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=2592000, immutable' }],
+      },
     ];
   },
 };

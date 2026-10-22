@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requirePerm } from '@/lib/permissions';
 import { Prisma } from '@prisma/client';
 import { parseMediaItem, parseWaveform } from '@/lib/free-media-input';
-import { removeStoredMedia } from '@/lib/free-media';
+import { removeStoredMedia, isAllowedMediaRef } from '@/lib/free-media';
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const guard = await requirePerm(['free-media.write', 'books.write']);
@@ -68,6 +68,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const body = await req.json().catch(() => ({}));
   const data: Prisma.FreeMediaUpdateInput = {};
   if (typeof body.isPublished === 'boolean') data.isPublished = body.isPublished;
+  // A thumbnail made by the admin page from the video itself (the automatic backfill).
+  if (typeof body.coverUrl === 'string') {
+    if (!isAllowedMediaRef(body.coverUrl)) return NextResponse.json({ error: 'مسار غير صالح' }, { status: 400 });
+    data.coverUrl = body.coverUrl;
+  }
   if (body.waveform !== undefined) data.waveform = parseWaveform(body.waveform) ?? Prisma.DbNull;
   const dur = Number(body.durationSec);
   if (Number.isFinite(dur) && dur > 0) data.durationSec = Math.round(dur);

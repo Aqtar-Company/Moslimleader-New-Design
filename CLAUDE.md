@@ -926,6 +926,16 @@ Books are protected from download at two levels:
   publish/unpublish is a PATCH. Multi-file upload runs two at a time with a bar per file;
   its queue lives in a ref (`commitQueue`) — never start work inside a state updater, React
   runs those twice in development.
+- **Reels, comments and reactions in the media library.** A reel is `FreeMedia.type = 'reel'`
+  (a vertical video; admin tab «ريلز», same upload/compression path as video). It plays in
+  `/media/reels/[id]` — full screen, scroll-snap, only the reel on screen plays and only its
+  neighbours load, muted until one tap (remembered per visit), the URL follows the reel on
+  screen. `/media/<id>` of a reel redirects there. Every item (reels included) has comments
+  (`FreeMediaComment`) and reactions (`FreeMediaReaction`, one per member, طريق's five —
+  these five ARE emoji, the one exception to the icons rule). Reading is open, writing needs
+  an account; comments go through طريق's `filterContent` and are REFUSED (not hidden) when
+  flagged; the writer or free-media staff can delete. Comments show a FIRST NAME and a
+  letter, never a photo — طريق veils women's photos and a public page must not undo that.
 - **No emoji in the UI — icons.** `src/components/media/Icon.tsx` is the set (one stroke style).
   Arrows carry `icon-dir-flip`, mirrored in RTL by a plain rule in `globals.css`.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.

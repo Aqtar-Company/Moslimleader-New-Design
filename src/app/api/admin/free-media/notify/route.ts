@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
 
 function buildNotifyHtml(items: { id: number; title: string; type: string; url: string; coverUrl: string | null; description: string | null }[]) {
-  const typeLabel = (t: string) => t === 'mp3' ? 'صوتي' : t === 'video' ? 'فيديو' : t === 'image' ? 'رسمة' : 'PDF';
+  const typeLabel = (t: string) => t === 'mp3' ? 'صوتي' : t === 'video' ? 'فيديو' : t === 'reel' ? 'ريل' : t === 'image' ? 'رسمة' : 'PDF';
   // A cover is either a legacy disk path (relative) or an R2 URL (absolute).
   const abs = (u: string) => (/^https?:\/\//.test(u) ? u : `${siteUrl}${u}`);
   const siteUrl = 'https://moslimleader.com';
@@ -20,7 +20,7 @@ function buildNotifyHtml(items: { id: number; title: string; type: string; url: 
           <p style="margin:0 0 2px;font-size:13px;color:#888;">${typeLabel(item.type)}</p>
           <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1a1a2e;">${item.title}</p>
           ${item.description ? `<p style="margin:0 0 6px;font-size:12px;color:#666;">${item.description}</p>` : ''}
-          <a href="${siteUrl}/media/${item.id}" style="display:inline-block;background:#F5C518;color:#1a1a2e;font-weight:700;padding:5px 14px;border-radius:8px;font-size:12px;text-decoration:none;">شاهد واستمع</a>
+          <a href="${siteUrl}${item.type === 'reel' ? '/media/reels/' : '/media/'}${item.id}" style="display:inline-block;background:#F5C518;color:#1a1a2e;font-weight:700;padding:5px 14px;border-radius:8px;font-size:12px;text-decoration:none;">شاهد واستمع</a>
         </div>
         <div style="clear:both;"></div>
       </td>

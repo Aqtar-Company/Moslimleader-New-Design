@@ -12,6 +12,8 @@ import Icon from '@/components/media/Icon';
 import MediaNavBar from '@/components/media/MediaNavBar';
 import AudioStage from '@/components/media/AudioStage';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
+import MediaReactions, { type Summary } from '@/components/media/MediaReactions';
+import MediaComments from '@/components/media/MediaComments';
 
 /**
  * One media item: the player, what it is, share and download, and what plays next.
@@ -44,7 +46,13 @@ function writeSleep(s: Sleep) {
   try { if (s) sessionStorage.setItem(SLEEP_KEY, JSON.stringify(s)); else sessionStorage.removeItem(SLEEP_KEY); } catch { /* private mode */ }
 }
 
-export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; upNext: PublicMediaItem[] }) {
+export default function MediaWatch({ item, upNext, reactions, commentCount }: {
+  item: PublicMediaItem;
+  upNext: PublicMediaItem[];
+  reactions: Summary;
+  commentCount: number;
+}) {
+  const [comments, setComments] = useState(commentCount);
   const { lang } = useLang();
   const isEn = lang === 'en';
   const t = (ar: string, en: string) => (isEn ? en : ar);
@@ -254,6 +262,7 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
 
             {/* Actions */}
             <div className="mt-4 flex flex-wrap items-center gap-2">
+              <MediaReactions mediaId={item.id} initial={reactions} isEn={isEn} />
               <button onClick={download} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1a1a2e] text-[#F5C518] font-bold text-sm hover:bg-[#25254a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5C518]">
                 <Icon name="download" size={18} /> {t('تحميل', 'Download')}
                 {!user && <span className="text-[11px] font-semibold text-white/60">{t('(بحساب مجاني)', '(free account)')}</span>}
@@ -301,6 +310,15 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
                 {description}
               </p>
             )}
+
+            {/* Comments — open to read, an account to write. */}
+            <section className="mt-6 rounded-2xl bg-white border border-gray-100 p-4" aria-labelledby="media-comments-title">
+              <h2 id="media-comments-title" className="font-black text-[#1a1a2e] mb-3 flex items-center gap-2">
+                <Icon name="comment" size={20} /> {t('التعليقات', 'Comments')}
+                {comments > 0 && <span className="text-sm text-gray-400 font-bold tabular-nums">{comments}</span>}
+              </h2>
+              <MediaComments mediaId={item.id} isEn={isEn} onCount={d => setComments(c => Math.max(0, c + d))} />
+            </section>
           </div>
 
           {/* ── up next ── */}

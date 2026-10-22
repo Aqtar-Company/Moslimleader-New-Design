@@ -4,15 +4,16 @@
  */
 
 /** What a category belongs to. One category list per kind. */
-export const MEDIA_KINDS = ['video', 'audio', 'image', 'pdf'] as const;
+export const MEDIA_KINDS = ['reel', 'video', 'audio', 'image', 'pdf'] as const;
 export type MediaKind = typeof MEDIA_KINDS[number];
 
 /** Item `type` as stored → its kind. `mp3` is any audio; the name predates the others. */
-export const TYPE_TO_KIND: Record<string, MediaKind> = { video: 'video', mp3: 'audio', image: 'image', pdf: 'pdf' };
-export const KIND_TO_TYPE: Record<MediaKind, string> = { video: 'video', audio: 'mp3', image: 'image', pdf: 'pdf' };
+export const TYPE_TO_KIND: Record<string, MediaKind> = { reel: 'reel', video: 'video', mp3: 'audio', image: 'image', pdf: 'pdf' };
+export const KIND_TO_TYPE: Record<MediaKind, string> = { reel: 'reel', video: 'video', audio: 'mp3', image: 'image', pdf: 'pdf' };
 
-/** Each kind's icon is the `<Icon>` of the same name (video / audio / image / pdf). */
+/** Each kind's icon is the `<Icon>` of the same name (reel / video / audio / image / pdf). */
 export const KIND_LABEL: Record<MediaKind, { ar: string; en: string; one: string }> = {
+  reel:  { ar: 'ريلز', en: 'Reels', one: 'ريل' },
   video: { ar: 'فيديوهات', en: 'Videos', one: 'فيديو' },
   audio: { ar: 'صوتيات', en: 'Audio', one: 'صوتي' },
   image: { ar: 'رسومات', en: 'Drawings', one: 'رسمة' },
@@ -35,4 +36,8 @@ export function formatDuration(sec: number | null | undefined): string | null {
 }
 
 /** The item's public page. */
-export const mediaPath = (id: number) => `/media/${id}`;
+export const mediaPath = (id: number, kind?: MediaKind) => (kind === 'reel' ? `/media/reels/${id}` : `/media/${id}`);
+
+/** Reactions are طريق's own set, so the two places speak one language. */
+export { TAREEQ_REACTIONS as MEDIA_REACTIONS } from '@/lib/tareeq-constants';
+export const MEDIA_REACTION_TYPES = ['inspired', 'thanks', 'agree', 'yarabb', 'mashaallah'] as const;

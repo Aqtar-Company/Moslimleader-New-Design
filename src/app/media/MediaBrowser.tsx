@@ -46,7 +46,7 @@ export default function MediaBrowser({ items, categories }: { items: PublicMedia
     (!cat || i.categoryId === cat) &&
     (!q || i.title.toLowerCase().includes(q) || (i.titleEn ?? '').toLowerCase().includes(q) || (i.description ?? '').toLowerCase().includes(q)),
   );
-  const portrait = kind === 'image' || kind === 'pdf';
+  const portrait = kind === 'image' || kind === 'pdf' || kind === 'reel';
   const t = (ar: string, en: string) => (isEn ? en : ar);
 
   return (
@@ -133,13 +133,13 @@ export default function MediaBrowser({ items, categories }: { items: PublicMedia
                   const savable = item.kind === 'image' || item.kind === 'pdf';
                   return (
                     <div key={item.id} className="flex flex-col">
-                      <Link href={`/media/${item.id}`} className="group block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F5C518]">
+                      <Link href={item.kind === 'reel' ? `/media/reels/${item.id}` : `/media/${item.id}`} className="group block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F5C518]">
                         <MediaThumb
                           kind={item.kind}
                           coverUrl={item.coverUrl ?? item.previewUrl ?? null}
                           title={title}
                           durationSec={item.durationSec}
-                          className={`${portrait ? 'aspect-[3/4]' : 'aspect-video'} transition group-hover:shadow-lg group-hover:-translate-y-0.5`}
+                          className={`${kind === 'reel' ? 'aspect-[9/16]' : portrait ? 'aspect-[3/4]' : 'aspect-video'} transition group-hover:shadow-lg group-hover:-translate-y-0.5`}
                         />
                         <h2 className="mt-2.5 text-[15px] font-bold leading-snug text-[#1a1a2e] line-clamp-2">{title}</h2>
                         <p className="mt-0.5 text-xs text-gray-500">

@@ -78,3 +78,8 @@ export async function loadLatestMedia(limit = 8): Promise<PublicMediaItem[]> {
   });
   return rows.map(toPublic).filter((i): i is PublicMediaItem => !!i);
 }
+
+/** Every published reel, in the admin's order — the swipe viewer's whole list. */
+export async function loadReels(): Promise<PublicMediaItem[]> {
+  return (await fetchRows({ type: 'reel' })).map(toPublic).filter((i): i is PublicMediaItem => !!i);
+}

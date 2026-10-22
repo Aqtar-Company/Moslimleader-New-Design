@@ -946,6 +946,17 @@ Books are protected from download at two levels:
   RECIPIENT sees comes from `src/app/media/preview/[id]/route.ts`: the middleware rewrites
   crawler requests for `/media/<id>` and `/media/reels/<id>` there (same design as طريق's
   post previews, `_np=1` loop guard included), serving the item's JPEG cover as og:image.
+- **`headers()` in next.config.mjs: the LAST matching rule wins, and the «no cache for HTML»
+  rule matches every file in `public/` too.** So the «cache images for a day» rule above it
+  was silently overwritten with `no-store`, and every visit re-downloaded every picture —
+  measured on /media: 19 legacy thumbnails, 28.6 MB, per page view (the server answered in
+  0.04 s; all of the slowness was this). File rules now come AFTER the HTML rule. Any new
+  rule for files must go below it, or it does nothing.
+- **Video thumbnails are made automatically.** Opening `/admin/free-media` once per visit
+  compresses heavy covers (`optimize`) and gives every video/reel without a cover one, from a
+  frame of the video itself — read through `/api/media/[id]/download?inline=1` (staff only,
+  honours `Range`, same origin so the canvas is not tainted). Videos whose frame this browser
+  cannot decode are skipped for the visit; «صور مصغّرة للفيديوهات» retries them.
 - **No emoji in the UI — icons.** `src/components/media/Icon.tsx` is the set (one stroke style).
   Arrows carry `icon-dir-flip`, mirrored in RTL by a plain rule in `globals.css`.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.

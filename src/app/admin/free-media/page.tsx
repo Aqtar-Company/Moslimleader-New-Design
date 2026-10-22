@@ -5,6 +5,8 @@ import {
   ACCEPT, kindOfFile, prepareAndUpload, titleFromFile, uploadCover, type UploadStage,
 } from '@/lib/free-media-upload';
 import { computeWaveform } from '@/lib/audio-waveform';
+import { captureVideoFrames } from '@/lib/tareeq-video-frames';
+import { dataUrlToBlob } from '@/lib/data-url';
 import Icon from '@/components/media/Icon';
 
 /**
@@ -280,9 +282,9 @@ export default function FreeMediaAdminPage() {
   }
 
   // ── maintenance ─────────────────────────────────────────────────────────────────
-  async function optimizeExisting() {
-    if (!confirm('ضغط الصور الحالية: الصور المصغّرة الثقيلة تُستبدل بنسخ خفيفة، وكل رسمة تأخذ نسخة عرض خفيفة (الأصل يبقى للتحميل). يستمر حتى ينتهي — لا تغلق الصفحة.')) return;
-    setError(''); setSuccess('');
+  async function optimizeExisting(silent = false) {
+    if (!silent && !confirm('ضغط الصور الحالية: الصور المصغّرة الثقيلة تُستبدل بنسخ خفيفة، وكل رسمة تأخذ نسخة عرض خفيفة (الأصل يبقى للتحميل). يستمر حتى ينتهي — لا تغلق الصفحة.')) return;
+    if (!silent) { setError(''); setSuccess(''); }
     let afterId: number | null = 0;
     let changed = 0, saved = 0;
     try {
@@ -296,10 +298,72 @@ export default function FreeMediaAdminPage() {
         setBusy(`يضغط... ${d.processed} / ${d.total}`);
         afterId = d.nextAfterId;
       }
-      setSuccess(`تم — حُدّث ${changed} عنصر، ووُفّر ${mb(saved)}`);
+      if (!silent || changed) setSuccess(`ضغط الصور: حُدّث ${changed} عنصر، ووُفّر ${mb(saved)}`);
       await load();
     } finally { setBusy(null); }
   }
+
+  /**
+   * A thumbnail for every video and reel that has none, from a frame of the video itself.
+   *
+   * The frame is read THROUGH OUR OWN ORIGIN (the download route, `?inline=1`, which serves
+   * byte ranges): a frame drawn from a cross-origin video taints the canvas, and the storage
+   * host is not set up for CORS. The <video> element asks only for the ranges it needs, so a
+   * long video is not downloaded to make one picture.
+   *
+   * A video whose frame cannot be read here (a codec this browser cannot decode) is skipped
+   * and remembered for the visit, so opening the page does not retry it in a loop.
+   */
+  async function fillMissingCovers(list: Item[], silent = false) {
+    const SKIP_KEY = 'ml-media-cover-skip';
+    let skip: number[] = [];
+    try { skip = JSON.parse(sessionStorage.getItem(SKIP_KEY) || '[]'); } catch { /* ignore */ }
+    const todo = list.filter(i => (i.type === 'video' || i.type === 'reel') && !i.coverUrl && !skip.includes(i.id));
+    if (!todo.length) { if (!silent) setSuccess('كل الفيديوهات لها صورة مصغّرة'); return; }
+    let ok = 0;
+    try {
+      for (let n = 0; n < todo.length; n++) {
+        setBusy(`يصنع الصور المصغّرة الناقصة من الفيديو نفسه... ${n + 1} / ${todo.length}`);
+        const it = todo[n];
+        const frames = await captureVideoFrames(`/api/media/${it.id}/download?inline=1`, 1);
+        const shot = frames[0];
+        const url = shot ? await uploadCover(dataUrlToBlob(shot), () => {}) : null;
+        if (typeof url !== 'string') {
+          skip.push(it.id);
+          try { sessionStorage.setItem(SKIP_KEY, JSON.stringify(skip)); } catch { /* ignore */ }
+          continue;
+        }
+        const res = await fetch(`/api/admin/free-media/${it.id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coverUrl: url }),
+        }).catch(() => null);
+        if (res?.ok) { ok++; upsertItem({ ...it, coverUrl: url }); }
+      }
+      if (ok || !silent) setSuccess(`صُنعت ${ok} صورة مصغّرة من ${todo.length} فيديو${ok < todo.length ? ' (الباقي تعذّرت قراءة صورته في هذا المتصفح)' : ''}`);
+    } finally { setBusy(null); }
+  }
+
+  /*
+   * Housekeeping that should not wait for anyone to remember a button: once per visit to
+   * this page, compress heavy thumbnails and make the missing video thumbnails. Both are
+   * idempotent — a second run finds nothing to do.
+   */
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current || !items.length) return;
+    autoRan.current = true;
+    let done = false;
+    try { done = sessionStorage.getItem('ml-media-auto-maint') === '1'; } catch { /* ignore */ }
+    void (async () => {
+      if (!done) {
+        try { sessionStorage.setItem('ml-media-auto-maint', '1'); } catch { /* ignore */ }
+        await optimizeExisting(true);
+      }
+      // Read the list again: compression may have replaced covers.
+      const res = await fetch('/api/admin/free-media').catch(() => null);
+      const fresh: Item[] = res?.ok ? ((await res.json()).items ?? []) : items;
+      await fillMissingCovers(fresh, true);
+    })();
+  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function measureWaveforms() {
     const todo = items.filter(i => TYPE_TO_KIND[i.type] === 'audio' && !Array.isArray(i.waveform));
@@ -348,8 +412,9 @@ export default function FreeMediaAdminPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2"><Icon name="video" size={26} /> مكتبة الوسائط</h1>
         <div className="flex gap-2 flex-wrap">
           <a href="/media" target="_blank" rel="noopener" className={`${btn} bg-white hover:bg-gray-50`}><Icon name="external" size={15} /> الصفحة العامة</a>
-          <button onClick={optimizeExisting} disabled={!!busy} className={`${btn} bg-white hover:bg-gray-50`}><Icon name="zap" size={15} /> ضغط الصور الحالية</button>
+          <button onClick={() => void optimizeExisting()} disabled={!!busy} className={`${btn} bg-white hover:bg-gray-50`}><Icon name="zap" size={15} /> ضغط الصور الحالية</button>
           <button onClick={measureWaveforms} disabled={!!busy} className={`${btn} bg-white hover:bg-gray-50`}><Icon name="audio" size={15} /> قياس موجات الصوتيات</button>
+          <button onClick={() => { try { sessionStorage.removeItem('ml-media-cover-skip'); } catch { /* ignore */ } void fillMissingCovers(items); }} disabled={!!busy} className={`${btn} bg-white hover:bg-gray-50`}><Icon name="image" size={15} /> صور مصغّرة للفيديوهات</button>
           <button onClick={notify} disabled={!!busy} className={`${btn} bg-blue-600 text-white border-blue-600 hover:bg-blue-700`}><Icon name="mail" size={15} /> إشعار المستخدمين</button>
         </div>
       </div>

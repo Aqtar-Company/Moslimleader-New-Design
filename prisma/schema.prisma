@@ -637,23 +637,26 @@ model Setting {
 }
 
 /// One file in the public media library at /media.
-/// `type`: 'mp3' (any audio — the name predates the other formats), 'video', 'image', 'pdf'.
+/// `type`: 'mp3' (any audio — the name predates the other formats), 'video', 'reel' (a short
+/// vertical video, shown in the swipe viewer), 'image', 'pdf'.
 /// `url`/`coverUrl` are either a legacy `/free-media/...` disk path or an R2 URL; new
 /// uploads go to R2, because production Next.js serves only the `public/` files that
 /// existed at BUILD time — a file written there afterwards 404s until the next build.
 model FreeMedia {
-  id            Int                @id @default(autoincrement())
+  id            Int                 @id @default(autoincrement())
   title         String
   titleEn       String?
   type          String
   url           String
   coverUrl      String?
-  description   String?            @db.Text
-  descriptionEn String?            @db.Text
-  sortOrder     Int                @default(0)
-  isPublished   Boolean            @default(false)
+  description   String?             @db.Text
+  descriptionEn String?             @db.Text
+  sortOrder     Int                 @default(0)
+  isPublished   Boolean             @default(false)
   categoryId    Int?
-  category      FreeMediaCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category      FreeMediaCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  comments      FreeMediaComment[]
+  reactions     FreeMediaReaction[]
   /// A drawing's display copy: the original (`url`) is what a member downloads; this is
   /// the compressed one the pages show, so a 6 MB scan does not stall the grid.
   previewUrl    String?
@@ -662,12 +665,40 @@ model FreeMedia {
   waveform      Json?
   /// Read from the file in the admin's browser at upload time; null when unknown.
   durationSec   Int?
-  viewCount     Int                @default(0)
-  downloadCount Int                @default(0)
-  createdAt     DateTime           @default(now())
+  viewCount     Int                 @default(0)
+  downloadCount Int                 @default(0)
+  createdAt     DateTime            @default(now())
 
   @@index([isPublished, type])
   @@index([categoryId])
+}
+
+/// A visitor's comment on a media item (a reel, a nasheed…). Signed-in members only.
+/// `userId` is a plain id, joined by hand, so the shop's `User` model is not touched.
+model FreeMediaComment {
+  id        Int       @id @default(autoincrement())
+  mediaId   Int
+  media     FreeMedia @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  userId    String
+  content   String    @db.Text
+  isHidden  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  @@index([mediaId, createdAt])
+  @@index([userId])
+}
+
+/// One reaction per member per item, from طريق's own set (ألهمني، شكراً، أتفق، يارب، ماشاء الله).
+model FreeMediaReaction {
+  id        Int       @id @default(autoincrement())
+  mediaId   Int
+  media     FreeMedia @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  userId    String
+  type      String
+  createdAt DateTime  @default(now())
+
+  @@unique([mediaId, userId])
+  @@index([mediaId])
 }
 
 /// A shelf inside one kind of media — «أناشيد», «قصص قبل النوم»… Categories belong to a

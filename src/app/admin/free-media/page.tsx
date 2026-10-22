@@ -182,7 +182,7 @@ export default function FreeMediaAdminPage() {
     const rows: QueueRow[] = [];
     const rejected: string[] = [];
     for (const f of Array.from(list)) {
-      const k = kindOfFile(f);
+      const k = kindOfFile(f, kind);
       if (!k) { rejected.push(f.name); continue; }
       rows.push({
         key: `${f.name}-${f.size}-${Math.random().toString(36).slice(2)}`, name: f.name, size: f.size, kind: k, stage: 'queued', pct: 0, file: f,
@@ -336,7 +336,7 @@ export default function FreeMediaAdminPage() {
   }
 
   const label = KIND_LABEL[kind];
-  const fileWord = kind === 'audio' ? 'ملف صوتي' : kind === 'video' ? 'فيديو' : kind === 'pdf' ? 'PDF' : 'صورة الرسمة';
+  const fileWord = kind === 'audio' ? 'ملف صوتي' : kind === 'video' ? 'فيديو' : kind === 'reel' ? 'فيديو رأسي (ريل)' : kind === 'pdf' ? 'PDF' : 'صورة الرسمة';
   const activeQueue = queue.filter(r => r.stage !== 'done').length;
   const btn = 'inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition disabled:opacity-50';
 
@@ -523,7 +523,7 @@ export default function FreeMediaAdminPage() {
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">صورة مصغّرة {kind === 'video' ? '(تُؤخذ تلقائياً من الفيديو، ويمكن استبدالها)' : kind === 'image' ? '(تُصنع تلقائياً من الرسمة)' : '(اختياري)'}</label>
+          <label className="block text-sm font-medium mb-1">صورة مصغّرة {(kind === 'video' || kind === 'reel') ? '(تُؤخذ تلقائياً من الفيديو، ويمكن استبدالها)' : kind === 'image' ? '(تُصنع تلقائياً من الرسمة)' : '(اختياري)'}</label>
           <input ref={coverRef} type="file" accept=".jpg,.jpeg,.png,.webp" onChange={onCover} className="hidden" />
           <div onClick={() => coverPct === null && coverRef.current?.click()}
             className="border-2 border-dashed border-gray-200 rounded-lg p-3 text-center cursor-pointer hover:border-blue-300 text-sm text-gray-400">

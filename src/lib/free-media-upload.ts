@@ -28,15 +28,21 @@ export type PreparedMedia = {
 const COMPRESS_VIDEO_OVER = 40 * 1024 * 1024;
 
 export const ACCEPT: Record<MediaKind, string> = {
+  reel: '.mp4,.webm,.mov,.m4v',
   audio: '.mp3,.m4a,.ogg,.wav',
   video: '.mp4,.webm,.mov,.m4v',
   image: '.jpg,.jpeg,.png,.webp',
   pdf: '.pdf',
 };
 
-export function kindOfFile(file: File): MediaKind | null {
+/** The kind a file belongs to. A video file is a reel when it is dropped on the reels tab. */
+export function kindOfFile(file: File, preferred?: MediaKind): MediaKind | null {
   const ext = (file.name.split('.').pop() || '').toLowerCase();
-  for (const k of Object.keys(ACCEPT) as MediaKind[]) if (ACCEPT[k].split(',').includes(`.${ext}`)) return k;
+  if (preferred && ACCEPT[preferred].split(',').includes(`.${ext}`)) return preferred;
+  for (const k of Object.keys(ACCEPT) as MediaKind[]) {
+    if (k === 'reel') continue;
+    if (ACCEPT[k].split(',').includes(`.${ext}`)) return k;
+  }
   return null;
 }
 
@@ -46,9 +52,9 @@ export function titleFromFile(name: string): string {
 }
 
 export function readDuration(file: File, kind: MediaKind): Promise<number | null> {
-  if (kind !== 'audio' && kind !== 'video') return Promise.resolve(null);
+  if (kind !== 'audio' && kind !== 'video' && kind !== 'reel') return Promise.resolve(null);
   return new Promise(resolve => {
-    const el = document.createElement(kind === 'video' ? 'video' : 'audio');
+    const el = document.createElement(kind === 'audio' ? 'audio' : 'video');
     const url = URL.createObjectURL(file);
     const done = (v: number | null) => { URL.revokeObjectURL(url); resolve(v); };
     const t = setTimeout(() => done(null), 15_000);
@@ -99,7 +105,7 @@ export async function prepareAndUpload(
   const waveform = kind === 'audio' ? await computeWaveform(file) : null;
 
   let body: File = file;
-  if (kind === 'video' && file.size > COMPRESS_VIDEO_OVER && canTranscodeWithWebCodecs()) {
+  if ((kind === 'video' || kind === 'reel') && file.size > COMPRESS_VIDEO_OVER && canTranscodeWithWebCodecs()) {
     onStage('compressing', 0);
     const out = await transcodeVideo(file, p => onStage('compressing', Math.round(p)));
     if (out && out.size < file.size) body = out;
@@ -113,7 +119,7 @@ export async function prepareAndUpload(
   onStage('finishing', 100);
   let coverUrl: string | null = null;
   if (kind === 'image') coverUrl = up.thumbUrl ?? null;
-  if (kind === 'video') {
+  if (kind === 'video' || kind === 'reel') {
     const local = URL.createObjectURL(body);
     const frames = await captureVideoFrames(local, 1).finally(() => URL.revokeObjectURL(local));
     if (frames[0]) coverUrl = await uploadCover(dataUrlToBlob(frames[0]), () => {});

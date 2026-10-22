@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { isAllowedMediaRef, kindOfType } from '@/lib/free-media';
 
-export const VALID_MEDIA_TYPES = ['mp3', 'video', 'image', 'pdf'] as const;
+export const VALID_MEDIA_TYPES = ['mp3', 'video', 'reel', 'image', 'pdf'] as const;
 
 export type MediaItemInput = {
   title: string;

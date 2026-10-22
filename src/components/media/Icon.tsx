@@ -12,7 +12,7 @@ export type IconName =
   | 'video' | 'audio' | 'image' | 'pdf' | 'play' | 'pause' | 'download' | 'share' | 'home'
   | 'back' | 'forward' | 'moon' | 'search' | 'upload' | 'trash' | 'edit' | 'eye' | 'check'
   | 'close' | 'zap' | 'mail' | 'external' | 'next' | 'tag' | 'grid' | 'up' | 'down' | 'loader'
-  | 'alert' | 'book' | 'cart' | 'heart' | 'info' | 'badge';
+  | 'alert' | 'book' | 'cart' | 'heart' | 'info' | 'badge' | 'reel' | 'comment' | 'volume' | 'mute' | 'send' | 'smile';
 
 const PATHS: Record<IconName, JSX.Element> = {
   video: <><rect x="2.5" y="5" width="15" height="14" rx="2.5" /><path d="M17.5 10l4-2.5v9l-4-2.5" /></>,
@@ -49,9 +49,15 @@ const PATHS: Record<IconName, JSX.Element> = {
   heart: <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0112 7a4.3 4.3 0 017.5 2.8C19.5 15.4 12 20 12 20z" />,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.5v.01" /></>,
   badge: <><circle cx="12" cy="9" r="5.5" /><path d="M8.5 13.5L7 21l5-2.5 5 2.5-1.5-7.5" /></>,
+  reel: <><rect x="6" y="2.5" width="12" height="19" rx="3" /><path d="M10.5 9.5v5l4-2.5z" fill="currentColor" stroke="none" /></>,
+  comment: <path d="M4 5.5h16a1 1 0 011 1v10a1 1 0 01-1 1H10l-4.5 3.5V17.5H4a1 1 0 01-1-1v-10a1 1 0 011-1z" />,
+  volume: <><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path d="M15.5 9a4.5 4.5 0 010 6M18 6.5a8 8 0 010 11" /></>,
+  mute: <><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path d="M16 9.5l5 5M21 9.5l-5 5" /></>,
+  send: <path d="M4 12l16-7.5-6 16-2.5-6.5z" />,
+  smile: <><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4.5 4.5 0 007 0M9 9.5v.01M15 9.5v.01" /></>,
 };
 
-const DIR_AWARE: IconName[] = ['back', 'forward', 'next'];
+const DIR_AWARE: IconName[] = ['back', 'forward', 'next', 'send'];
 
 export default function Icon({ name, size = 20, className = '', spin = false, ...rest }: {
   name: IconName;

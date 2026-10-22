@@ -8,6 +8,7 @@ import Icon from './Icon';
  * Audio cards carry a small waveform mark so a song never reads as a video.
  */
 const TILE: Record<MediaKind, string> = {
+  reel:  'from-[#1a1a2e] to-[#3b1f4e] text-white/70',
   video: 'from-[#1a1a2e] to-[#2d2d4e] text-white/70',
   audio: 'from-[#2a2140] to-[#4a3a6b] text-[#F5C518]/80',
   image: 'from-[#fff6dc] to-[#fde7a6] text-[#b4830a]',
@@ -44,7 +45,7 @@ export default function MediaThumb({ kind, coverUrl, title, durationSec, classNa
           {[5, 9, 6, 11, 7].map((h, i) => <span key={i} className="w-[2px] rounded-full bg-[#F5C518]" style={{ height: h }} />)}
         </span>
       )}
-      {kind === 'video' && coverUrl && (
+      {(kind === 'video' || kind === 'reel') && coverUrl && (
         <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition" aria-hidden>
           <span className="w-12 h-12 rounded-full bg-black/55 flex items-center justify-center text-white backdrop-blur-sm">
             <Icon name="play" size={22} />

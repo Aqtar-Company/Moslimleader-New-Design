@@ -20,6 +20,7 @@ const MAX_VIDEO_MB = Number(process.env.NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB) || 50;
 const LIMITS: Record<string, number> = {
   mp3: 150 * MB,
   video: MAX_VIDEO_MB * MB,
+  reel: MAX_VIDEO_MB * MB,
   pdf: 50 * MB,
   image: 15 * MB,
   cover: 5 * MB,
@@ -60,7 +61,7 @@ function sniffImage(b: Buffer, ext: string): Sniff {
   return null;
 }
 
-const FOLDER: Record<string, string> = { mp3: 'audio', video: 'video', pdf: 'pdfs', image: 'images', cover: 'covers' };
+const FOLDER: Record<string, string> = { mp3: 'audio', video: 'video', reel: 'reels', pdf: 'pdfs', image: 'images', cover: 'covers' };
 
 export async function POST(req: NextRequest) {
   const guard = await requirePerm(['free-media.write', 'books.write']);
@@ -79,12 +80,12 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     let sniff: Sniff = null;
     if (type === 'mp3') sniff = sniffAudio(buffer, ext);
-    else if (type === 'video') sniff = sniffVideo(buffer, ext);
+    else if (type === 'video' || type === 'reel') sniff = sniffVideo(buffer, ext);
     else if (type === 'pdf') sniff = buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46 ? { ext: 'pdf', contentType: 'application/pdf' } : null;
     else sniff = sniffImage(buffer, ext);
 
     if (!sniff) {
-      const allowed = type === 'mp3' ? 'mp3, m4a, ogg, wav' : type === 'video' ? 'mp4, webm, mov' : type === 'pdf' ? 'pdf' : 'jpg, png, webp';
+      const allowed = type === 'mp3' ? 'mp3, m4a, ogg, wav' : (type === 'video' || type === 'reel') ? 'mp4, webm, mov' : type === 'pdf' ? 'pdf' : 'jpg, png, webp';
       return NextResponse.json({ error: `الملف غير صالح أو امتداده لا يطابق محتواه (المسموح: ${allowed})` }, { status: 400 });
     }
 

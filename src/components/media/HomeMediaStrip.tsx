@@ -40,7 +40,7 @@ export default function HomeMediaStrip({ items }: { items: PublicMediaItem[] }) 
             return (
               <Link
                 key={item.id}
-                href={`/media/${item.id}`}
+                href={item.kind === 'reel' ? `/media/reels/${item.id}` : `/media/${item.id}`}
                 className="group shrink-0 snap-start w-60 sm:w-64 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F5C518]"
               >
                 <MediaThumb

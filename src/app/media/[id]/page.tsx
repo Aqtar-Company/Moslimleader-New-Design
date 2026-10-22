@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { getAuthUser } from '@/lib/jwt';
+import { reactionSummaries, commentCounts } from '@/lib/free-media-social';
 import { loadMediaItem, absoluteMediaUrl } from '@/lib/free-media-query';
 import { SITE_URL, ORG_OG_IMAGE } from '@/lib/seo';
 import { KIND_LABEL } from '@/lib/free-media-shared';
@@ -39,5 +41,19 @@ export default async function MediaItemPage({ params }: { params: { id: string }
   if (!Number.isInteger(id)) notFound();
   const data = await loadMediaItem(id);
   if (!data) notFound();
-  return <MediaWatch item={data.item} upNext={data.upNext} />;
+  // A reel lives in the swipe viewer; an old /media/<id> link to one lands there.
+  if (data.item.kind === 'reel') redirect(`/media/reels/${id}`);
+  const viewer = await getAuthUser().catch(() => null);
+  const [reactions, comments] = await Promise.all([
+    reactionSummaries([id], viewer?.userId ?? null).catch(() => new Map()),
+    commentCounts([id]).catch(() => new Map()),
+  ]);
+  return (
+    <MediaWatch
+      item={data.item}
+      upNext={data.upNext}
+      reactions={reactions.get(id) ?? { counts: {}, total: 0, mine: null }}
+      commentCount={comments.get(id) ?? 0}
+    />
+  );
 }

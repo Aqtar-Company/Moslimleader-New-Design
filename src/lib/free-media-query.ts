@@ -83,3 +83,12 @@ export async function loadLatestMedia(limit = 8): Promise<PublicMediaItem[]> {
 export async function loadReels(): Promise<PublicMediaItem[]> {
   return (await fetchRows({ type: 'reel' })).map(toPublic).filter((i): i is PublicMediaItem => !!i);
 }
+
+/** The Setting row holding the /media hero image: `{ url: string | null }`. */
+export const MEDIA_HERO_KEY = 'media-hero';
+
+export async function loadMediaHero(): Promise<string | null> {
+  const row = await prisma.setting.findUnique({ where: { key: MEDIA_HERO_KEY } });
+  const url = (row?.value as { url?: unknown } | null)?.url;
+  return typeof url === 'string' && url ? url : null;
+}

@@ -3,13 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { requirePerm } from '@/lib/permissions';
 import { putToR2 } from '@/lib/r2';
-import { R2_MEDIA_PREFIX, compressCover, drawingPreview, drawingThumb } from '@/lib/free-media';
+import { R2_MEDIA_PREFIX, compressCover, drawingPreview, drawingThumb, heroImage } from '@/lib/free-media';
 
 /**
  * Upload one file for the media library. Everything goes to R2 — see src/lib/free-media.ts
  * for why `public/` cannot hold a file uploaded after the build.
  *
- * `type`: 'mp3' (audio) | 'video' | 'pdf' | 'image' (a drawing) | 'cover' (a thumbnail).
+ * `type`: 'mp3' (audio) | 'video' | 'pdf' | 'image' (a drawing) | 'cover' (a thumbnail)
+ *   | 'hero' (the /media page's banner).
  *
  * The video limit is the SAME number nginx enforces for this site
  * (`NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB`, see CLAUDE.md): a larger limit here would be a lie,
@@ -25,6 +26,7 @@ const LIMITS: Record<string, number> = {
   image: 25 * MB,
   // A phone photo is often 6–12 MB; the server keeps only its compressed copy anyway.
   cover: 25 * MB,
+  hero: 25 * MB,
 };
 
 type Sniff = { ext: string; contentType: string } | null;
@@ -70,7 +72,7 @@ function sniffImage(b: Buffer): Sniff {
   return null;
 }
 
-const FOLDER: Record<string, string> = { mp3: 'audio', video: 'video', reel: 'reels', pdf: 'pdfs', image: 'images', cover: 'covers' };
+const FOLDER: Record<string, string> = { mp3: 'audio', video: 'video', reel: 'reels', pdf: 'pdfs', image: 'images', cover: 'covers', hero: 'heroes' };
 
 export async function POST(req: NextRequest) {
   const guard = await requirePerm(['free-media.write', 'books.write']);
@@ -111,6 +113,14 @@ export async function POST(req: NextRequest) {
       const url = small
         ? await putToR2(`${R2_MEDIA_PREFIX}covers/${id}.jpg`, small, 'image/jpeg')
         : await putToR2(`${R2_MEDIA_PREFIX}covers/${id}.${sniff.ext}`, buffer, sniff.contentType);
+      return NextResponse.json({ url });
+    }
+
+    if (type === 'hero') {
+      const wide = await heroImage(buffer).catch(() => null);
+      const url = wide
+        ? await putToR2(`${R2_MEDIA_PREFIX}heroes/${id}.jpg`, wide, 'image/jpeg')
+        : await putToR2(`${R2_MEDIA_PREFIX}heroes/${id}.${sniff.ext}`, buffer, sniff.contentType);
       return NextResponse.json({ url });
     }
 

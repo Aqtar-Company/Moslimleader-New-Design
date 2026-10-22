@@ -7,7 +7,6 @@ import { MEDIA_KINDS, KIND_LABEL, isMediaKind, type MediaKind } from '@/lib/free
 import type { PublicMediaCategory, PublicMediaItem } from '@/lib/free-media-query';
 import MediaThumb from '@/components/media/MediaThumb';
 import Icon from '@/components/media/Icon';
-import MediaNavBar from '@/components/media/MediaNavBar';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
 
 /**
@@ -15,7 +14,7 @@ import { useMediaDownload } from '@/components/media/useMediaDownload';
  * row of chips under them (the YouTube pattern), and a grid of thumbnails. The chosen tab
  * and chip live in the URL, so «قصص قبل النوم» is a link that can be shared as it is.
  */
-export default function MediaBrowser({ items, categories }: { items: PublicMediaItem[]; categories: PublicMediaCategory[] }) {
+export default function MediaBrowser({ items, categories, heroUrl }: { items: PublicMediaItem[]; categories: PublicMediaCategory[]; heroUrl: string | null }) {
   const { lang } = useLang();
   const isEn = lang === 'en';
   const router = useRouter();
@@ -58,12 +57,19 @@ export default function MediaBrowser({ items, categories }: { items: PublicMedia
   return (
     <div className="min-h-screen bg-[#FAF8F3]" dir={isEn ? 'ltr' : 'rtl'}>
       {/* The site header is fixed and transparent with white icons; this band sits behind
-          it so they stay readable, and carries the page's title and search. */}
-      <div className="bg-[#1a1a2e] pt-24 pb-7">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-4">
-          <MediaNavBar fallback="/" />
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          it so they stay readable, and carries the page's title and search. With a hero
+          image (set in /admin/free-media) the band grows and the picture fills it, darkened
+          toward the bottom where the title sits. No home/back bar here: this IS the top of
+          the library, and the site header already leads home. */}
+      <div className={`relative bg-[#1a1a2e] pt-24 pb-7 overflow-hidden ${heroUrl ? 'min-h-[340px] sm:min-h-[400px] flex flex-col justify-end' : ''}`}>
+        {heroUrl && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={heroUrl} alt="" fetchPriority="high" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a2e] via-[#1a1a2e]/45 to-[#1a1a2e]/25" aria-hidden />
+          </>
+        )}
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-white" style={{ textWrap: 'balance' } as React.CSSProperties}>
               {t('وسائط مسلم ليدر', 'Moslim Leader Media')}

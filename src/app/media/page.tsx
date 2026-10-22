@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
-import { loadMediaLibrary } from '@/lib/free-media-query';
+import { loadMediaHero, loadMediaLibrary } from '@/lib/free-media-query';
 import MediaBrowser from './MediaBrowser';
 
 export const metadata: Metadata = {
@@ -17,6 +17,9 @@ export const metadata: Metadata = {
 
 export default async function MediaPage() {
   // A failed read shows the empty state, never an error page: this is a public landing.
-  const data = await loadMediaLibrary().catch(() => ({ items: [], categories: [] }));
-  return <MediaBrowser items={data.items} categories={data.categories} />;
+  const [data, heroUrl] = await Promise.all([
+    loadMediaLibrary().catch(() => ({ items: [], categories: [] })),
+    loadMediaHero().catch(() => null),
+  ]);
+  return <MediaBrowser items={data.items} categories={data.categories} heroUrl={heroUrl} />;
 }

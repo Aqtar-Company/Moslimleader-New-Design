@@ -12,7 +12,7 @@ export type IconName =
   | 'video' | 'audio' | 'image' | 'pdf' | 'play' | 'pause' | 'download' | 'share' | 'home'
   | 'back' | 'forward' | 'moon' | 'search' | 'upload' | 'trash' | 'edit' | 'eye' | 'check'
   | 'close' | 'zap' | 'mail' | 'external' | 'next' | 'tag' | 'grid' | 'up' | 'down' | 'loader'
-  | 'alert' | 'book' | 'cart' | 'heart' | 'info' | 'badge' | 'reel' | 'comment' | 'volume' | 'mute' | 'send' | 'smile' | 'link' | 'more';
+  | 'alert' | 'book' | 'cart' | 'heart' | 'info' | 'badge' | 'reel' | 'comment' | 'volume' | 'mute' | 'send' | 'smile' | 'link' | 'more' | 'list';
 
 const PATHS: Record<IconName, JSX.Element> = {
   video: <><rect x="2.5" y="5" width="15" height="14" rx="2.5" /><path d="M17.5 10l4-2.5v9l-4-2.5" /></>,
@@ -56,6 +56,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   send: <path d="M4 12l16-7.5-6 16-2.5-6.5z" />,
   smile: <><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4.5 4.5 0 007 0M9 9.5v.01M15 9.5v.01" /></>,
   link: <><path d="M10 14a4.5 4.5 0 006.4 0l3-3a4.5 4.5 0 00-6.4-6.4l-1.2 1.2" /><path d="M14 10a4.5 4.5 0 00-6.4 0l-3 3a4.5 4.5 0 006.4 6.4l1.2-1.2" /></>,
+  list: <><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6h.01M4 12h.01M4 18h.01" strokeWidth={3} /></>,
   more: <><circle cx="5.5" cy="12" r="1.6" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" /><circle cx="18.5" cy="12" r="1.6" fill="currentColor" stroke="none" /></>,
 };
 

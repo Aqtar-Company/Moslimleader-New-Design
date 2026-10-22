@@ -42,13 +42,33 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
   const waveRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
+  /*
+   * How many bars fit. A fixed 120 bars with 2px gaps needs 240px of gaps alone; on a phone
+   * the bar is narrower than that, every bar was squeezed to zero width, and what showed
+   * was a few stray lines with wide holes between them. So the count follows the width:
+   * one bar per 4px (2px bar + 2px gap), at most BARS.
+   */
+  const [count, setCount] = useState(BARS);
+  useEffect(() => {
+    const el = waveRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([e]) => setCount(Math.max(24, Math.min(BARS, Math.floor(e.contentRect.width / 4)))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const bars = useMemo(() => {
     if (waveform && waveform.length) {
-      // Resample whatever was stored to the bar count drawn here.
-      return Array.from({ length: BARS }, (_, i) => waveform[Math.floor((i / BARS) * waveform.length)] ?? 10);
+      // Resample what was stored to the bars drawn here, keeping each stretch's PEAK so a
+      // loud moment is not lost between two samples.
+      return Array.from({ length: count }, (_, i) => {
+        const from = Math.floor((i / count) * waveform.length);
+        const to = Math.max(from + 1, Math.floor(((i + 1) / count) * waveform.length));
+        return Math.max(...waveform.slice(from, to)) || 10;
+      });
     }
-    return Array.from({ length: BARS }, (_, i) => 30 + ((i * 37) % 23)); // even, plainly decorative
-  }, [waveform]);
+    return Array.from({ length: count }, (_, i) => 30 + ((i * 37) % 23)); // even, plainly decorative
+  }, [waveform, count]);
 
   useEffect(() => { setTime(0); setPlaying(false); setDuration(durationSec ?? 0); }, [src, durationSec]);
 
@@ -74,7 +94,7 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-[#1a1a2e] aspect-square sm:aspect-[16/9]">
+    <div className="relative overflow-hidden rounded-2xl bg-[#1a1a2e] aspect-[4/3] sm:aspect-[21/9]">
       {/* The cover, large. Without one, the kind's tile. */}
       {coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -95,7 +115,7 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
       {/* Title, top — clicks pass through to the cover. */}
       <div className="absolute top-0 inset-x-0 p-4 sm:p-6 pointer-events-none">
         {label && <p className="inline-block text-[11px] font-bold px-2 py-0.5 rounded bg-black/55 text-[#F5C518] mb-1.5">{label}</p>}
-        <p className="text-white text-lg sm:text-2xl font-black leading-snug drop-shadow line-clamp-2">
+        <p className="text-white text-base sm:text-2xl font-black leading-snug drop-shadow line-clamp-2">
           <span className="bg-black/45 box-decoration-clone px-1.5 rounded">{title}</span>
         </p>
       </div>
@@ -107,7 +127,7 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
           type="button"
           onClick={toggle}
           aria-label={playing ? (isEn ? 'Pause' : 'إيقاف مؤقت') : (isEn ? 'Play' : 'تشغيل')}
-          className="shrink-0 mb-6 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#F5C518] text-[#1a1a2e] flex items-center justify-center shadow-xl hover:scale-105 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="shrink-0 mb-6 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[#F5C518] text-[#1a1a2e] flex items-center justify-center shadow-xl hover:scale-105 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           {loading && !playing ? <Icon name="loader" size={26} spin /> : <Icon name={playing ? 'pause' : 'play'} size={26} className={playing ? '' : 'translate-x-[1px]'} />}
         </button>
@@ -133,10 +153,10 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
             if (fwd || bwd) { e.preventDefault(); a.currentTime = Math.max(0, Math.min(duration, a.currentTime + (fwd ? 5 : -5))); setTime(a.currentTime); }
             if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); }
           }}
-          className="relative h-20 sm:h-24 flex items-end gap-[2px] cursor-pointer touch-none select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F5C518] rounded"
+          className="relative h-14 sm:h-20 flex items-end gap-[2px] cursor-pointer touch-none select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F5C518] rounded"
         >
           {bars.map((h, i) => {
-            const played = (i + 0.5) / BARS <= progress;
+            const played = (i + 0.5) / bars.length <= progress;
             return (
               <span
                 key={i}

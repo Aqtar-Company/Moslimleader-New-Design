@@ -915,9 +915,13 @@ Books are protected from download at two levels:
   `role === 'admin'` while the nav granted the page to staff with the permission.
 - **Media library weight and speed.** Covers are stored only as a compressed JPEG (≤1280px,
   sharp); a drawing keeps its ORIGINAL for download plus `previewUrl` (WebP ≤1400px, what the
-  pages show) and a 600px thumbnail as its cover. Videos over 40 MB are re-encoded to 720p in
-  the ADMIN's browser (`transcodeVideo`, the Tareeq pipeline) before upload — never on the
-  server. Audio is not re-encoded. «ضغط الصور الحالية» (`/api/admin/free-media/optimize`, 8
+  pages show) and a 600px thumbnail as its cover. Videos over 40 MB — sources up to 4 GB and 3
+  hours — are re-encoded to 720p in the ADMIN's browser (`transcodeVideo`, the Tareeq pipeline,
+  with `videoBitrate`/`maxDurationSeconds` options) before upload, never on the server; the
+  bitrate is fitted to the duration so the result lands under `NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB`
+  (1.5 Mbps down to a 450 kbps floor), and a result still over the cap is refused with a
+  reason instead of hitting nginx's 413. Uploaded images are judged by their BYTES, not
+  their name — a PNG cover sent as «cover.jpg» used to be refused as a mismatch. Audio is not re-encoded. «ضغط الصور الحالية» (`/api/admin/free-media/optimize`, 8
   items per call) brings older uploads down to size. Audio items carry `waveform` (~120 peaks
   measured in the admin's browser by `computeWaveform`, decoded at 8 kHz mono; «قياس موجات
   الصوتيات» backfills via the download route, which does not count admin reads). The player

@@ -22,8 +22,9 @@ const LIMITS: Record<string, number> = {
   video: MAX_VIDEO_MB * MB,
   reel: MAX_VIDEO_MB * MB,
   pdf: 50 * MB,
-  image: 15 * MB,
-  cover: 5 * MB,
+  image: 25 * MB,
+  // A phone photo is often 6–12 MB; the server keeps only its compressed copy anyway.
+  cover: 25 * MB,
 };
 
 type Sniff = { ext: string; contentType: string } | null;
@@ -49,15 +50,23 @@ function sniffVideo(b: Buffer, ext: string): Sniff {
   return null;
 }
 
-function sniffImage(b: Buffer, ext: string): Sniff {
+/**
+ * An image is judged by its BYTES, not its name. The extension used to have to match the
+ * content, and the cover upload broke on exactly that: the browser compresses a cover and
+ * a PNG or WebP stays PNG/WebP (or is sent untouched when compressing would not shrink it),
+ * while the file was always named «cover.jpg» — so a perfectly good picture was refused as
+ * «امتداده لا يطابق محتواه». Covers and drawing previews are re-encoded by sharp anyway.
+ */
+function sniffImage(b: Buffer): Sniff {
   const isJpeg = b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF;
   const isPng = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47;
   const isWebp = b.length > 11 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50;
-  const isAvif = b.length > 11 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70;
-  if ((ext === 'jpg' || ext === 'jpeg') && isJpeg) return { ext: 'jpg', contentType: 'image/jpeg' };
-  if (ext === 'png' && isPng) return { ext, contentType: 'image/png' };
-  if (ext === 'webp' && isWebp) return { ext, contentType: 'image/webp' };
-  if (ext === 'avif' && isAvif) return { ext, contentType: 'image/avif' };
+  const brand = b.length > 11 ? b.subarray(8, 12).toString('latin1') : '';
+  const isFtyp = b.length > 11 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70;
+  if (isJpeg) return { ext: 'jpg', contentType: 'image/jpeg' };
+  if (isPng) return { ext: 'png', contentType: 'image/png' };
+  if (isWebp) return { ext: 'webp', contentType: 'image/webp' };
+  if (isFtyp && (brand === 'avif' || brand === 'avis')) return { ext: 'avif', contentType: 'image/avif' };
   return null;
 }
 
@@ -82,11 +91,16 @@ export async function POST(req: NextRequest) {
     if (type === 'mp3') sniff = sniffAudio(buffer, ext);
     else if (type === 'video' || type === 'reel') sniff = sniffVideo(buffer, ext);
     else if (type === 'pdf') sniff = buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46 ? { ext: 'pdf', contentType: 'application/pdf' } : null;
-    else sniff = sniffImage(buffer, ext);
+    else sniff = sniffImage(buffer);
 
     if (!sniff) {
       const allowed = type === 'mp3' ? 'mp3, m4a, ogg, wav' : (type === 'video' || type === 'reel') ? 'mp4, webm, mov' : type === 'pdf' ? 'pdf' : 'jpg, png, webp';
-      return NextResponse.json({ error: `الملف غير صالح أو امتداده لا يطابق محتواه (المسموح: ${allowed})` }, { status: 400 });
+      const heic = (type === 'cover' || type === 'image') && buffer.length > 11 && buffer.subarray(4, 8).toString('latin1') === 'ftyp' && /hei[cx]|mif1|msf1/.test(buffer.subarray(8, 12).toString('latin1'));
+      return NextResponse.json({
+        error: heic
+          ? 'صور آيفون بصيغة HEIC غير مدعومة هنا — صدّرها JPG (أو صوّر بإعداد «الأكثر توافقاً») وأعد الرفع'
+          : `الملف غير صالح أو امتداده لا يطابق محتواه (المسموح: ${allowed})`,
+      }, { status: 400 });
     }
 
     const id = randomUUID();

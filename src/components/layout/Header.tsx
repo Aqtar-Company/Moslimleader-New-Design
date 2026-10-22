@@ -76,6 +76,15 @@ export default function Header() {
               </svg>
             </Link>
 
+            {/* Free media — from md up. On a phone the side holds two icons at most; there the
+                way in is the menu and the hero button on the home page. */}
+            <Link href="/media" className={iconBtn.replace('relative flex ', 'relative hidden md:flex ')} aria-label="الوسائط المجانية" title="الوسائط المجانية">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="14" rx="2.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 9.5v5l4.5-2.5L10 9.5z" fill="currentColor" />
+              </svg>
+            </Link>
+
             {/* Cart */}
             <Link href="/cart" className={iconBtn} aria-label="Cart">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

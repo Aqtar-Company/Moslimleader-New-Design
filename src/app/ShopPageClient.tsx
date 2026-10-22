@@ -7,6 +7,8 @@ import { useSearchParams } from 'next/navigation';
 import { products as staticProducts, categories } from '@/lib/products';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
+import HomeMediaStrip from '@/components/media/HomeMediaStrip';
+import type { PublicMediaItem } from '@/lib/free-media-query';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 
@@ -294,7 +296,7 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
   );
 }
 
-export default function ShopPageClient({ initialProducts }: { initialProducts?: Product[] }) {
+export default function ShopPageClient({ initialProducts, latestMedia = [] }: { initialProducts?: Product[]; latestMedia?: PublicMediaItem[] }) {
   const { t, lang } = useLang();
   const isRtl = lang === 'ar';
 
@@ -303,7 +305,7 @@ export default function ShopPageClient({ initialProducts }: { initialProducts?: 
       <section className="relative w-full h-screen overflow-hidden">
         <HeroSlideshow />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/75" style={{ zIndex: 2 }} />
-        <div className="absolute inset-x-0 bottom-24 flex flex-col items-center text-center px-6"
+        <div className="absolute inset-x-0 bottom-32 sm:bottom-24 flex flex-col items-center text-center px-6"
           style={{ zIndex: 3 }} dir={isRtl ? 'rtl' : 'ltr'}>
           <h1 className="text-2xl sm:text-4xl md:text-6xl font-black text-white drop-shadow-lg leading-tight">
             {t('home.hero.title')}
@@ -311,8 +313,9 @@ export default function ShopPageClient({ initialProducts }: { initialProducts?: 
           <p className="text-white/80 mt-3 text-base sm:text-lg md:text-xl max-w-xl drop-shadow">
             {t('home.hero.subtitle')}
           </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link href="/library"
-            className="mt-6 inline-flex items-center gap-2 bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-bold px-6 py-3 rounded-xl transition-all hover:scale-105 shadow-lg">
+            className="inline-flex items-center gap-2 bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-bold px-6 py-3 rounded-xl transition-all hover:scale-105 shadow-lg">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
             </svg>
@@ -321,6 +324,13 @@ export default function ShopPageClient({ initialProducts }: { initialProducts?: 
               {isRtl ? 'جديد' : 'NEW'}
             </span>
           </Link>
+          {/* The free media library — the second door from the front page. */}
+          <Link href="/media"
+            className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/40 font-bold px-6 py-3 rounded-xl transition-all hover:scale-105 backdrop-blur-sm">
+            <span aria-hidden>🎬</span>
+            {isRtl ? 'وسائط مجانية' : 'Free Media'}
+          </Link>
+          </div>
         </div>
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce" style={{ zIndex: 3 }}>
           <span className="text-white/60 text-xs tracking-widest uppercase">scroll</span>
@@ -335,6 +345,8 @@ export default function ShopPageClient({ initialProducts }: { initialProducts?: 
           <ShopContent ssrProducts={initialProducts} />
         </Suspense>
       </FadeInSection>
+
+      <HomeMediaStrip items={latestMedia} />
     </>
   );
 }

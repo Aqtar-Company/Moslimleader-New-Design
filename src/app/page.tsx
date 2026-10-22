@@ -6,6 +6,7 @@ import { getMergedStaticProducts, loadProductOrder, applyProductOrder, orderProd
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import type { Product } from '@/types';
+import { loadLatestMedia, type PublicMediaItem } from '@/lib/free-media-query';
 
 export const metadata: Metadata = {
   title: 'مسلم ليدر | متجر تربوي إسلامي للأطفال — كتب وألعاب ومنتجات راقية',
@@ -56,8 +57,23 @@ async function getProducts(): Promise<Product[]> {
   }
 }
 
+/**
+ * The home page's «وسائط مجانية» strip. Its own short deadline and its own catch: the media
+ * library is a side door, and nothing about it may delay or break the shop's front page.
+ */
+async function getLatestMedia(): Promise<PublicMediaItem[]> {
+  try {
+    return await Promise.race([
+      loadLatestMedia(8),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500)),
+    ]);
+  } catch {
+    return [];
+  }
+}
+
 export default async function Page() {
-  const products = await getProducts();
+  const [products, media] = await Promise.all([getProducts(), getLatestMedia()]);
   return (
     <>
       <script
@@ -68,7 +84,7 @@ export default async function Page() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd()) }}
       />
-      <ShopPageClient initialProducts={products} />
+      <ShopPageClient initialProducts={products} latestMedia={media} />
     </>
   );
 }

@@ -24,9 +24,15 @@ export default function MediaBrowser({ items, categories }: { items: PublicMedia
   const kinds = useMemo(() => MEDIA_KINDS.filter(k => items.some(i => i.kind === k)), [items]);
   const qKind = params.get('kind');
   const kind: MediaKind | null = isMediaKind(qKind) && kinds.includes(qKind) ? qKind : (kinds[0] ?? null);
-  const qCat = Number(params.get('cat'));
+  // A tab opens on its FIRST category (the admin's order), not on «الكل» — the shelf the
+  // admin put first is the one meant to greet people. «الكل» is still a chip, kept as
+  // `cat=all` in the URL so it is a choice of its own and not the absence of one.
+  const qCatRaw = params.get('cat');
+  const qCat = Number(qCatRaw);
   const kindCats = categories.filter(c => c.kind === kind);
-  const cat = kindCats.some(c => c.id === qCat) ? qCat : null;
+  const cat: number | null = qCatRaw === 'all'
+    ? null
+    : kindCats.some(c => c.id === qCat) ? qCat : (kindCats[0]?.id ?? null);
   const [query, setQuery] = useState('');
   const download = useMediaDownload();
 
@@ -36,7 +42,7 @@ export default function MediaBrowser({ items, categories }: { items: PublicMedia
   const setParam = (next: { kind?: MediaKind; cat?: number | null }) => {
     const sp = new URLSearchParams(params.toString());
     if (next.kind) { sp.set('kind', next.kind); sp.delete('cat'); }
-    if (next.cat !== undefined) { if (next.cat) sp.set('cat', String(next.cat)); else sp.delete('cat'); }
+    if (next.cat !== undefined) sp.set('cat', next.cat ? String(next.cat) : 'all');
     router.replace(`/media${sp.toString() ? `?${sp}` : ''}`, { scroll: false });
   };
 
@@ -105,7 +111,7 @@ export default function MediaBrowser({ items, categories }: { items: PublicMedia
             {/* Category chips */}
             {kindCats.length > 0 && (
               <div className="flex gap-2 mb-6 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                {[{ id: null as number | null, label: t('الكل', 'All') }, ...kindCats.map(c => ({ id: c.id as number | null, label: isEn && c.nameEn ? c.nameEn : c.name }))].map(chip => {
+                {[...kindCats.map(c => ({ id: c.id as number | null, label: isEn && c.nameEn ? c.nameEn : c.name })), { id: null as number | null, label: t('الكل', 'All') }].map(chip => {
                   const active = cat === chip.id;
                   return (
                     <button

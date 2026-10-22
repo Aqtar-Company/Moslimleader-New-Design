@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { requirePerm } from '@/lib/permissions';
 import { putToR2 } from '@/lib/r2';
-import { R2_MEDIA_PREFIX } from '@/lib/free-media';
+import { R2_MEDIA_PREFIX, compressCover, drawingPreview, drawingThumb } from '@/lib/free-media';
 
 /**
  * Upload one file for the media library. Everything goes to R2 — see src/lib/free-media.ts
@@ -88,8 +88,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `الملف غير صالح أو امتداده لا يطابق محتواه (المسموح: ${allowed})` }, { status: 400 });
     }
 
-    const key = `${R2_MEDIA_PREFIX}${FOLDER[type]}/${randomUUID()}.${sniff.ext}`;
-    const url = await putToR2(key, buffer, sniff.contentType);
+    const id = randomUUID();
+
+    // A cover is only ever shown small: store the compressed copy, never the original.
+    if (type === 'cover') {
+      const small = await compressCover(buffer).catch(() => null);
+      const url = small
+        ? await putToR2(`${R2_MEDIA_PREFIX}covers/${id}.jpg`, small, 'image/jpeg')
+        : await putToR2(`${R2_MEDIA_PREFIX}covers/${id}.${sniff.ext}`, buffer, sniff.contentType);
+      return NextResponse.json({ url });
+    }
+
+    const url = await putToR2(`${R2_MEDIA_PREFIX}${FOLDER[type]}/${id}.${sniff.ext}`, buffer, sniff.contentType);
+
+    // A drawing keeps its original for download, plus a light copy to SHOW and a small
+    // thumbnail for the grid. Failure here is not fatal: the original still works.
+    if (type === 'image') {
+      const [preview, thumb] = await Promise.all([
+        drawingPreview(buffer).catch(() => null),
+        drawingThumb(buffer).catch(() => null),
+      ]);
+      const previewUrl = preview ? await putToR2(`${R2_MEDIA_PREFIX}previews/${id}.webp`, preview, 'image/webp') : null;
+      const thumbUrl = thumb ? await putToR2(`${R2_MEDIA_PREFIX}covers/${id}.jpg`, thumb, 'image/jpeg') : null;
+      return NextResponse.json({ url, previewUrl, thumbUrl });
+    }
+
     return NextResponse.json({ url });
   } catch (err) {
     console.error('[admin free-media upload]', err);

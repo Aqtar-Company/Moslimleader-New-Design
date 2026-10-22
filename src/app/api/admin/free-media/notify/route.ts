@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
 
 function buildNotifyHtml(items: { id: number; title: string; type: string; url: string; coverUrl: string | null; description: string | null }[]) {
-  const typeLabel = (t: string) => t === 'mp3' ? '🎧 صوتي' : t === 'video' ? '🎬 فيديو' : t === 'image' ? '🖍️ رسمة' : '📄 PDF';
+  const typeLabel = (t: string) => t === 'mp3' ? 'صوتي' : t === 'video' ? 'فيديو' : t === 'image' ? 'رسمة' : 'PDF';
   // A cover is either a legacy disk path (relative) or an R2 URL (absolute).
   const abs = (u: string) => (/^https?:\/\//.test(u) ? u : `${siteUrl}${u}`);
   const siteUrl = 'https://moslimleader.com';
@@ -20,7 +20,7 @@ function buildNotifyHtml(items: { id: number; title: string; type: string; url: 
           <p style="margin:0 0 2px;font-size:13px;color:#888;">${typeLabel(item.type)}</p>
           <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1a1a2e;">${item.title}</p>
           ${item.description ? `<p style="margin:0 0 6px;font-size:12px;color:#666;">${item.description}</p>` : ''}
-          <a href="${siteUrl}/media/${item.id}" style="display:inline-block;background:#F5C518;color:#1a1a2e;font-weight:700;padding:5px 14px;border-radius:8px;font-size:12px;text-decoration:none;">▶ شاهد واستمع</a>
+          <a href="${siteUrl}/media/${item.id}" style="display:inline-block;background:#F5C518;color:#1a1a2e;font-weight:700;padding:5px 14px;border-radius:8px;font-size:12px;text-decoration:none;">شاهد واستمع</a>
         </div>
         <div style="clear:both;"></div>
       </td>
@@ -34,7 +34,7 @@ function buildNotifyHtml(items: { id: number; title: string; type: string; url: 
   <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
     <div style="background:#1a1a2e;padding:24px 28px;text-align:center;">
       ${emailLogoImg(siteUrl)}
-      <h1 style="color:#F5C518;font-size:18px;margin:12px 0 4px;">وسائط مجانية جديدة 🎁</h1>
+      <h1 style="color:#F5C518;font-size:18px;margin:12px 0 4px;">وسائط مجانية جديدة</h1>
       <p style="color:rgba(255,255,255,.75);font-size:13px;margin:0;">تم إضافة محتوى جديد في مسلم ليدر</p>
     </div>
     <div style="padding:24px 28px;">
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
           transporter.sendMail({
             from: `"مسلم ليدر" <${siteEmail}>`,
             to: r.email,
-            subject: '🎁 وسائط مجانية جديدة في مسلم ليدر',
+            subject: 'وسائط مجانية جديدة في مسلم ليدر',
             html,
           }).then(() => { sent++; }).catch(err => {
             console.error('[free-media notify] failed:', r.email, err?.message);

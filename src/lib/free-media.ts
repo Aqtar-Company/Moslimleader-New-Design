@@ -47,6 +47,59 @@ export function kindOfType(type: string): MediaKind | null {
 export const PUBLIC_MEDIA_SELECT = {
   id: true, title: true, titleEn: true, type: true, url: true, coverUrl: true,
   description: true, descriptionEn: true, durationSec: true, viewCount: true,
+  previewUrl: true, waveform: true,
   createdAt: true, categoryId: true,
   category: { select: { id: true, name: true, nameEn: true } },
 } as const;
+
+// ── compression ──────────────────────────────────────────────────────────────────────
+//
+// Pictures were stored exactly as uploaded: a 4 MB phone photo as a 300px thumbnail, a
+// 6 MB scan as a drawing everybody had to download in full just to SEE it. sharp is
+// already a dependency (Tareeq's uploads use it) and is cheap for stills — unlike video,
+// where a server-side re-encode would hold the CPU for minutes (see CLAUDE.md).
+
+async function sharpOf(buf: Buffer) {
+  const sharp = (await import('sharp')).default;
+  return sharp(buf, { failOn: 'none' }).rotate(); // honour EXIF orientation, then drop it
+}
+
+/** A thumbnail / cover: at most 1280px, JPEG ~q78. JPEG, not WebP, because WhatsApp and
+ *  Facebook previews are made from the cover and older scrapers refuse WebP. */
+export async function compressCover(buf: Buffer): Promise<Buffer> {
+  const img = await sharpOf(buf);
+  return img.resize(1280, 1280, { fit: 'inside', withoutEnlargement: true })
+    .flatten({ background: '#ffffff' })
+    .jpeg({ quality: 78, mozjpeg: true, progressive: true })
+    .toBuffer();
+}
+
+/** A drawing's display copy: 1400px wide at most, WebP. The original stays for download. */
+export async function drawingPreview(buf: Buffer): Promise<Buffer> {
+  const img = await sharpOf(buf);
+  return img.resize(1400, 1400, { fit: 'inside', withoutEnlargement: true })
+    .flatten({ background: '#ffffff' })
+    .webp({ quality: 80 })
+    .toBuffer();
+}
+
+/** A drawing's grid thumbnail: 600px, JPEG. */
+export async function drawingThumb(buf: Buffer): Promise<Buffer> {
+  const img = await sharpOf(buf);
+  return img.resize(600, 600, { fit: 'inside', withoutEnlargement: true })
+    .flatten({ background: '#ffffff' })
+    .jpeg({ quality: 76, mozjpeg: true })
+    .toBuffer();
+}
+
+/** The bytes of a stored file, from disk (legacy) or R2. Null when unreachable. */
+export async function readStoredMedia(url: string): Promise<Buffer | null> {
+  if (!isAllowedMediaRef(url)) return null;
+  if (url.startsWith('/free-media/')) {
+    const { readFile } = await import('fs/promises');
+    return readFile(path.join(process.cwd(), 'public', url)).catch(() => null);
+  }
+  const res = await fetch(url).catch(() => null);
+  if (!res || !res.ok) return null;
+  return Buffer.from(await res.arrayBuffer());
+}

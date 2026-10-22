@@ -8,6 +8,10 @@ import { useToast } from '@/components/ui/Toast';
 import { KIND_LABEL, formatDuration } from '@/lib/free-media-shared';
 import type { PublicMediaItem } from '@/lib/free-media-query';
 import MediaThumb from '@/components/media/MediaThumb';
+import Icon from '@/components/media/Icon';
+import MediaNavBar from '@/components/media/MediaNavBar';
+import AudioStage from '@/components/media/AudioStage';
+import { useMediaDownload } from '@/components/media/useMediaDownload';
 
 /**
  * One media item: the player, what it is, share and download, and what plays next.
@@ -111,7 +115,7 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
       m.volume = Math.max(0, start * (1 - step / 20));
       if (step >= 20) { clearInterval(id); m.pause(); m.volume = start; }
     }, 250);
-    addToast(t('انتهى مؤقّت النوم — تصبحون على خير 🌙', 'Sleep timer finished — good night 🌙'), 'info', 5000);
+    addToast(t('انتهى مؤقّت النوم — تصبحون على خير', 'Sleep timer finished — good night'), 'info', 5000);
   }, [addToast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -163,14 +167,8 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
     }
   };
 
-  const download = () => {
-    if (!user) {
-      addToast(t('أنشئ حساباً مجانياً لتحميل الملف — ثم ترجع هنا تلقائياً', 'Create a free account to download — you will come right back'), 'info', 4500);
-      router.push(`/login?mode=signup&redirect=${encodeURIComponent(`/media/${item.id}`)}`);
-      return;
-    }
-    window.location.href = `/api/media/${item.id}/download`;
-  };
+  const downloadById = useMediaDownload();
+  const download = () => downloadById(item.id);
 
   const sleepLeft = sleep?.until ? Math.max(0, Math.ceil((sleep.until - now) / 60_000)) : null;
   const sleepValue = !sleep ? 'off' : sleep.endOfTrack ? 'end' : 'custom';
@@ -180,12 +178,15 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
       {/* Behind the fixed, transparent site header — its icons are white. */}
       <div className="bg-[#1a1a2e] h-24" aria-hidden />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-16">
-        <nav className="text-sm text-gray-500 mb-3 flex items-center gap-1.5 flex-wrap">
+        <div className="mb-3 flex items-center gap-x-4 gap-y-2 flex-wrap">
+        <MediaNavBar fallback={`/media?kind=${item.kind}`} tone="light" />
+        <nav className="text-sm text-gray-500 flex items-center gap-1.5 flex-wrap" aria-label={t('مسار الصفحة', 'Breadcrumb')}>
           <Link href="/media" className="hover:text-[#1a1a2e] font-semibold">{t('الوسائط', 'Media')}</Link>
           <span aria-hidden>/</span>
           <Link href={`/media?kind=${item.kind}`} className="hover:text-[#1a1a2e]">{isEn ? KIND_LABEL[item.kind].en : KIND_LABEL[item.kind].ar}</Link>
           {item.category && (<><span aria-hidden>/</span><Link href={`/media?kind=${item.kind}&cat=${item.category.id}`} className="hover:text-[#1a1a2e]">{catName}</Link></>)}
         </nav>
+        </div>
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
           {/* ── main column ── */}
@@ -206,26 +207,23 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
                 />
               )}
               {item.kind === 'audio' && (
-                <div className="rounded-2xl bg-gradient-to-br from-[#1a1a2e] to-[#3a2f5c] p-5 sm:p-8 flex flex-col sm:flex-row items-center gap-6">
-                  <MediaThumb kind="audio" coverUrl={item.coverUrl} title={title} className="w-48 sm:w-56 aspect-square shrink-0 shadow-2xl" />
-                  <div className="w-full min-w-0">
-                    <p className="text-[#F5C518] text-xs font-bold mb-3">{catName ?? KIND_LABEL.audio.ar}</p>
-                    <audio
-                      ref={mediaRef}
-                      key={item.id}
-                      src={item.url}
-                      controls
-                      preload="metadata"
-                      onEnded={onEnded}
-                      onPlay={() => setCountdown(null)}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
+                <AudioStage
+                  ref={mediaRef}
+                  key={item.id}
+                  src={item.url}
+                  coverUrl={item.coverUrl}
+                  title={title}
+                  label={catName}
+                  waveform={item.waveform}
+                  durationSec={item.durationSec}
+                  isEn={isEn}
+                  onEnded={onEnded}
+                  onPlay={() => setCountdown(null)}
+                />
               )}
               {item.kind === 'image' && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.url} alt={title} className="w-full max-h-[80vh] object-contain rounded-2xl bg-white border border-gray-100" />
+                <img src={item.previewUrl ?? item.url} alt={title} decoding="async" className="w-full max-h-[80vh] object-contain rounded-2xl bg-white border border-gray-100" />
               )}
               {item.kind === 'pdf' && (
                 <div className="rounded-2xl bg-white border border-gray-100 p-6 flex flex-col items-center text-center gap-4">
@@ -240,7 +238,7 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
                   <p className="text-white/70 text-sm">{t('التالي خلال', 'Up next in')} <span className="font-black text-white tabular-nums">{countdown}</span></p>
                   <p className="text-white font-bold text-lg max-w-md line-clamp-2">{isEn && next.titleEn ? next.titleEn : next.title}</p>
                   <div className="flex gap-2">
-                    <button onClick={goNext} className="px-4 py-2 rounded-full bg-[#F5C518] text-[#1a1a2e] font-bold text-sm">{t('شغّل الآن', 'Play now')}</button>
+                    <button onClick={goNext} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F5C518] text-[#1a1a2e] font-bold text-sm"><Icon name="next" size={16} />{t('شغّل الآن', 'Play now')}</button>
                     <button onClick={() => setCountdown(null)} className="px-4 py-2 rounded-full bg-white/15 text-white font-bold text-sm">{t('إلغاء', 'Cancel')}</button>
                   </div>
                 </div>
@@ -257,11 +255,11 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
             {/* Actions */}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <button onClick={download} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1a1a2e] text-[#F5C518] font-bold text-sm hover:bg-[#25254a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5C518]">
-                <span aria-hidden>⬇️</span> {t('تحميل', 'Download')}
+                <Icon name="download" size={18} /> {t('تحميل', 'Download')}
                 {!user && <span className="text-[11px] font-semibold text-white/60">{t('(بحساب مجاني)', '(free account)')}</span>}
               </button>
               <button onClick={share} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#EFEBE2] text-[#1a1a2e] font-bold text-sm hover:bg-[#E5DFD2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5C518]">
-                <span aria-hidden>↗</span> {t('مشاركة', 'Share')}
+                <Icon name="share" size={18} /> {t('مشاركة', 'Share')}
               </button>
             </div>
 
@@ -281,7 +279,7 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
                   {t('تشغيل تلقائي للتالي', 'Autoplay next')}
                 </label>
                 <label className="flex items-center gap-2 text-sm font-semibold text-[#1a1a2e]">
-                  <span aria-hidden>🌙</span> {t('مؤقّت النوم', 'Sleep timer')}
+                  <Icon name="moon" size={18} /> {t('مؤقّت النوم', 'Sleep timer')}
                   <select
                     value={sleepValue}
                     onChange={e => chooseSleep(e.target.value)}
@@ -315,7 +313,7 @@ export default function MediaWatch({ item, upNext }: { item: PublicMediaItem; up
                     <Link href={`/media/${u.id}`} className="group flex gap-3 rounded-xl p-1 -m-1 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
                       <MediaThumb
                         kind={u.kind}
-                        coverUrl={u.coverUrl}
+                        coverUrl={u.coverUrl ?? u.previewUrl ?? null}
                         title={u.title}
                         durationSec={u.durationSec}
                         className={`w-40 shrink-0 ${u.kind === 'image' || u.kind === 'pdf' ? 'aspect-[4/3]' : 'aspect-video'}`}

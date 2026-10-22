@@ -9,6 +9,9 @@ export type PublicMediaItem = {
   id: number; title: string; titleEn: string | null; type: string; kind: MediaKind;
   url: string; coverUrl: string | null; description: string | null; descriptionEn: string | null;
   durationSec: number | null; viewCount: number; createdAt: string;
+  /** A drawing's light display copy; `url` stays the full original for download. */
+  previewUrl: string | null;
+  waveform: number[] | null;
   categoryId: number | null; category: { id: number; name: string; nameEn: string | null } | null;
 };
 export type PublicMediaCategory = { id: number; kind: MediaKind; name: string; nameEn: string | null };
@@ -25,7 +28,8 @@ function fetchRows(where: object = {}) {
 function toPublic(r: Row): PublicMediaItem | null {
   const kind = TYPE_TO_KIND[r.type];
   if (!kind) return null;
-  return { ...r, kind, createdAt: r.createdAt.toISOString() };
+  const waveform = Array.isArray(r.waveform) ? (r.waveform as unknown[]).map(n => Number(n) || 0) : null;
+  return { ...r, kind, waveform, createdAt: r.createdAt.toISOString() };
 }
 
 /** Every published item, and the categories that actually hold one (empty shelves hidden). */

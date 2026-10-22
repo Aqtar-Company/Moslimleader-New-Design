@@ -77,6 +77,9 @@ export async function transcodeVideo(
     /** Video bitrate; default 1.5 Mbps. The media library lowers it for long videos so the
      *  result fits under the upload cap nginx enforces. */
     videoBitrate?: number;
+    /** Longest edge of the output; default 1280 (720p). The media library steps down to
+     *  854 (480p) or 640 (360p) for long videos that cannot fit the upload cap at 720p. */
+    maxDimension?: number;
   },
 ): Promise<File | null> {
   const fail = (reason: CompressFailure, detail?: string): null => {
@@ -133,7 +136,7 @@ export async function transcodeVideo(
     const dw = videoTrack.displayWidth;
     const dh = videoTrack.displayHeight;
     const landscape = dw >= dh;
-    const longEdge = Math.min(TARGET_MAX_DIMENSION, landscape ? dw : dh);
+    const longEdge = Math.min(opts?.maxDimension ?? TARGET_MAX_DIMENSION, landscape ? dw : dh);
     const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
     const size = landscape ? { width: even(longEdge) } : { height: even(longEdge) };
 

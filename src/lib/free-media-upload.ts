@@ -134,20 +134,59 @@ export async function prepareAndUpload(
       if (!canTranscodeWithWebCodecs()) {
         if (file.size > limit) return { error: `الفيديو أكبر من ${MAX_UPLOAD_MB} ميجا ويحتاج ضغطاً، وهذا المتصفح لا يضغط الفيديو — افتح الأدمن من كروم أو إيدج` };
       } else {
+        /*
+         * Resolution steps down with the length. A long video cannot fit the cap at 720p
+         * without a bitrate so low the picture smears, and it looks better at 480p with
+         * enough bits than at 720p starved of them. Each step is tried in turn: when the
+         * result does not come out smaller than the source, or not under the cap, the next
+         * step is tried, instead of giving up.
+         */
         const secs = durationSec ?? 0;
         const fit = secs > 0 ? Math.floor(((limit * 0.9 * 8) / secs) - 128_000) : 1_500_000;
-        const bitrate = Math.max(450_000, Math.min(1_500_000, fit));
-        const expectMb = secs > 0 ? Math.round(((bitrate + 128_000) * secs) / 8 / MB) : null;
-        onStage('compressing', 0, expectMb ? `من ${Math.round(file.size / MB)} ميجا إلى نحو ${expectMb} ميجا` : undefined);
-        const out = await transcodeVideo(
-          file,
-          p => onStage('compressing', Math.round(p), expectMb ? `من ${Math.round(file.size / MB)} ميجا إلى نحو ${expectMb} ميجا` : undefined),
-          undefined,
-          { maxDurationSeconds: 3 * 60 * 60, videoBitrate: bitrate },
-        );
-        if (out && out.size < file.size) body = out;
-        else if (file.size > limit) return { error: 'تعذّر ضغط هذا الفيديو في المتصفح وهو أكبر من حد الرفع — جرّب ملفاً بصيغة MP4' };
-        else onStage('compressing', 100, 'تعذّر الضغط — يُرفع الأصل');
+        const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+        const all = [
+          { dim: 1280, label: '720p', br: clamp(fit, 450_000, 1_500_000) },
+          { dim: 854, label: '480p', br: clamp(fit, 300_000, 900_000) },
+          { dim: 640, label: '360p', br: clamp(fit, 200_000, 600_000) },
+        ];
+        // Start where the length allows: a video that already fits, or has room for 700 kbps,
+        // starts at 720p; one with room for 350 kbps at 480p; anything longer at 360p.
+        const start = file.size <= limit || fit >= 700_000 ? 0 : fit >= 350_000 ? 1 : 2;
+        const steps = all.slice(start);
+
+        let reason: string | null = null;
+        let done = false;
+        for (let i = 0; i < steps.length && !done; i++) {
+          const st = steps[i];
+          const expectMb = secs > 0 ? Math.round(((st.br + 128_000) * secs) / 8 / MB) : null;
+          const note = `${st.label} — من ${Math.round(file.size / MB)} ميجا${expectMb ? ` إلى نحو ${expectMb} ميجا` : ''}${i > 0 ? ' (محاولة بجودة أقل)' : ''}`;
+          onStage('compressing', 0, note);
+          let failure: string | null = null;
+          const out = await transcodeVideo(
+            file,
+            p => onStage('compressing', Math.round(p), note),
+            r => { failure = r; },
+            { maxDurationSeconds: 3 * 60 * 60, videoBitrate: st.br, maxDimension: st.dim },
+          );
+          if (out && out.size < file.size && out.size <= limit) { body = out; done = true; break; }
+          if (out && out.size < file.size && file.size <= limit) { body = out; done = true; break; }
+          reason = out ? 'not-smaller' : failure;
+          // Only these two are worth another try at a lower size; anything else (a codec
+          // this browser cannot read, a broken file) fails the same way at every size.
+          if (reason !== 'not-smaller' && !(out && out.size > limit)) break;
+        }
+        if (!done) {
+          const why: Record<string, string> = {
+            'no-video-track': 'ترميز الفيديو لا يقرؤه هذا المتصفح (غالباً HEVC / H.265) — صدّره بترميز H.264 من برنامج المونتاج',
+            'unreadable': 'تعذّرت قراءة الملف — قد يكون تالفاً أو بصيغة غير مدعومة',
+            'too-long': 'الفيديو أطول من 3 ساعات',
+            'unsupported-browser': 'هذا المتصفح لا يستطيع ترميز الفيديو — افتح الأدمن من كروم أو إيدج على الكمبيوتر',
+            'not-smaller': 'الفيديو مضغوط أصلاً ولم يصغر أكثر حتى بجودة 360p',
+          };
+          const msg = why[reason ?? ''] ?? `تعذّر الضغط${reason ? ` (${reason})` : ''}`;
+          if (file.size > limit) return { error: `${msg}. وحجمه ${Math.round(file.size / MB)} ميجا والحد ${MAX_UPLOAD_MB} ميجا` };
+          onStage('compressing', 100, `${msg} — يُرفع الأصل`);
+        }
       }
     }
     if (body.size > limit) {

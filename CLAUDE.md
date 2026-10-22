@@ -936,6 +936,12 @@ Books are protected from download at two levels:
   an account; comments go through طريق's `filterContent` and are REFUSED (not hidden) when
   flagged; the writer or free-media staff can delete. Comments show a FIRST NAME and a
   letter, never a photo — طريق veils women's photos and a public page must not undo that.
+- **Sharing a media item.** `MediaShareSheet` (item page and reels): the item's thumbnail and
+  title, WhatsApp / Facebook / Telegram / X / email, «نسخ الرابط» (with an `execCommand`
+  fallback for in-app browsers), and the phone's own share menu when it exists. What the
+  RECIPIENT sees comes from `src/app/media/preview/[id]/route.ts`: the middleware rewrites
+  crawler requests for `/media/<id>` and `/media/reels/<id>` there (same design as طريق's
+  post previews, `_np=1` loop guard included), serving the item's JPEG cover as og:image.
 - **No emoji in the UI — icons.** `src/components/media/Icon.tsx` is the set (one stroke style).
   Arrows carry `icon-dir-flip`, mirrored in RTL by a plain rule in `globals.css`.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.

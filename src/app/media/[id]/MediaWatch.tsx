@@ -14,6 +14,7 @@ import AudioStage from '@/components/media/AudioStage';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
 import MediaReactions, { type Summary } from '@/components/media/MediaReactions';
 import MediaComments from '@/components/media/MediaComments';
+import MediaShareSheet from '@/components/media/MediaShareSheet';
 
 /**
  * One media item: the player, what it is, share and download, and what plays next.
@@ -162,18 +163,9 @@ export default function MediaWatch({ item, upNext, reactions, commentCount }: {
   }, [playable, title, catName, item.kind, item.coverUrl, next, goNext]);
 
   // ── share & download ─────────────────────────────────────────────────────────────
-  const share = async () => {
-    const url = `${window.location.origin}/media/${item.id}`;
-    try {
-      if (navigator.share) { await navigator.share({ title, url }); return; }
-    } catch { return; /* the reader closed the share sheet */ }
-    try {
-      await navigator.clipboard.writeText(url);
-      addToast(t('تم نسخ الرابط', 'Link copied'), 'success');
-    } catch {
-      window.prompt(t('انسخ الرابط:', 'Copy the link:'), url);
-    }
-  };
+  // The share sheet: apps, «نسخ الرابط», and the item's thumbnail (MediaShareSheet).
+  const [shareOpen, setShareOpen] = useState(false);
+  const share = () => setShareOpen(true);
 
   const downloadById = useMediaDownload();
   const download = () => downloadById(item.id);
@@ -349,6 +341,15 @@ export default function MediaWatch({ item, upNext, reactions, commentCount }: {
           )}
         </div>
       </div>
+      <MediaShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        url={`${typeof window !== 'undefined' ? window.location.origin : 'https://moslimleader.com'}/media/${item.id}`}
+        title={title}
+        coverUrl={item.coverUrl ?? item.previewUrl ?? null}
+        kind={item.kind}
+        isEn={isEn}
+      />
     </div>
   );
 }

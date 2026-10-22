@@ -7,6 +7,7 @@ import type { PublicMediaItem } from '@/lib/free-media-query';
 import Icon from '@/components/media/Icon';
 import MediaReactions, { type Summary } from '@/components/media/MediaReactions';
 import MediaComments from '@/components/media/MediaComments';
+import MediaShareSheet from '@/components/media/MediaShareSheet';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
 
 /**
@@ -119,12 +120,9 @@ export default function ReelsViewer({ reels, startIndex, social }: {
     return () => window.removeEventListener('keydown', onKey);
   }); // re-bound each render: it reads the current reel
 
-  const share = async (r: PublicMediaItem) => {
-    const url = `${window.location.origin}/media/reels/${r.id}`;
-    try { if (navigator.share) { await navigator.share({ title: r.title, url }); return; } } catch { return; }
-    try { await navigator.clipboard.writeText(url); addToast(t('تم نسخ الرابط', 'Link copied'), 'success'); }
-    catch { window.prompt(t('انسخ الرابط:', 'Copy the link:'), url); }
-  };
+  // The share sheet (apps, copy link, the reel's thumbnail) — MediaShareSheet.
+  const [shareFor, setShareFor] = useState<PublicMediaItem | null>(null);
+  const share = (r: PublicMediaItem) => setShareFor(r);
 
   const leave = () => {
     const sameSite = document.referrer.startsWith(window.location.origin);
@@ -195,7 +193,7 @@ export default function ReelsViewer({ reels, startIndex, social }: {
                     <button type="button" onClick={() => setCommentsFor(r.id)} aria-label={t('التعليقات', 'Comments')} className={sideBtn}><Icon name="comment" size={24} /></button>
                     <span className="text-xs font-bold tabular-nums drop-shadow">{counts[r.id] || ''}</span>
                   </div>
-                  <button type="button" onClick={() => void share(r)} aria-label={t('مشاركة', 'Share')} className={sideBtn}><Icon name="share" size={22} /></button>
+                  <button type="button" onClick={() => share(r)} aria-label={t('مشاركة', 'Share')} className={sideBtn}><Icon name="share" size={22} /></button>
                   <button type="button" onClick={() => download(r.id)} aria-label={t('تحميل', 'Download')} className={sideBtn}><Icon name="download" size={22} /></button>
                 </div>
               </div>
@@ -234,6 +232,15 @@ export default function ReelsViewer({ reels, startIndex, social }: {
           </div>
         </div>
       )}
+      <MediaShareSheet
+        open={!!shareFor}
+        onClose={() => setShareFor(null)}
+        url={shareFor ? `${window.location.origin}/media/reels/${shareFor.id}` : ''}
+        title={shareFor?.title ?? ''}
+        coverUrl={shareFor?.coverUrl ?? null}
+        kind="reel"
+        isEn={isEn}
+      />
     </div>
   );
 }

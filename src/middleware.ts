@@ -25,6 +25,8 @@ const ALLOWED_ORIGINS = [
 const UNFURL_BOT = /WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|Snapchat|SkypeUriPreview|iMessageLinkPreview|redditbot|vkShare|W3C_Validator/i;
 /** A post permalink: /tareeq/<cuid>. Excludes /tareeq/inbox, /tareeq/drafts and friends. */
 const POST_PATH = /^\/tareeq\/(c[a-z0-9]{20,32})$/;
+/** A media item or a reel: /media/<id>, /media/reels/<id>. */
+const MEDIA_PATH = /^\/media\/(?:reels\/)?(\d{1,9})$/;
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -43,6 +45,13 @@ export async function middleware(req: NextRequest) {
     if (m && UNFURL_BOT.test(req.headers.get('user-agent') ?? '')) {
       const url = req.nextUrl.clone();
       url.pathname = `/tareeq/${m[1]}/preview`;
+      return NextResponse.rewrite(url);
+    }
+    // The same for the media library: src/app/media/preview/[id]/route.ts.
+    const mm = MEDIA_PATH.exec(pathname);
+    if (mm && UNFURL_BOT.test(req.headers.get('user-agent') ?? '')) {
+      const url = req.nextUrl.clone();
+      url.pathname = `/media/preview/${mm[1]}`;
       return NextResponse.rewrite(url);
     }
   }
@@ -70,5 +79,5 @@ export const config = {
   // middleware never ran for a permalink and the crawler rewrite silently did nothing on
   // the live site. `:path*` compiles correctly; the cuid test in POST_PATH is what limits
   // the rewrite to permalinks. Ordinary GETs on the other /tareeq pages cost one regexp.
-  matcher: ['/', '/api/:path*', '/tareeq/:path*'],
+  matcher: ['/', '/api/:path*', '/tareeq/:path*', '/media/:path*'],
 };

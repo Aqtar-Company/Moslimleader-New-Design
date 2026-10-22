@@ -8,6 +8,7 @@ import { computeWaveform } from '@/lib/audio-waveform';
 import { captureVideoFrames } from '@/lib/tareeq-video-frames';
 import { dataUrlToBlob } from '@/lib/data-url';
 import Icon from '@/components/media/Icon';
+import MediaHeroAdmin from './MediaHeroAdmin';
 
 /**
  * The media library's admin: one tab per KIND, each with its own categories and items.
@@ -422,6 +423,8 @@ export default function FreeMediaAdminPage() {
       {busy && <p className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2"><Icon name="loader" size={16} spin /> {busy}</p>}
       {error && <p className="mb-4 flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2"><Icon name="alert" size={16} className="mt-0.5" /> {error}</p>}
       {success && <p className="mb-4 flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2"><Icon name="check" size={16} /> {success}</p>}
+
+      <MediaHeroAdmin />
 
       {/* Kind tabs */}
       <div className="flex gap-2 mb-5 overflow-x-auto">

@@ -74,6 +74,18 @@ export async function compressCover(buf: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
+/**
+ * The /media page's hero image: 1920px wide at most, JPEG. It is a full-width background,
+ * so wider than that buys nothing on any screen; the admin is told 1920×640.
+ */
+export async function heroImage(buf: Buffer): Promise<Buffer> {
+  const img = await sharpOf(buf);
+  return img.resize({ width: 1920, withoutEnlargement: true })
+    .flatten({ background: '#1a1a2e' })
+    .jpeg({ quality: 80, mozjpeg: true, progressive: true })
+    .toBuffer();
+}
+
 /** A drawing's display copy: 1400px wide at most, WebP. The original stays for download. */
 export async function drawingPreview(buf: Buffer): Promise<Buffer> {
   const img = await sharpOf(buf);

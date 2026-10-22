@@ -191,3 +191,6 @@ html[dir="ltr"],
 @media (max-width: 767px) {
   body[data-ameen-open] .wa-float { display: none !important; }
 }
+
+/* Media library icons: arrows mirror in right-to-left text (src/components/media/Icon.tsx). */
+[dir="rtl"] .icon-dir-flip { transform: scaleX(-1); }

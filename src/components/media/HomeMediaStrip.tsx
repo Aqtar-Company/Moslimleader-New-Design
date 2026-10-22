@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import type { PublicMediaItem } from '@/lib/free-media-query';
 import MediaThumb from './MediaThumb';
+import Icon from './Icon';
 
 /**
  * «وسائط مجانية» on the home page: the newest items as a row of thumbnails, and the way in
@@ -20,15 +21,15 @@ export default function HomeMediaStrip({ items }: { items: PublicMediaItem[] }) 
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-end justify-between gap-4 mb-5">
           <div>
-            <h2 id="home-media-title" className="text-xl sm:text-2xl font-black text-white">
-              🎬 {t('وسائط مجانية', 'Free media')}
+            <h2 id="home-media-title" className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+              <Icon name="video" size={26} className="text-[#F5C518]" /> {t('وسائط مجانية', 'Free media')}
             </h2>
             <p className="text-sm text-white/60 mt-1">
               {t('أناشيد، قصص قبل النوم، فيديوهات ورسومات — مجاناً لأطفالك', 'Nasheeds, bedtime stories, videos and drawings — free for your children')}
             </p>
           </div>
-          <Link href="/media" className="shrink-0 text-sm font-bold text-[#F5C518] hover:underline underline-offset-4">
-            {t('كل الوسائط ←', 'All media →')}
+          <Link href="/media" className="shrink-0 inline-flex items-center gap-1 text-sm font-bold text-[#F5C518] hover:underline underline-offset-4">
+            {t('كل الوسائط', 'All media')} <Icon name="forward" size={16} />
           </Link>
         </div>
 
@@ -44,7 +45,7 @@ export default function HomeMediaStrip({ items }: { items: PublicMediaItem[] }) 
               >
                 <MediaThumb
                   kind={item.kind}
-                  coverUrl={item.coverUrl}
+                  coverUrl={item.coverUrl ?? item.previewUrl ?? null}
                   title={title}
                   durationSec={item.durationSec}
                   className={`aspect-video ${portrait ? 'bg-white' : ''} transition group-hover:-translate-y-0.5`}

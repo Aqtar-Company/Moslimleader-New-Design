@@ -25,7 +25,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const id = Number(params.id);
   if (!Number.isInteger(id)) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
-  const item = await prisma.freeMedia.findFirst({ where: { id, isPublished: true }, select: { title: true, url: true } });
+  const staff = user.role === 'admin' || user.role === 'staff';
+  const item = await prisma.freeMedia.findFirst({ where: { id, ...(staff ? {} : { isPublished: true }) }, select: { title: true, url: true } });
   if (!item || !isAllowedMediaRef(item.url)) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
   const ext = (item.url.split('?')[0].split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -53,6 +54,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     body = upstream.body;
   }
 
-  void prisma.freeMedia.update({ where: { id }, data: { downloadCount: { increment: 1 } } }).catch(() => {});
+  // The admin page reads files through here to measure them; that is not a download.
+  if (user.role !== 'admin' && user.role !== 'staff') {
+    void prisma.freeMedia.update({ where: { id }, data: { downloadCount: { increment: 1 } } }).catch(() => {});
+  }
   return new Response(body, { status: 200, headers });
 }

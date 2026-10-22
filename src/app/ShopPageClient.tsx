@@ -8,6 +8,7 @@ import { products as staticProducts, categories } from '@/lib/products';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 import HomeMediaStrip from '@/components/media/HomeMediaStrip';
+import Icon from '@/components/media/Icon';
 import type { PublicMediaItem } from '@/lib/free-media-query';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -327,7 +328,7 @@ export default function ShopPageClient({ initialProducts, latestMedia = [] }: { 
           {/* The free media library — the second door from the front page. */}
           <Link href="/media"
             className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/40 font-bold px-6 py-3 rounded-xl transition-all hover:scale-105 backdrop-blur-sm">
-            <span aria-hidden>🎬</span>
+            <Icon name="video" size={20} />
             {isRtl ? 'وسائط مجانية' : 'Free Media'}
           </Link>
           </div>

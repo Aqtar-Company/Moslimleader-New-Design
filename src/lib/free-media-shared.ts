@@ -11,11 +11,12 @@ export type MediaKind = typeof MEDIA_KINDS[number];
 export const TYPE_TO_KIND: Record<string, MediaKind> = { video: 'video', mp3: 'audio', image: 'image', pdf: 'pdf' };
 export const KIND_TO_TYPE: Record<MediaKind, string> = { video: 'video', audio: 'mp3', image: 'image', pdf: 'pdf' };
 
-export const KIND_LABEL: Record<MediaKind, { ar: string; en: string; icon: string }> = {
-  video: { ar: 'فيديوهات', en: 'Videos', icon: '🎬' },
-  audio: { ar: 'صوتيات', en: 'Audio', icon: '🎧' },
-  image: { ar: 'رسومات', en: 'Drawings', icon: '🖍️' },
-  pdf:   { ar: 'ملفات PDF', en: 'PDFs', icon: '📄' },
+/** Each kind's icon is the `<Icon>` of the same name (video / audio / image / pdf). */
+export const KIND_LABEL: Record<MediaKind, { ar: string; en: string; one: string }> = {
+  video: { ar: 'فيديوهات', en: 'Videos', one: 'فيديو' },
+  audio: { ar: 'صوتيات', en: 'Audio', one: 'صوتي' },
+  image: { ar: 'رسومات', en: 'Drawings', one: 'رسمة' },
+  pdf:   { ar: 'ملفات PDF', en: 'PDFs', one: 'PDF' },
 };
 
 export function isMediaKind(v: unknown): v is MediaKind {

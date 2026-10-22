@@ -7,6 +7,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useState, useEffect } from 'react';
+import Icon, { type IconName } from '@/components/media/Icon';
 
 interface MobileMenuProps {
   open: boolean;
@@ -37,19 +38,19 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
   }, [open, user]);
 
   const links = [
-    { href: '/',           label: isRtl ? 'الرئيسية'       : 'Home',       icon: '🏠' },
-    { href: '/tareeq',     label: isRtl ? 'طريق'           : 'Tareeq',     icon: '🌟', logoImg: '/Tareeq-small.png' },
-    { href: '/library',    label: isRtl ? 'المكتبة الرقمية' : 'Library',    icon: '📚' },
-    { href: '/media',      label: isRtl ? 'الوسائط المجانية' : 'Free Media', icon: '🎬' },
-    ...(user ? [{ href: '/membership', label: isRtl ? 'عضوية الأسرة' : 'Family Membership', icon: '🪙',
+    { href: '/',           label: isRtl ? 'الرئيسية'       : 'Home',       icon: 'home' as IconName },
+    { href: '/tareeq',     label: isRtl ? 'طريق'           : 'Tareeq',     icon: 'badge' as IconName, logoImg: '/Tareeq-small.png' },
+    { href: '/library',    label: isRtl ? 'المكتبة الرقمية' : 'Library',    icon: 'book' as IconName },
+    { href: '/media',      label: isRtl ? 'الوسائط المجانية' : 'Free Media', icon: 'video' as IconName },
+    ...(user ? [{ href: '/membership', label: isRtl ? 'عضوية الأسرة' : 'Family Membership', icon: 'badge' as IconName,
       badge: memberStatus === 'ACTIVE'
         ? (memberTier === 'community' ? (isRtl ? 'مجتمع' : 'Community') : (isRtl ? 'فعّالة' : 'Active'))
         : memberStatus === 'EXPIRED' || memberStatus === 'CANCELLED' ? (isRtl ? 'مجتمع' : 'Community')
         : null,
     }] : []),
-    { href: '/cart',       label: isRtl ? `السلة (${totalItems})` : `Cart (${totalItems})`, icon: '🛒' },
-    { href: '/wishlist',   label: isRtl ? `المفضلة (${wishlistCount})` : `Wishlist (${wishlistCount})`, icon: '❤️' },
-    { href: '/about',      label: isRtl ? 'من نحن'         : 'About',       icon: 'ℹ️' },
+    { href: '/cart',       label: isRtl ? `السلة (${totalItems})` : `Cart (${totalItems})`, icon: 'cart' as IconName },
+    { href: '/wishlist',   label: isRtl ? `المفضلة (${wishlistCount})` : `Wishlist (${wishlistCount})`, icon: 'heart' as IconName },
+    { href: '/about',      label: isRtl ? 'من نحن'         : 'About',       icon: 'info' as IconName },
   ];
 
   if (!open) return null;
@@ -98,7 +99,7 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
               >
                 {'logoImg' in link && link.logoImg
                   ? <img src={link.logoImg as string} alt="" className="w-6 h-6" />
-                  : <span className="text-lg">{link.icon}</span>}
+                  : <Icon name={link.icon} size={22} className="text-gray-500" />}
                 <span className="flex-1">{link.label}</span>
                 {'badge' in link && link.badge && (
                   <span style={{
@@ -202,7 +203,7 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
                 className="flex items-center justify-center gap-2 w-full font-black py-3 rounded-xl text-sm transition"
                 style={{ background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)', color: '#1a0800' }}
               >
-                🪙 {isRtl ? 'عضوية مسلم ليدر — سجّل الآن' : 'Moslim Leader Membership'}
+                <Icon name="badge" size={18} /> {isRtl ? 'عضوية مسلم ليدر — سجّل الآن' : 'Moslim Leader Membership'}
               </Link>
               <Link
                 href='/login'

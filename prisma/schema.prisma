@@ -654,6 +654,12 @@ model FreeMedia {
   isPublished   Boolean            @default(false)
   categoryId    Int?
   category      FreeMediaCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  /// A drawing's display copy: the original (`url`) is what a member downloads; this is
+  /// the compressed one the pages show, so a 6 MB scan does not stall the grid.
+  previewUrl    String?
+  /// An audio item's waveform: ~120 peaks, 0–100, measured from the file in the admin's
+  /// browser at upload. Drawn over the cover like SoundCloud; null when not measured.
+  waveform      Json?
   /// Read from the file in the admin's browser at upload time; null when unknown.
   durationSec   Int?
   viewCount     Int                @default(0)

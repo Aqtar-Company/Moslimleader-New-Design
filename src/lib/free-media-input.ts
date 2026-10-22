@@ -1,6 +1,7 @@
 /**
  * Validation of an item as the admin form sends it — one copy for create and update.
  */
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { isAllowedMediaRef, kindOfType } from '@/lib/free-media';
 
@@ -18,7 +19,17 @@ export type MediaItemInput = {
   isPublished: boolean;
   categoryId: number | null;
   durationSec: number | null;
+  previewUrl: string | null;
+  waveform?: number[] | typeof Prisma.DbNull;
 };
+
+/** ~120 integers 0–100, or null. Anything else is dropped rather than stored. */
+export function parseWaveform(v: unknown): number[] | null | undefined {
+  if (v === undefined) return undefined;
+  if (!Array.isArray(v) || v.length < 8 || v.length > 400) return null;
+  const out = v.map(n => Math.max(0, Math.min(100, Math.round(Number(n) || 0))));
+  return out;
+}
 
 export async function parseMediaItem(body: Record<string, unknown>): Promise<{ data: MediaItemInput } | { error: string }> {
   const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -28,7 +39,8 @@ export async function parseMediaItem(body: Record<string, unknown>): Promise<{ d
   if (!title || !type || !url) return { error: 'العنوان والنوع والملف مطلوبون' };
   if (!(VALID_MEDIA_TYPES as readonly string[]).includes(type)) return { error: 'نوع الوسيط غير صالح' };
   const coverUrl = str(body.coverUrl, 190) || null;
-  if (!isAllowedMediaRef(url) || !isAllowedMediaRef(coverUrl)) return { error: 'مسار الملف غير صالح' };
+  const previewUrl = str(body.previewUrl, 190) || null;
+  if (!isAllowedMediaRef(url) || !isAllowedMediaRef(coverUrl) || !isAllowedMediaRef(previewUrl)) return { error: 'مسار الملف غير صالح' };
 
   // A category must exist AND belong to this item's kind: an audio item filed under a
   // video shelf would appear under a chip that lists nothing else like it.
@@ -55,6 +67,9 @@ export async function parseMediaItem(body: Record<string, unknown>): Promise<{ d
       isPublished: body.isPublished === true,
       categoryId,
       durationSec: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : null,
+      previewUrl,
+      // Absent = leave it; null/garbage = clear it (a DB NULL, not the JSON value `null`).
+      ...(body.waveform !== undefined ? { waveform: parseWaveform(body.waveform) ?? Prisma.DbNull } : {}),
     },
   };
 }

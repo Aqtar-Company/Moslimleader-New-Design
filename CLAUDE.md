@@ -913,6 +913,21 @@ Books are protected from download at two levels:
   and every reader accepts both. Video upload size = `NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB`, the
   same number nginx enforces. Routes use `requirePerm('free-media.*')` — they used to check
   `role === 'admin'` while the nav granted the page to staff with the permission.
+- **Media library weight and speed.** Covers are stored only as a compressed JPEG (≤1280px,
+  sharp); a drawing keeps its ORIGINAL for download plus `previewUrl` (WebP ≤1400px, what the
+  pages show) and a 600px thumbnail as its cover. Videos over 40 MB are re-encoded to 720p in
+  the ADMIN's browser (`transcodeVideo`, the Tareeq pipeline) before upload — never on the
+  server. Audio is not re-encoded. «ضغط الصور الحالية» (`/api/admin/free-media/optimize`, 8
+  items per call) brings older uploads down to size. Audio items carry `waveform` (~120 peaks
+  measured in the admin's browser by `computeWaveform`, decoded at 8 kHz mono; «قياس موجات
+  الصوتيات» backfills via the download route, which does not count admin reads). The player
+  (`AudioStage`) draws it over the cover as the seek bar, **left→right in both languages** (the
+  progress-bar rule). Admin saves merge the server's answer instead of reloading the list;
+  publish/unpublish is a PATCH. Multi-file upload runs two at a time with a bar per file;
+  its queue lives in a ref (`commitQueue`) — never start work inside a state updater, React
+  runs those twice in development.
+- **No emoji in the UI — icons.** `src/components/media/Icon.tsx` is the set (one stroke style).
+  Arrows carry `icon-dir-flip`, mirrored in RTL by a plain rule in `globals.css`.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

@@ -100,7 +100,7 @@ export default function Footer() {
             {[
               { href: '/', ar: 'الرئيسية', en: 'Home' },
               { href: '/library', ar: 'المكتبة الرقمية', en: 'Digital Library' },
-              { href: '/media', ar: '🎬 الوسائط المجانية', en: '🎬 Free Media' },
+              { href: '/media', ar: 'الوسائط المجانية', en: 'Free Media' },
               { href: '/catalog', ar: '📖 كتالوج المنتجات', en: '📖 Product Catalog' },
               { href: '/nursery', ar: '🌱 ركن القيم للحضانات', en: '🌱 Values Corner' },
               { href: '/about', ar: 'من نحن', en: 'About' },

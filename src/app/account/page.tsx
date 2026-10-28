@@ -17,6 +17,7 @@ import { Address } from '@/context/AuthContext';
 import { governorates } from '@/lib/shipping';
 import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
 import { compressImage } from '@/lib/compress-image';
+import { seriesLangLabel } from '@/lib/series-lang';
 const COUNTRIES_LIST = [
   { code: 'EG', name: 'مصر', nameEn: 'Egypt' },
   ...Object.entries(COUNTRY_CURRENCIES)
@@ -36,6 +37,10 @@ interface MyBook {
   lastPage: number;
   totalPages: number;
   grantedAt: string;
+  language?: string | null;
+  seriesId?: string | null;
+  seriesOrder?: number | null;
+  series?: { id: string; name: string; nameEn?: string | null; cover?: string | null } | null;
 }
 
 interface OrderRecord {
@@ -56,6 +61,8 @@ export default function AccountPage() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [myBooks, setMyBooks] = useState<MyBook[]>([]);
   const [booksLoading, setBooksLoading] = useState(false);
+  // Which owned series is open on the «كتبي» tab (null = the shelf itself)
+  const [openSeriesKey, setOpenSeriesKey] = useState<string | null>(null);
   const [loyaltyData, setLoyaltyData] = useState<{ points: number; egpValue: number; transactions: { id: string; points: number; reason: string; createdAt: string }[] } | null>(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
 
@@ -612,59 +619,150 @@ export default function AccountPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {myBooks.map(book => {
-                const pct = book.totalPages ? Math.min((book.lastPage / book.totalPages) * 100, 100) : 0;
-                const finished = pct >= 98;
-                return (
-                  <Link key={book.id} href={`/library/${book.id}`} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
-                    {/* Cover */}
-                    <div className="relative aspect-[2/3] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] shrink-0">
-                      {book.cover ? (
-                        <Image src={book.cover} alt={book.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-4xl">📖</div>
-                      )}
-                      {finished && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <span className="text-white font-black text-xs bg-green-500 px-2 py-1 rounded-full">✓ منتهي</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Progress bar */}
-                    {book.totalPages > 0 && (
-                      <div className="h-1.5 bg-gray-100">
-                        <div
-                          className={`h-full rounded-none transition-all ${finished ? 'bg-green-500' : 'bg-[#F5C518]'}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Info */}
-                    <div className="p-3 flex flex-col flex-1">
-                      <p className="font-black text-gray-900 text-xs leading-tight line-clamp-2 mb-1">{book.title}</p>
-                      {book.author && <p className="text-gray-400 text-[10px]">{book.author}</p>}
-                      <div className="mt-auto pt-2">
-                        {finished ? (
-                          <p className="text-green-600 text-[10px] font-bold">اكتملت القراءة ✓</p>
-                        ) : book.lastPage > 1 ? (
-                          <p className="text-[#F5C518] text-[10px] font-bold">
-                            ▶ استكمل من ص {book.lastPage}
-                            {book.totalPages > 0 && (
-                              <span className="text-gray-400 font-normal"> / {book.totalPages}</span>
-                            )}
-                          </p>
-                        ) : (
-                          <p className="text-gray-400 text-[10px]">لم تبدأ القراءة بعد</p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+            (() => {
+              // One card of an owned book (used on the shelf and inside an open series)
+              const renderBookCard = (book: MyBook) => {
+                  const pct = book.totalPages ? Math.min((book.lastPage / book.totalPages) * 100, 100) : 0;
+        const finished = pct >= 98;
+        return (
+          <Link key={book.id} href={`/library/${book.id}`} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
+            {/* Cover */}
+            <div className="relative aspect-[2/3] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] shrink-0">
+              {book.cover ? (
+                <Image src={book.cover} alt={book.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
+              ) : (
+                <div className="flex items-center justify-center h-full text-4xl">📖</div>
+              )}
+              {finished && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="text-white font-black text-xs bg-green-500 px-2 py-1 rounded-full">✓ منتهي</span>
+                </div>
+              )}
             </div>
+
+            {/* Progress bar */}
+            {book.totalPages > 0 && (
+              <div className="h-1.5 bg-gray-100">
+                <div
+                  className={`h-full rounded-none transition-all ${finished ? 'bg-green-500' : 'bg-[#F5C518]'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            )}
+
+            {/* Info */}
+            <div className="p-3 flex flex-col flex-1">
+              <p className="font-black text-gray-900 text-xs leading-tight line-clamp-2 mb-1">{book.title}</p>
+              {book.author && <p className="text-gray-400 text-[10px]">{book.author}</p>}
+              <div className="mt-auto pt-2">
+                {finished ? (
+                  <p className="text-green-600 text-[10px] font-bold">اكتملت القراءة ✓</p>
+                ) : book.lastPage > 1 ? (
+                  <p className="text-[#F5C518] text-[10px] font-bold">
+                    ▶ استكمل من ص {book.lastPage}
+                    {book.totalPages > 0 && (
+                      <span className="text-gray-400 font-normal"> / {book.totalPages}</span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-gray-400 text-[10px]">لم تبدأ القراءة بعد</p>
+                )}
+              </div>
+            </div>
+          </Link>
+        );
+              };
+
+              // A series is ONE card that opens onto its stories — its stories are not
+              // scattered among the single books. A series owned in several languages
+              // gets one card per language.
+              const standalone = myBooks.filter(b => !b.seriesId);
+              const langsOwned = new Map<string, Set<string>>();
+              myBooks.forEach(b => {
+                if (!b.seriesId) return;
+                const set = langsOwned.get(b.seriesId) ?? new Set<string>();
+                set.add(b.language || 'ar');
+                langsOwned.set(b.seriesId, set);
+              });
+              const groups = new Map<string, { key: string; name: string; cover: string; lang: string | null; books: MyBook[] }>();
+              myBooks.forEach(b => {
+                if (!b.seriesId) return;
+                const lang = b.language || 'ar';
+                const multi = (langsOwned.get(b.seriesId)?.size ?? 0) > 1;
+                const key = multi ? `${b.seriesId}:${lang}` : b.seriesId;
+                const g = groups.get(key) ?? {
+                  key,
+                  name: (!isRtl && b.series?.nameEn) ? b.series.nameEn : (b.series?.name ?? ''),
+                  cover: b.series?.cover || b.cover || '',
+                  lang: multi ? lang : null,
+                  books: [],
+                };
+                g.books.push(b);
+                groups.set(key, g);
+              });
+              groups.forEach(g => g.books.sort((a, b) => (a.seriesOrder ?? 0) - (b.seriesOrder ?? 0)));
+
+              const open = openSeriesKey ? groups.get(openSeriesKey) : undefined;
+              if (open) {
+                return (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setOpenSeriesKey(null)}
+                      className="mb-4 text-sm font-bold text-gray-500 hover:text-gray-900 flex items-center gap-1"
+                    >
+                      {isRtl ? '→ كل كتبي' : '← All my books'}
+                    </button>
+                    <h2 className="font-black text-gray-900 text-lg mb-1">
+                      {open.name}{open.lang ? ` — ${seriesLangLabel(open.lang)}` : ''}
+                    </h2>
+                    <p className="text-gray-400 text-xs mb-4">{isRtl ? `${open.books.length} قصة` : `${open.books.length} stories`}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {open.books.map(renderBookCard)}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {Array.from(groups.values()).map(g => {
+                    const finishedCount = g.books.filter(b => b.totalPages > 0 && (b.lastPage / b.totalPages) * 100 >= 98).length;
+                    return (
+                      <button
+                        key={g.key}
+                        type="button"
+                        onClick={() => setOpenSeriesKey(g.key)}
+                        className="group text-start bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col"
+                      >
+                        <div className="relative aspect-[2/3] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] shrink-0">
+                          {g.cover ? (
+                            <Image src={g.cover} alt={g.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-4xl">📚</div>
+                          )}
+                          <span className="absolute top-2 right-2 bg-[#F5C518] text-[#1a1a2e] text-[10px] font-black px-2 py-0.5 rounded-full">
+                            {isRtl ? 'سلسلة' : 'Series'}
+                          </span>
+                        </div>
+                        <div className="p-3 flex flex-col flex-1">
+                          <p className="font-black text-gray-900 text-xs leading-tight line-clamp-2 mb-1">
+                            {g.name}{g.lang ? ` — ${seriesLangLabel(g.lang)}` : ''}
+                          </p>
+                          <p className="text-gray-400 text-[10px]">
+                            {isRtl ? `${g.books.length} قصة` : `${g.books.length} stories`}
+                          </p>
+                          <p className="mt-auto pt-2 text-[10px] font-bold text-[#F5C518]">
+                            {isRtl ? `أنهيت ${finishedCount} من ${g.books.length}` : `${finishedCount} of ${g.books.length} finished`}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {standalone.map(renderBookCard)}
+                </div>
+              );
+            })()
           )}
         </div>
       )}

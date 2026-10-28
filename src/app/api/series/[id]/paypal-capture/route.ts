@@ -5,8 +5,10 @@ import { prisma } from '@/lib/prisma';
 import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { sendOrderEmails } from '@/lib/order-email';
 import { egpToUsd } from '@/lib/currency';
+import { booksForLang, normalizeSeriesLang, seriesLangPrice } from '@/lib/series-lang';
 
-// POST /api/series/[id]/paypal-capture — capture PayPal payment, grant access to all books
+// POST /api/series/[id]/paypal-capture — capture PayPal payment, grant access to the books of the
+// language that was bought (decided in paypal-create and stored on the pending Setting).
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await getAuthUser();
@@ -34,30 +36,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       include: {
         books: {
           where: { isPublished: true },
-          select: { id: true, title: true, price: true, priceUSD: true, cover: true },
+          select: { id: true, title: true, price: true, priceUSD: true, cover: true, language: true },
         },
       },
     });
 
-    if (!series || !series.isPublished || series.books.length === 0) {
+    // Read expected amount + language from Setting (stored by paypal-create) — never recalculate
+    const pendingSetting = await prisma.setting.findUnique({ where: { key: `pp_pending_${paypalOrderId}` } });
+    const pendingValue = (pendingSetting?.value ?? null) as Record<string, unknown> | null;
+    const storedExpected = pendingValue ? Number(pendingValue.expectedUsd ?? 0) : null;
+    // The language is the one the order was CREATED for. The body value is only a
+    // fallback for a lost Setting — it can never widen what was paid for, because the
+    // amount check below is against the same language's price.
+    const lang = normalizeSeriesLang(
+      typeof pendingValue?.lang === 'string' ? (pendingValue.lang as string)
+        : typeof body?.lang === 'string' ? body.lang : null,
+    );
+
+    const langBooks = series ? booksForLang(series.books, lang) : [];
+    if (!series || !series.isPublished || langBooks.length === 0) {
       return NextResponse.json({ error: 'السلسلة غير متاحة' }, { status: 404 });
     }
 
-    // Read expected amount from Setting (stored by paypal-create) — never recalculate
-    const pendingSetting = await prisma.setting.findUnique({ where: { key: `pp_pending_${paypalOrderId}` } });
-    const storedExpected = pendingSetting ? Number((pendingSetting.value as Record<string, unknown>)?.expectedUsd ?? 0) : null;
-    // Fallback if Setting was lost (uses correct egpToUsd rate)
-    let fallbackUsd: number;
-    if (series.seriesPriceUSD && series.seriesPriceUSD > 0) {
-      fallbackUsd = Number(series.seriesPriceUSD);
-    } else if (series.seriesPrice && series.seriesPrice > 0) {
-      fallbackUsd = egpToUsd(Number(series.seriesPrice));
-    } else {
-      fallbackUsd = series.books.reduce((sum, b) => {
-        const bookUsd = b.priceUSD && b.priceUSD > 0 ? Number(b.priceUSD) : egpToUsd(Number(b.price));
-        return sum + bookUsd;
-      }, 0);
-    }
+    // Fallback if Setting was lost (same per-language price as paypal-create)
+    const fallbackLangPrice = seriesLangPrice(series, series.books, lang);
+    const fallbackUsd = series.seriesPriceUSD && series.seriesPriceUSD > 0
+      ? fallbackLangPrice.usd
+      : series.seriesPrice && series.seriesPrice > 0
+        ? egpToUsd(fallbackLangPrice.egp)
+        : fallbackLangPrice.usd;
     const expectedRounded = Math.max(0.01, Math.round((storedExpected ?? fallbackUsd) * 100) / 100);
 
     // Capture PayPal payment
@@ -83,8 +90,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Atomic: create BookOrder records for each book + grant BookAccess for each
     await prisma.$transaction(async (tx) => {
-      for (let i = 0; i < series.books.length; i++) {
-        const book = series.books[i];
+      for (let i = 0; i < langBooks.length; i++) {
+        const book = langBooks[i];
         const isFirst = i === 0;
 
         // Skip if user already has access (e.g. bought one book earlier)
@@ -127,7 +134,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       await sendOrderEmails({
         orderId: masterOrderId,
         orderNumber: masterOrderId,
-        items: series.books.map((b, i) => ({
+        items: langBooks.map((b, i) => ({
           productName: `📚 ${i + 1}. ${b.title}`,
           productImage: b.cover,
           quantity: 1,
@@ -143,7 +150,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         customerName: user?.name || 'ضيف',
         customerEmail: user?.email || '—',
         customerPhone: user?.phone || '—',
-        shippingAddress: { country: `سلسلة رقمية (${series.books.length} كتب) - وصول فوري` },
+        shippingAddress: { country: `سلسلة رقمية (${langBooks.length} كتب) - وصول فوري` },
         notes: null,
       });
     } catch (emailErr) {
@@ -153,7 +160,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Cleanup pending Setting (best-effort)
     prisma.setting.delete({ where: { key: `pp_pending_${paypalOrderId}` } }).catch(() => {});
 
-    return NextResponse.json({ orderId: masterOrderId, status: 'paid', granted: series.books.length });
+    return NextResponse.json({ orderId: masterOrderId, status: 'paid', granted: langBooks.length, lang });
   } catch (err) {
     if (err instanceof PayPalCaptureError) {
       console.error('[series paypal-capture] paypal rejected', {

@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { useLang } from '@/context/LanguageContext';
 import { resolvePrice } from '@/lib/geo-pricing';
+import { booksForLang } from '@/lib/series-lang';
 import { formatAgeLabel } from '@/lib/book-age';
 import { Turnstile } from '@marsidev/react-turnstile';
 
@@ -102,6 +103,7 @@ interface BookData {
   paperProductSlug?: string | null;
   seriesId?: string | null;
   seriesOrder?: number | null;
+  language?: string | null;
   _count: { accesses: number };
 }
 
@@ -147,6 +149,13 @@ function BookPageInner() {
 
   // Format book price for display using the shared formatter
   const displayBookPrice = (book: BookData) => formatPrice(resolvedBookPrice(book));
+
+  // «Buy the full series» is per LANGUAGE: only the stories in this book's language are
+  // sold (and granted). The link carries that language to the series buy page.
+  const seriesLangBooks = (book: BookData) => booksForLang(seriesBooks, book.language);
+  const seriesBuyHref = (book: BookData) =>
+    `/library/series/${seriesSeriesId}/buy?lang=${encodeURIComponent(book.language || 'ar')}`;
+  const seriesPriceLabel = () => formatPrice(resolvePrice(seriesPrice ?? 0, seriesPriceUSD ?? 0, zone, countryCode));
 
   const [book, setBook] = useState<BookData | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
@@ -454,6 +463,16 @@ function BookPageInner() {
                 {isEn ? 'Sign in to Purchase' : 'سجّل دخولك للشراء'}
               </Link>
             )}
+            {book.seriesId && seriesSeriesId && seriesPrice && seriesLangBooks(book).length > 1 && (
+              <Link
+                href={user ? seriesBuyHref(book) : `/login?redirect=${encodeURIComponent(seriesBuyHref(book))}`}
+                className="block w-full bg-[#1a1a2e] hover:bg-[#2a2a4e] text-[#F5C518] font-black py-3.5 rounded-xl text-center text-base transition shadow-md"
+              >
+                {isEn
+                  ? `Buy the full series — ${seriesLangBooks(book).length} stories · ${seriesPriceLabel()}`
+                  : `اشترِ السلسلة كاملة — ${seriesLangBooks(book).length} قصة · ${seriesPriceLabel()}`}
+              </Link>
+            )}
             {book.paperProductSlug && (
               <Link
                 href={`/shop/${book.paperProductSlug}`}
@@ -581,6 +600,14 @@ function BookPageInner() {
                   >
                     {user ? `رقمي — ${displayBookPrice(book)}` : 'سجّل دخولك'}
                   </Link>
+                  {book.seriesId && seriesSeriesId && seriesPrice && seriesLangBooks(book).length > 1 && (
+                    <Link
+                      href={user ? seriesBuyHref(book) : `/login?redirect=${encodeURIComponent(seriesBuyHref(book))}`}
+                      className="inline-block bg-[#1a1a2e] text-[#F5C518] font-black text-xs px-4 py-2 rounded-xl"
+                    >
+                      {isEn ? `Full series — ${seriesPriceLabel()}` : `السلسلة كاملة — ${seriesPriceLabel()}`}
+                    </Link>
+                  )}
                   {book.paperProductSlug && (
                     <Link
                       href={`/shop/${book.paperProductSlug}`}
@@ -690,30 +717,30 @@ function BookPageInner() {
           <div className="bg-gradient-to-r from-[#1a1a2e] to-[#16213e] px-5 py-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[#F5C518] text-xs font-bold uppercase tracking-wider">
-                {(isEn && seriesNameEn) ? 'Series' : 'سلسلة'} • {isEn ? `${seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').length} stories` : `${seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').length} قصة`}
+                {(isEn && seriesNameEn) ? 'Series' : 'سلسلة'} • {isEn ? `${seriesLangBooks(book).length} stories` : `${seriesLangBooks(book).length} قصة`}
               </p>
               <p className="text-white font-black text-sm truncate">
                 {(isEn && seriesNameEn) ? seriesNameEn : seriesName}
               </p>
               <p className="text-white/40 text-xs mt-0.5">
-                {isEn ? `Part ${book.seriesOrder} of ${seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').length}` : `الجزء ${book.seriesOrder} من ${seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').length}`}
+                {isEn ? `Part ${book.seriesOrder} of ${seriesLangBooks(book).length}` : `الجزء ${book.seriesOrder} من ${seriesLangBooks(book).length}`}
               </p>
             </div>
-            {seriesPrice && seriesSeriesId && (
+            {!hasAccess && seriesPrice && seriesSeriesId && (
               <Link
-                href={`/library/series/${seriesSeriesId}/buy`}
+                href={seriesBuyHref(book)}
                 className="shrink-0 flex flex-col items-center bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black rounded-2xl px-4 py-2.5 transition shadow-lg shadow-black/20 text-center"
               >
                 <span className="text-lg leading-tight">
-                  {formatPrice(resolvePrice(seriesPrice ?? 0, seriesPriceUSD ?? 0, zone, countryCode))}
+                  {seriesPriceLabel()}
                 </span>
-                <span className="text-[10px] font-bold mt-0.5">شراء السلسلة كاملة →</span>
+                <span className="text-[10px] font-bold mt-0.5">{isEn ? 'Buy full series →' : 'شراء السلسلة كاملة →'}</span>
               </Link>
             )}
           </div>
           <div className="p-4">
             <div className="flex gap-3 overflow-x-auto pb-1">
-              {seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').map((sb) => {
+              {seriesLangBooks(book).map((sb) => {
                 const isCurrent = sb.id === id;
                 const sbTitle = (isEn && sb.titleEn) ? sb.titleEn : sb.title;
                 return (
@@ -747,7 +774,7 @@ function BookPageInner() {
             </div>
             {/* Prev / Next buttons */}
             {(() => {
-              const filteredSeries = seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both');
+              const filteredSeries = seriesLangBooks(book);
               const currentIdx = filteredSeries.findIndex(sb => sb.id === id);
               const prev = currentIdx > 0 ? filteredSeries[currentIdx - 1] : null;
               const next = currentIdx < filteredSeries.length - 1 ? filteredSeries[currentIdx + 1] : null;

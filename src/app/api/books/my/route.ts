@@ -19,6 +19,10 @@ export async function GET() {
             cover: true,
             author: true,
             totalPages: true,
+            language: true,
+            seriesId: true,
+            seriesOrder: true,
+            series: { select: { id: true, name: true, nameEn: true, cover: true } },
           },
         },
       },
@@ -33,6 +37,12 @@ export async function GET() {
       totalPages: a.book.totalPages,
       lastPage: a.lastPage,
       grantedAt: a.grantedAt,
+      // Series membership — the account page shows a series as ONE card that opens
+      // onto its stories instead of scattering them among the single books.
+      language: a.book.language,
+      seriesId: a.book.seriesId,
+      seriesOrder: a.book.seriesOrder,
+      series: a.book.series,
     }));
 
     return NextResponse.json({ books });

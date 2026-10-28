@@ -8,6 +8,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import PayPalBookButton from '@/components/PayPalBookButton';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { egpToUsd } from '@/lib/currency';
+import { booksForLang, seriesLangLabel, seriesLangPrice, seriesLanguages } from '@/lib/series-lang';
 
 interface SeriesData {
   id: string;
@@ -15,7 +17,7 @@ interface SeriesData {
   cover: string | null;
   seriesPrice: number | null;
   seriesPriceUSD: number | null;
-  books: { id: string; title: string; cover: string | null; seriesOrder: number | null; price: number; priceUSD: number | null }[];
+  books: { id: string; title: string; cover: string | null; seriesOrder: number | null; price: number; priceUSD: number | null; language?: string | null }[];
 }
 
 export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: string }> | { seriesId: string } }) {
@@ -24,6 +26,8 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   const [loading, setLoading] = useState(true);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState('');
+  // A series is bought one language at a time (?lang=… from the book page, else chosen here).
+  const [selectedLang, setSelectedLang] = useState<string>('');
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
@@ -40,7 +44,8 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   useEffect(() => {
     if (!seriesId) return;
     if (!isLoading && !user) {
-      router.replace(`/login?redirect=/library/series/${seriesId}/buy`);
+      const q = typeof window !== 'undefined' ? window.location.search : '';
+      router.replace(`/login?redirect=${encodeURIComponent(`/library/series/${seriesId}/buy${q}`)}`);
       return;
     }
     if (isLoading) return;
@@ -49,30 +54,27 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
       .then(r => r.json())
       .then(d => {
         const found = (d.series || []).find((s: SeriesData) => s.id === seriesId);
-        if (found) setSeries(found);
+        if (found) {
+          setSeries(found);
+          // Language: the one the buyer came from, else the site language, else the first edition.
+          const available = seriesLanguages(found.books);
+          const fromUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('lang') : null;
+          const wanted = [fromUrl, isEn ? 'en' : 'ar'].find(l => l && available.includes(l));
+          setSelectedLang(prev => prev || wanted || available[0]);
+        }
       })
       .finally(() => setLoading(false));
   }, [seriesId, user, isLoading, router]);
 
-  // Display and PayPal charge prices — mirrors server-side paypal-create logic
-  let displayPriceEgp = 0;
-  let displayPriceUsd = 0;
-  if (series) {
-    displayPriceEgp = series.seriesPrice && series.seriesPrice > 0
-      ? series.seriesPrice
-      : series.books.reduce((sum, b) => sum + b.price, 0);
-    if (series.seriesPriceUSD && series.seriesPriceUSD > 0) {
-      displayPriceUsd = series.seriesPriceUSD;
-    } else {
-      displayPriceUsd = series.books.reduce((sum, b) => {
-        const bookUsd = b.priceUSD && b.priceUSD > 0 ? b.priceUSD : Math.round(b.price / 50 * 100) / 100;
-        return sum + bookUsd;
-      }, 0);
-    }
-  }
-  const priceUsd = isEgypt
-    ? Math.max(0.01, Math.round(displayPriceEgp / 50 * 100) / 100)
-    : displayPriceUsd;
+  // Display and PayPal charge prices — the same per-language function paypal-create uses
+  const langBooks = series ? booksForLang(series.books, selectedLang) : [];
+  const availableLangs = series ? seriesLanguages(series.books) : [];
+  const langPrice = series
+    ? seriesLangPrice(series, series.books, selectedLang)
+    : { count: 0, egp: 0, usd: 0 };
+  const displayPriceEgp = langPrice.egp;
+  const displayPriceUsd = langPrice.usd;
+  const priceUsd = isEgypt ? egpToUsd(displayPriceEgp) : displayPriceUsd;
 
   if (loading || isLoading) {
     return (
@@ -111,7 +113,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
             <p className="text-gray-500 text-sm leading-relaxed">
               طلبك رقم <span className="font-black text-gray-900">#{orderId}</span> تم تأكيده بنجاح.
               <br />
-              كل كتب السلسلة ({series.books.length}) متاحة الآن في مكتبتك.
+              كل كتب السلسلة ({langBooks.length}) متاحة الآن في مكتبتك، داخل السلسلة.
             </p>
           </div>
 
@@ -124,7 +126,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
               )}
               <div>
                 <p className="font-black text-gray-900">{series.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{series.books.length} كتاب</p>
+                <p className="text-xs text-gray-500 mt-0.5">{langBooks.length} كتاب</p>
               </div>
             </div>
           </div>
@@ -161,11 +163,34 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
             </div>
           )}
           <div>
-            <p className="text-xs text-gray-400 font-semibold mb-1">{isEn ? `Full Series — ${series.books.length} books` : `السلسلة كاملة — ${series.books.length} كتاب`}</p>
+            <p className="text-xs text-gray-400 font-semibold mb-1">{isEn ? `Full Series (${seriesLangLabel(selectedLang)}) — ${langBooks.length} books` : `السلسلة كاملة (${seriesLangLabel(selectedLang)}) — ${langBooks.length} كتاب`}</p>
             <h1 className="text-lg font-black text-gray-900 leading-tight">{series.name}</h1>
-            <p className="text-xs text-gray-500 mt-1">{series.books.map(b => b.title).join(' • ')}</p>
+            <p className="text-xs text-gray-500 mt-1">{langBooks.map(b => b.title).join(' • ')}</p>
           </div>
         </div>
+
+        {/* Language edition — one language per purchase */}
+        {availableLangs.length > 1 && (
+          <div className="px-6 py-4 border-b border-gray-100">
+            <p className="text-xs font-black text-gray-400 mb-2">{isEn ? 'Choose the language' : 'اختر لغة السلسلة'}</p>
+            <div className="flex flex-wrap gap-2">
+              {availableLangs.map(l => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setSelectedLang(l)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-black border transition ${
+                    selectedLang === l
+                      ? 'bg-[#F5C518] border-[#F5C518] text-[#1a1a2e]'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-[#F5C518]'
+                  }`}
+                >
+                  {seriesLangLabel(l)} · {booksForLang(series.books, l).length}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Price */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -198,6 +223,9 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
         <div className="px-6 pb-6">
           <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">{isEn ? 'Choose Payment Method' : 'اختر طريقة الدفع'}</p>
           <PayPalBookButton
+            key={selectedLang}
+            createBody={{ lang: selectedLang }}
+            extraBody={{ lang: selectedLang }}
             createEndpoint={`/api/series/${series.id}/paypal-create`}
             captureEndpoint={`/api/series/${series.id}/paypal-capture`}
             amountUsd={priceUsd}

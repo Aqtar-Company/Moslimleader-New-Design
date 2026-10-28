@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import nodemailer from 'nodemailer';
+import { booksForLang, normalizeSeriesLang } from '@/lib/series-lang';
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.titan.email',
@@ -20,7 +21,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!auth) return NextResponse.json({ error: 'يجب تسجيل الدخول أولاً' }, { status: 401 });
 
     const { id: seriesId } = await params;
-    const { orderId, paymentMethod, price, currency } = await req.json();
+    const { orderId, paymentMethod, price, currency, lang: bodyLang } = await req.json();
+    const lang = normalizeSeriesLang(typeof bodyLang === 'string' ? bodyLang : null);
 
     // Get series info
     const series = await prisma.bookSeries.findUnique({
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         seriesPrice: true,
         books: {
           where: { isPublished: true },
-          select: { id: true, title: true },
+          select: { id: true, title: true, language: true },
           orderBy: { seriesOrder: 'asc' },
         },
       },
@@ -50,8 +52,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Save one BookOrder per book in the series (using the first book as the main reference)
     // We store the orderId with a suffix to link them
-    const bookIds = series.books.map(b => b.id);
-    const bookTitles = series.books.map(b => b.title).join('، ');
+    // Only the language that was bought — a series is never sold as all languages at once.
+    const langBooks = booksForLang(series.books, lang);
+    if (langBooks.length === 0) return NextResponse.json({ error: 'لا توجد كتب بهذه اللغة في السلسلة' }, { status: 404 });
+    const bookIds = langBooks.map(b => b.id);
+    const bookTitles = langBooks.map(b => b.title).join('، ');
 
     // Create orders for all books in the series
     for (let i = 0; i < bookIds.length; i++) {
@@ -94,7 +99,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       <table style="width:100%;border-collapse:collapse;">
         <tr><td style="padding:8px 0;color:#666;font-size:14px;">رقم الطلب</td><td style="padding:8px 0;font-weight:bold;font-size:14px;">#${orderId}</td></tr>
         <tr><td style="padding:8px 0;color:#666;font-size:14px;">السلسلة</td><td style="padding:8px 0;font-weight:bold;font-size:14px;">${series.name}</td></tr>
-        <tr><td style="padding:8px 0;color:#666;font-size:14px;">الكتب (${series.books.length})</td><td style="padding:8px 0;font-size:13px;">${bookTitles}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;font-size:14px;">الكتب (${langBooks.length}) — اللغة: ${lang}</td><td style="padding:8px 0;font-size:13px;">${bookTitles}</td></tr>
         <tr><td style="padding:8px 0;color:#666;font-size:14px;">السعر</td><td style="padding:8px 0;font-weight:bold;color:#F5C518;font-size:18px;">${price} ${currency}</td></tr>
         <tr><td style="padding:8px 0;color:#666;font-size:14px;">طريقة الدفع</td><td style="padding:8px 0;font-weight:bold;font-size:14px;">${paymentMethod}</td></tr>
         <tr><td style="padding:8px 0;color:#666;font-size:14px;">المشتري</td><td style="padding:8px 0;font-weight:bold;font-size:14px;">${user.name || 'غير محدد'}</td></tr>

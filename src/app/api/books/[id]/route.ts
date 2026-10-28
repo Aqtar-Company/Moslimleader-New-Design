@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { seriesLangPrice } from '@/lib/series-lang';
 // GET /api/books/[id]
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const baseSelect = {
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             seriesPriceUSD: true,
             books: {
               where: { isPublished: true },
-              select: { id: true, title: true, titleEn: true, cover: true, seriesOrder: true, language: true },
+              select: { id: true, title: true, titleEn: true, cover: true, seriesOrder: true, language: true, price: true, priceUSD: true },
               orderBy: { seriesOrder: 'asc' },
             },
           },
@@ -82,15 +83,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           seriesName = series.name;
           seriesNameEn = series.nameEn ?? null;
           seriesSeriesId = series.id;
-          // Calculate series price based on current book language
-          const currentLang = (book as any).language || 'ar';
-          const totalBooks = series.books.length;
-          const filteredBooks = series.books.filter((b: any) => b.language === currentLang || !b.language);
-          const ratio = totalBooks > 0 && filteredBooks.length > 0 ? filteredBooks.length / totalBooks : 1;
-          const fullPrice = series.seriesPrice ?? null;
-          const fullPriceUSD = series.seriesPriceUSD ?? null;
-          seriesPrice = fullPrice ? Math.round(fullPrice * ratio) : null;
-          seriesPriceUSD = fullPriceUSD ? Math.round(fullPriceUSD * ratio * 2) / 2 : null;
+          // Price of THIS book's language edition of the series (the same function the
+          // PayPal routes charge with — see src/lib/series-lang.ts)
+          const langPrice = seriesLangPrice(series, series.books, (book as any).language);
+          seriesPrice = series.seriesPrice ? langPrice.egp : null;
+          seriesPriceUSD = series.seriesPriceUSD ? langPrice.usd : null;
         }
       } catch {
         // series table may not exist yet

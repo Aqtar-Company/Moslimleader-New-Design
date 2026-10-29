@@ -48,6 +48,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // The language is the one the order was CREATED for. The body value is only a
     // fallback for a lost Setting — it can never widen what was paid for, because the
     // amount check below is against the same language's price.
+    // The order must belong to THIS buyer and THIS series — otherwise a cheap series' paid
+    // order could be redeemed against an expensive one.
+    if (pendingValue) {
+      if (pendingValue.userId && pendingValue.userId !== auth.userId) {
+        return NextResponse.json({ error: 'طلب الدفع لا يخص هذا الحساب' }, { status: 403 });
+      }
+      if (pendingValue.seriesId && pendingValue.seriesId !== seriesId) {
+        return NextResponse.json({ error: 'طلب الدفع لا يخص هذه السلسلة' }, { status: 400 });
+      }
+    }
     const lang = normalizeSeriesLang(
       typeof pendingValue?.lang === 'string' ? (pendingValue.lang as string)
         : typeof body?.lang === 'string' ? body.lang : null,

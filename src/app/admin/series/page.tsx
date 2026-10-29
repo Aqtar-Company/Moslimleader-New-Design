@@ -285,11 +285,11 @@ export default function AdminSeriesPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-500 mb-1 block">سعر السلسلة كاملة (ج.م)</label>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">سعر السلسلة للغة الواحدة (ج.م)</label>
               <input className={inputCls} type="number" value={form.seriesPrice} onChange={e => setForm(p => ({ ...p, seriesPrice: e.target.value }))} placeholder="99" />
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-500 mb-1 block">سعر السلسلة كاملة ($)</label>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">سعر السلسلة للغة الواحدة ($)</label>
               <input className={inputCls} type="number" dir="ltr" value={form.seriesPriceUSD} onChange={e => setForm(p => ({ ...p, seriesPriceUSD: e.target.value }))} placeholder="9.99" />
             </div>
             <div className="sm:col-span-2">
@@ -356,7 +356,7 @@ export default function AdminSeriesPage() {
                 </div>
                 <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
                   <span>{s.books.length} كتاب/قصة</span>
-                  {s.seriesPrice && <span className="text-[#F5C518] font-bold">السلسلة كاملة: {s.seriesPrice} ج.م</span>}
+                  {s.seriesPrice && <span className="text-[#F5C518] font-bold">السلسلة (لغة واحدة): {s.seriesPrice} ج.م</span>}
                   {s.seriesPriceUSD && <span className="text-green-600 font-bold">${s.seriesPriceUSD}</span>}
                 </div>
               </div>

@@ -38,19 +38,17 @@ export interface SeriesLangPrice {
   usd: number;
 }
 
-// Price of ONE language's share of a series.
-//  - A manual bundle price (seriesPrice / seriesPriceUSD) is for the whole
-//    series, so it is prorated by this language's share of the books. EGP is
-//    rounded to a whole pound and USD to the nearest 0.5, which is what the
-//    book page has always displayed.
-//  - Without a bundle price the language's books are simply summed.
+// Price of ONE language edition of a series.
+//  - seriesPrice / seriesPriceUSD ARE the price of a single language's set of books
+//    (6 or 7 stories — the count may differ per language, the price does not). They are
+//    NOT divided by the number of languages.
+//  - Without a bundle price, the language's own books are simply summed.
 export function seriesLangPrice(
   series: { seriesPrice?: number | null; seriesPriceUSD?: number | null },
   allBooks: SeriesPricedBook[],
   lang?: string | null,
 ): SeriesLangPrice {
   const selected = booksForLang(allBooks, lang);
-  const ratio = allBooks.length > 0 && selected.length > 0 ? selected.length / allBooks.length : 1;
 
   const sumEgp = selected.reduce((s, b) => s + Number(b.price || 0), 0);
   const sumUsd = selected.reduce((s, b) => {
@@ -58,11 +56,9 @@ export function seriesLangPrice(
     return s + usd;
   }, 0);
 
-  const egp = series.seriesPrice && series.seriesPrice > 0
-    ? Math.round(Number(series.seriesPrice) * ratio)
-    : sumEgp;
+  const egp = series.seriesPrice && series.seriesPrice > 0 ? Math.round(Number(series.seriesPrice)) : sumEgp;
   const usd = series.seriesPriceUSD && series.seriesPriceUSD > 0
-    ? Math.round(Number(series.seriesPriceUSD) * ratio * 2) / 2
+    ? Math.round(Number(series.seriesPriceUSD) * 100) / 100
     : sumUsd;
 
   return { count: selected.length, egp, usd };

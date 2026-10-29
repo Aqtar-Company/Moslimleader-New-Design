@@ -28,6 +28,7 @@ interface BookSeries {
   cover?: string;
   seriesPrice?: number;
   seriesPriceUSD?: number;
+  plannedBookCount?: number | null;
   language?: string;
   isPublished: boolean;
   books: SeriesBook[];
@@ -53,6 +54,7 @@ const emptyForm = {
   cover: '',
   seriesPrice: '',
   seriesPriceUSD: '',
+  plannedBookCount: '',
   language: 'both',
   isPublished: true,
 };
@@ -132,6 +134,7 @@ export default function AdminSeriesPage() {
         cover: coverUrl || null,
         seriesPrice: form.seriesPrice ? parseFloat(form.seriesPrice) : null,
         seriesPriceUSD: form.seriesPriceUSD ? parseFloat(form.seriesPriceUSD) : null,
+        plannedBookCount: form.plannedBookCount ? parseInt(form.plannedBookCount, 10) : null,
       };
 
       const url = editId ? `/api/admin/series/${editId}` : '/api/admin/series';
@@ -162,6 +165,7 @@ export default function AdminSeriesPage() {
       cover: s.cover || '',
       seriesPrice: s.seriesPrice?.toString() || '',
       seriesPriceUSD: s.seriesPriceUSD?.toString() || '',
+      plannedBookCount: s.plannedBookCount?.toString() || '',
       language: s.language || 'both',
       isPublished: s.isPublished,
     });
@@ -293,6 +297,11 @@ export default function AdminSeriesPage() {
               <input className={inputCls} type="number" dir="ltr" value={form.seriesPriceUSD} onChange={e => setForm(p => ({ ...p, seriesPriceUSD: e.target.value }))} placeholder="9.99" />
             </div>
             <div className="sm:col-span-2">
+              <label className="text-xs font-bold text-gray-500 mb-1 block">عدد كتب السلسلة في اللغة الواحدة (بعد اكتمال الرفع)</label>
+              <input className={inputCls} type="number" min={1} value={form.plannedBookCount} onChange={e => setForm(p => ({ ...p, plannedBookCount: e.target.value }))} placeholder="7" />
+              <p className="text-[11px] text-gray-400 mt-1">لو المنشور أقل من هذا العدد، السعر يُحسب بنسبة (المنشور ÷ هذا العدد) حتى لا يدفع أحد سعر الكامل مقابل جزء أثناء الرفع. اتركه فارغاً لو لا تريد ذلك.</p>
+            </div>
+            <div className="sm:col-span-2">
               <label className="text-xs font-bold text-gray-500 mb-1 block">الوصف (عربي)</label>
               <textarea className={inputCls} rows={2} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="وصف السلسلة..." />
             </div>
@@ -355,7 +364,7 @@ export default function AdminSeriesPage() {
                   {!s.isPublished && <span className="text-xs bg-red-50 text-red-500 border border-red-200 px-2 py-0.5 rounded-full font-bold">مخفية</span>}
                 </div>
                 <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                  <span>{s.books.length} كتاب/قصة</span>
+                  <span>{s.books.length} كتاب/قصة{s.plannedBookCount ? ` — المخطط للغة: ${s.plannedBookCount}` : ''}</span>
                   {s.seriesPrice && <span className="text-[#F5C518] font-bold">السلسلة (لغة واحدة): {s.seriesPrice} ج.م</span>}
                   {s.seriesPriceUSD && <span className="text-green-600 font-bold">${s.seriesPriceUSD}</span>}
                 </div>

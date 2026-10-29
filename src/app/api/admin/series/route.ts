@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const auth = guard.user;
 
     const body = await req.json();
-    const { name, nameEn, slug, description, descriptionEn, cover, seriesPrice, seriesPriceUSD, language, isPublished } = body;
+    const { name, nameEn, slug, description, descriptionEn, cover, seriesPrice, seriesPriceUSD, plannedBookCount, language, isPublished } = body;
 
     if (!name || !slug) {
       return NextResponse.json({ error: 'الاسم والـ slug مطلوبان' }, { status: 400 });
@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
         cover: cover || null,
         seriesPrice: seriesPrice ? parseFloat(seriesPrice) : null,
         seriesPriceUSD: seriesPriceUSD ? parseFloat(seriesPriceUSD) : null,
+        plannedBookCount: plannedBookCount ? Math.max(0, parseInt(String(plannedBookCount), 10)) || null : null,
         language: language || 'ar',
         isPublished: isPublished !== false,
       },

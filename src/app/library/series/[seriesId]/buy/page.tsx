@@ -17,6 +17,7 @@ interface SeriesData {
   cover: string | null;
   seriesPrice: number | null;
   seriesPriceUSD: number | null;
+  plannedBookCount?: number | null;
   books: { id: string; title: string; cover: string | null; seriesOrder: number | null; price: number; priceUSD: number | null; language?: string | null }[];
 }
 
@@ -166,6 +167,9 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
             <p className="text-xs text-gray-400 font-semibold mb-1">{isEn ? `Full Series (${seriesLangLabel(selectedLang)}) — ${langBooks.length} books` : `السلسلة كاملة (${seriesLangLabel(selectedLang)}) — ${langBooks.length} كتاب`}</p>
             <h1 className="text-lg font-black text-gray-900 leading-tight">{series.name}</h1>
             <p className="text-xs text-gray-500 mt-1">{langBooks.map(b => b.title).join(' • ')}</p>
+            {!langPrice.complete && (
+              <p className="text-xs font-bold text-amber-600 mt-1">{isEn ? `${langPrice.count} of ${langPrice.planned} books are published so far — the price covers these only.` : `المنشور حتى الآن ${langPrice.count} من ${langPrice.planned} كتب — السعر يشمل المنشور فقط.`}</p>
+            )}
           </div>
         </div>
 

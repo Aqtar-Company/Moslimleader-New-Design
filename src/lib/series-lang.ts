@@ -33,7 +33,9 @@ export function booksForLang<T extends SeriesLangBook>(books: T[], lang?: string
 }
 
 export interface SeriesLangPrice {
-  count: number;
+  count: number;       // books published (and sold) now in this language
+  planned: number;     // books the edition will have when complete (== count if not set)
+  complete: boolean;   // count >= planned
   egp: number;
   usd: number;
 }
@@ -44,7 +46,7 @@ export interface SeriesLangPrice {
 //    NOT divided by the number of languages.
 //  - Without a bundle price, the language's own books are simply summed.
 export function seriesLangPrice(
-  series: { seriesPrice?: number | null; seriesPriceUSD?: number | null },
+  series: { seriesPrice?: number | null; seriesPriceUSD?: number | null; plannedBookCount?: number | null },
   allBooks: SeriesPricedBook[],
   lang?: string | null,
 ): SeriesLangPrice {
@@ -56,12 +58,22 @@ export function seriesLangPrice(
     return s + usd;
   }, 0);
 
-  const egp = series.seriesPrice && series.seriesPrice > 0 ? Math.round(Number(series.seriesPrice)) : sumEgp;
-  const usd = series.seriesPriceUSD && series.seriesPriceUSD > 0
+  let egp = series.seriesPrice && series.seriesPrice > 0 ? Math.round(Number(series.seriesPrice)) : sumEgp;
+  let usd = series.seriesPriceUSD && series.seriesPriceUSD > 0
     ? Math.round(Number(series.seriesPriceUSD) * 100) / 100
     : sumUsd;
 
-  return { count: selected.length, egp, usd };
+  // While the edition is still being uploaded (fewer published than planned), charge only
+  // for the books that exist: price × published / planned. Complete edition → full price.
+  const planned = series.plannedBookCount && series.plannedBookCount > 0 ? Math.floor(series.plannedBookCount) : selected.length;
+  const complete = selected.length >= planned;
+  if (!complete && series.plannedBookCount) {
+    const ratio = selected.length / planned;
+    if (series.seriesPrice && series.seriesPrice > 0) egp = Math.round(egp * ratio);
+    if (series.seriesPriceUSD && series.seriesPriceUSD > 0) usd = Math.round(usd * ratio * 100) / 100;
+  }
+
+  return { count: selected.length, planned, complete, egp, usd };
 }
 
 export const SERIES_LANG_LABELS: Record<string, string> = {

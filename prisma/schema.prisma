@@ -769,6 +769,9 @@ model BookSeries {
   cover          String?
   seriesPrice    Float?
   seriesPriceUSD Float?
+  // How many books ONE language edition will have once fully uploaded (6 or 7). While fewer
+  // are published, the language price is prorated so nobody pays in full for a part.
+  plannedBookCount Int?
   language       String?  @default("ar")
   isPublished    Boolean  @default(true)
   createdAt      DateTime @default(now())

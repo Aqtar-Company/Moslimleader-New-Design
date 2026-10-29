@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const series = await prisma.bookSeries.findUnique({
       where: { id: seriesId },
       select: {
-        name: true, isPublished: true, seriesPrice: true, seriesPriceUSD: true,
+        name: true, isPublished: true, seriesPrice: true, seriesPriceUSD: true, plannedBookCount: true,
         books: {
           where: { isPublished: true },
           select: { id: true, title: true, price: true, priceUSD: true, language: true },
@@ -67,6 +67,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const finalUsd = Math.max(0.01, Math.round(priceUsd * 100) / 100);
+    // Exactly the books being paid for NOW — books uploaded while the buyer is at PayPal
+    // must not ride along for a price computed without them.
+    const bookIds = langBooks.map(b => b.id);
     const referenceId = `series-${seriesId}-${lang}-${auth.userId}-${Date.now()}`;
 
     const paypalOrder = await createPayPalOrder(finalUsd, 'USD', referenceId);
@@ -74,8 +77,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Store expected amount so capture can verify without recalculating
     await prisma.setting.upsert({
       where: { key: `pp_pending_${paypalOrder.id}` },
-      create: { key: `pp_pending_${paypalOrder.id}`, value: { expectedUsd: finalUsd, userId: auth.userId, seriesId, lang, createdAt: Date.now() } },
-      update: { value: { expectedUsd: finalUsd, userId: auth.userId, seriesId, lang, createdAt: Date.now() } },
+      create: { key: `pp_pending_${paypalOrder.id}`, value: { expectedUsd: finalUsd, userId: auth.userId, seriesId, lang, bookIds, createdAt: Date.now() } },
+      update: { value: { expectedUsd: finalUsd, userId: auth.userId, seriesId, lang, bookIds, createdAt: Date.now() } },
     });
 
     return NextResponse.json({

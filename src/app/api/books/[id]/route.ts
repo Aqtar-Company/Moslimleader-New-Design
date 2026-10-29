@@ -71,6 +71,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             nameEn: true,
             seriesPrice: true,
             seriesPriceUSD: true,
+            plannedBookCount: true,
             books: {
               where: { isPublished: true },
               select: { id: true, title: true, titleEn: true, cover: true, seriesOrder: true, language: true, price: true, priceUSD: true },

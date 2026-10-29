@@ -38,9 +38,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const body = await req.json();
 
-    const ALLOWED = ['title', 'titleEn', 'description', 'descriptionEn', 'cover', 'price', 'priceUSD', 'isPublished'];
+    // Fields that actually exist on BookSeries. (The old list named title/price/priceUSD,
+    // which are Book fields — so editing a series' name, slug or prices saved nothing.)
+    const TEXT = ['name', 'nameEn', 'slug', 'description', 'descriptionEn', 'cover', 'language'];
     const data: Record<string, unknown> = { updatedAt: new Date() };
-    for (const k of ALLOWED) if (k in body) data[k] = body[k];
+    for (const k of TEXT) if (k in body) data[k] = body[k] === '' ? null : body[k];
+    if (data.name === null) delete data.name;
+    if (data.slug === null) delete data.slug;
+    if ('isPublished' in body) data.isPublished = body.isPublished !== false;
+    for (const k of ['seriesPrice', 'seriesPriceUSD'] as const) {
+      if (k in body) { const n = parseFloat(String(body[k])); data[k] = Number.isFinite(n) && n > 0 ? n : null; }
+    }
+    if ('plannedBookCount' in body) {
+      const n = parseInt(String(body.plannedBookCount), 10);
+      data.plannedBookCount = Number.isFinite(n) && n > 0 ? n : null;
+    }
 
     const series = await prisma.bookSeries.update({ where: { id }, data });
 

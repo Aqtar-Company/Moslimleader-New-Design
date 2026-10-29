@@ -72,7 +72,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   const availableLangs = series ? seriesLanguages(series.books) : [];
   const langPrice = series
     ? seriesLangPrice(series, series.books, selectedLang)
-    : { count: 0, egp: 0, usd: 0 };
+    : { count: 0, planned: 0, complete: true, egp: 0, usd: 0 };
   const displayPriceEgp = langPrice.egp;
   const displayPriceUsd = langPrice.usd;
   const priceUsd = isEgypt ? egpToUsd(displayPriceEgp) : displayPriceUsd;

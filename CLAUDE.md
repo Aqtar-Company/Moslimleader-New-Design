@@ -984,7 +984,7 @@ Books are protected from download at two levels:
 | Cart cleared before order confirmed | `clear()` called before API response | Moved `clear()` after successful order submission |
 | No server-side price verification (COD) | Client sends total/unitPrice unchecked | Server recalculates prices from DB + validates coupon |
 | Google OAuth users can't login | `emailVerified` not set on OAuth signup | Set `emailVerified: true` for Google OAuth users |
-| No rate limiting on auth endpoints | Login/register/forgot open to brute-force | Added `checkRateLimit` on login (10/15min), register (5/hr), forgot (3/15min) |
+| No rate limiting on auth endpoints | Login/register/forgot open to brute-force | Added `checkRateLimit` on login (10/min), register (5/hr), forgot (3/min) — login and forgot were 15 min until 2026-10; shortened at the owner's request, the 429 states the seconds left |
 | No CSRF protection | `sameSite: 'none'` with no Origin check | Added `middleware.ts` validating Origin header on mutations |
 | Admin shipping rates not reflected | Checkout used hardcoded `getShipping()` | Checkout now fetches rates from `/api/shipping-rates` (DB) |
 | Selected model wrong in invoice | Off-by-one + missing display | Fixed index (+1) in admin, added model to invoice + email |

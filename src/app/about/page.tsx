@@ -222,24 +222,30 @@ export default function AboutPage() {
             ))}
           </div>
 
-          {/* Co-founder. A drawn avatar, not a photograph — her choice, and the rule this
-              site follows for women's pictures everywhere. */}
-          <div className="mt-12 bg-white border border-[#EFE7CE] rounded-2xl p-6 sm:p-8 grid sm:grid-cols-[auto_minmax(0,1fr)] gap-6 items-center">
-            <div className="relative w-36 h-36 sm:w-40 sm:h-40 mx-auto">
-              <div className="absolute inset-0 rounded-full bg-[#FAF6E6] border-2 border-[#F5C518]" aria-hidden />
+          {/* Co-founder — a partner in the whole of Moslim Leader, so she gets a block of her
+              own weight, not a footnote under the founder. A drawn avatar, not a photograph:
+              her choice, and the rule this site follows for women's pictures everywhere. */}
+          <div
+            className="mt-12 relative overflow-hidden rounded-[2rem] text-white p-8 sm:p-10 grid md:grid-cols-[auto_minmax(0,1fr)] gap-8 items-center"
+            style={{ background: 'radial-gradient(700px 320px at 10% 0%, rgba(245,197,24,.18), transparent 60%), linear-gradient(160deg, #16223F 0%, #0C1428 100%)' }}
+          >
+            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: STAR }} aria-hidden />
+            <div className="relative mx-auto w-44 h-44 sm:w-52 sm:h-52">
+              <div className="absolute -top-1 -end-1 w-14 h-14 bg-[#F5C518]" style={{ clipPath: STAR_CLIP }} aria-hidden />
+              <div className="absolute inset-0 rounded-full bg-[#FAF6E6] ring-4 ring-[#F5C518] ring-offset-4 ring-offset-[#16223F]" aria-hidden />
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/about/cofounder-marwa.webp" alt={tx('د. مروة علي', 'Dr. Marwa Ali')} width={600} height={600} className="relative w-full h-full object-contain rounded-full p-3" />
+              <img src="/about/cofounder-marwa.webp" alt={tx('د. مروة علي', 'Dr. Marwa Ali')} width={600} height={600} className="relative w-full h-full object-contain rounded-full p-4" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-[#22335C] mb-1">{tx('شريك مؤسس', 'Co-founder')}</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-[#0C1428] leading-snug">{tx('د. مروة علي', 'Dr. Marwa Ali')}</h3>
-              <p className="mt-2 text-[#5C6373] font-semibold">
+            <div className="relative">
+              <p className="inline-block text-sm font-bold text-[#0C1428] bg-[#F5C518] rounded-full px-4 py-1 mb-3">{tx('شريك مؤسس', 'Co-founder')}</p>
+              <h2 className="text-3xl sm:text-4xl font-black leading-snug">{tx('د. مروة علي', 'Dr. Marwa Ali')}</h2>
+              <p className="mt-2 text-[#FBEEBB] font-semibold">
                 {tx('دكتورة صيدلانية وباحثة في الفكر الإسلامي · مديرة منصة كليم للصحة النفسية', 'Pharmacist and researcher in Islamic thought · Director of the Kaleem mental well-being platform')}
               </p>
-              <p className="mt-3 text-[#3A4150] leading-relaxed">
+              <p className="mt-5 text-[#D7DCE8] text-base sm:text-lg leading-loose max-w-2xl">
                 {tx(
-                  'شاركت في تأليف «مسلسل البر» و«فلسطين في عيون أبنائي» و«رسائل أمهات العظماء».',
-                  'Co-author of the Righteousness series, «Palestine in My Children\'s Eyes» and «Letters of the Mothers of the Great».',
+                  'شريكة في رؤية مسلم ليدر وفي منتجاتها كلها: من الفكرة والرسالة، إلى المحتوى التربوي، إلى المنتج الذي يصل إلى الطفل وأسرته.',
+                  'A partner in Moslim Leader\'s vision and in everything it makes: from the idea and the message, to the educational content, to the product that reaches the child and the family.',
                 )}
               </p>
             </div>

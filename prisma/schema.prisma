@@ -2219,3 +2219,36 @@ model AdminBroadcastRecipient {
   @@index([userId, readAt])
   @@index([userId, status])
 }
+
+/// A partnership request sent from the «ابدأ معنا» wizard on /strategic-vision.html
+/// (POST /api/partnership-requests). Contact details and answers only — never an ID number
+/// or bank details. `status`: new → contacted → trial → closed.
+model PartnershipRequest {
+  id              String   @id @default(cuid())
+  name            String   @db.VarChar(120)
+  email           String   @db.VarChar(190)
+  whatsapp        String?  @db.VarChar(40)
+  company         String?  @db.VarChar(200)
+  links           String?  @db.Text
+  /// distributor | affiliate | operator | licensee | investor | unsure
+  role            String   @db.VarChar(20)
+  country         String   @db.VarChar(80)
+  /// existing | founding | individual
+  businessStage   String   @db.VarChar(20)
+  /// string[] of channel keys
+  channels        Json
+  channelsOther   String?  @db.VarChar(300)
+  /// none | general | kids
+  experience      String   @db.VarChar(20)
+  experienceNotes String?  @db.Text
+  /// small | medium | large | later
+  startSize       String   @db.VarChar(20)
+  message         String?  @db.Text
+  status          String   @default("new") @db.VarChar(20)
+  ip              String?  @db.VarChar(64)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
+}

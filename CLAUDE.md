@@ -959,6 +959,16 @@ Books are protected from download at two levels:
   cannot decode are skipped for the visit; «صور مصغّرة للفيديوهات» retries them.
 - **No emoji in the UI — icons.** `src/components/media/Icon.tsx` is the set (one stroke style).
   Arrows carry `icon-dir-flip`, mirrored in RTL by a plain rule in `globals.css`.
+- **Partnership requests (`/strategic-vision.html`, alias `/partnership`).** The page is a static
+  file in `public/`, and its «ابدأ معنا» wizard posts to `POST /api/partnership-requests`
+  (same origin, so the CSRF check passes). Order: validate → `checkRateLimit` 5/hour/IP →
+  Turnstile verified server-side → SAVE (`PartnershipRequest`) → mail to edara@ + confirmation
+  (best effort — a failed mail never fails the request). **This route is the FIRST code that
+  reads `TURNSTILE_SECRET_KEY`**: the library page's widget was always client-only. If the
+  variable is missing the request is accepted and `[partnership-requests] TURNSTILE_SECRET_KEY
+  is not set` is logged — check for that line after deploying. No admin screen yet; `status`
+  (new/contacted/trial/closed) is there for one. The repo-root `strategic-vision.html` is an
+  older design that is NOT served; edit the one in `public/`.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

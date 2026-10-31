@@ -6,7 +6,7 @@ import { sanitizeHtml } from '@/lib/sanitize';
 import { getTransporter } from '@/lib/smtp';
 
 /**
- * The «ابدأ معنا» wizard on /strategic-vision.html posts here.
+ * The «طلب الشراكة» wizard on /partnership posts here.
  *
  * Order matters: validate → rate limit → Turnstile → SAVE → mail. The request is stored
  * before any mail is attempted, and a failed mail never fails the request — the row is

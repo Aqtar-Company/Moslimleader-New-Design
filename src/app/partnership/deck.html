@@ -1,314 +1,3 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<title>مسلم ليدر — التصور الاستراتيجي للشراكة 2026</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<meta name="theme-color" content="#16223F">
-<style>
-/* ════════════════════════════════════════════════════════════
-   Moslim Leader brand system — same tokens, faces and star motif as
-   public/brand-strategy.html, so this page belongs to the same family.
-   ════════════════════════════════════════════════════════════ */
-:root{
-  --gold:#F5C518; --gold-deep:#C79A00; --gold-soft:#FBEEBB;
-  --navy:#16223F; --navy-mid:#22335C; --navy-deep:#0C1428;
-  --paper:#FFFDF4; --cream:#FAF6E6; --line:#EFE7CE;
-  --ink:#1C2430; --muted:#5C6373; --danger:#A33B2E; --danger-bg:#FBEDE9;
-  --radius:16px;
-  /* text that must stand out: navy on light ground, gold on navy ground */
-  --hl:var(--navy-mid);
-  /* legacy names still referenced by the markup */
-  --text:var(--ink); --card:#fff; --border:var(--line);
-  --green-dark:var(--navy-deep); --green-mid:var(--navy-mid); --green-hi:var(--navy);
-  --star:url("data:image/svg+xml,%3Csvg width='72' height='72' viewBox='0 0 72 72' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23F5C518' stroke-opacity='0.09'%3E%3Cpath d='M36 6 L44 28 L66 36 L44 44 L36 66 L28 44 L6 36 L28 28 Z'/%3E%3C/g%3E%3C/svg%3E");
-}
-.dark,#s1,.cta-section,.gold-box{--hl:var(--gold);}
-/* muted text and rules on a navy ground */
-.cta-section,#pres-nav,#s1{--muted:#C9CFDD;--border:rgba(255,255,255,.16);}
-
-*{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{font-family:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;background:var(--paper);color:var(--ink);line-height:1.85;font-size:16.5px;direction:rtl;}
-h1,h2,h3,.kpi-val,.stat-val,.tl-year,.cta-title,.gold-title,.hl-title,.wz-title{font-family:'Baloo Bhaijaan 2','IBM Plex Sans Arabic',sans-serif;}
-a{color:inherit;}
-.ic{display:inline-block;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-::-webkit-scrollbar{width:8px;}
-::-webkit-scrollbar-track{background:var(--cream);}
-::-webkit-scrollbar-thumb{background:var(--navy-mid);border-radius:4px;}
-
-/* ── sections ── */
-.slide{padding:76px 0;position:relative;}
-section.slide:nth-of-type(even){background:var(--cream);}
-.container{width:100%;max-width:1000px;margin:0 auto;padding:0 24px;}
-
-/* ── cover ── */
-#s1{background:radial-gradient(1100px 520px at 85% -10%,rgba(245,197,24,.22),transparent 60%),linear-gradient(160deg,var(--navy-deep) 0%,var(--navy) 75%);color:#fff;padding:56px 0 64px;overflow:hidden;}
-#s1::before{content:'';position:absolute;inset:0;background-image:var(--star);pointer-events:none;}
-#s1 .container{position:relative;z-index:1;}
-.cover-logo{display:block;height:64px;width:auto;margin-bottom:28px;}
-.cover-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:40px;align-items:center;}
-.cover-art{position:relative;border-radius:24px;overflow:hidden;border:2px solid rgba(245,197,24,.55);box-shadow:0 24px 60px rgba(0,0,0,.45);aspect-ratio:4/5;}
-.cover-art img{width:100%;height:100%;object-fit:cover;object-position:50% 40%;display:block;}
-.cover-art figcaption{position:absolute;inset-inline:0;bottom:0;padding:28px 16px 12px;font-size:.78rem;color:#E9ECF4;background:linear-gradient(transparent,rgba(12,20,40,.85));}
-.cover-tag{display:inline-block;border:1px solid rgba(245,197,24,.5);border-radius:100px;padding:3px 16px;font-size:.8rem;color:var(--gold);margin-bottom:16px;letter-spacing:.02em;}
-h1.cover-title{font-size:clamp(2.1rem,5vw,3.3rem);font-weight:800;line-height:1.35;margin-bottom:6px;text-wrap:balance;}
-h1.cover-title span{color:var(--gold);}
-.cover-slogan{font-family:'Baloo Bhaijaan 2',sans-serif;color:var(--gold-soft);font-size:1.15rem;font-weight:600;}
-.cover-definition{background:rgba(245,197,24,.08);border-right:4px solid var(--gold);border-radius:0 var(--radius) var(--radius) 0;padding:16px 20px;margin:22px 0;font-size:1.02rem;line-height:1.85;color:#D7DCE8;}
-.cover-tagline{font-family:'Baloo Bhaijaan 2',sans-serif;font-size:1.12rem;color:#fff;font-weight:600;margin:0 0 24px;}
-.cover-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:40px;}
-.kpi{background:var(--gold);color:var(--navy-deep);border-radius:var(--radius);padding:16px 10px;text-align:center;box-shadow:0 12px 28px rgba(0,0,0,.28);}
-.kpi-val{font-size:1.6rem;font-weight:800;line-height:1.3;font-variant-numeric:tabular-nums;}
-.kpi-lbl{font-size:.78rem;font-weight:600;opacity:.85;}
-
-/* ── section heads: the brand's eight-point star holds the icon ── */
-.sec-label{display:inline-flex;align-items:center;gap:10px;font-size:.85rem;font-weight:600;color:var(--navy-mid);margin-bottom:6px;}
-.sec-label .ic{width:40px;height:40px;padding:10px;color:var(--navy-deep);background:var(--gold);clip-path:polygon(50% 0,61% 25%,85% 15%,75% 39%,100% 50%,75% 61%,85% 85%,61% 75%,50% 100%,39% 75%,15% 85%,25% 61%,0 50%,25% 39%,15% 15%,39% 25%);}
-h2.sec-title{font-size:clamp(1.6rem,3.6vw,2.3rem);font-weight:800;color:var(--navy-deep);line-height:1.4;margin-bottom:8px;text-wrap:balance;}
-h2.sec-title span{background:linear-gradient(transparent 62%,var(--gold-soft) 62%);color:var(--navy-mid);padding:0 4px;}
-.sec-sub{color:var(--muted);font-size:1.02rem;max-width:720px;margin-bottom:32px;}
-
-/* ── cards ── */
-.cards{display:grid;gap:16px;}
-.cards-2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
-.cards-3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
-.cards-4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
-.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px 22px;box-shadow:0 2px 10px rgba(12,20,40,.04);transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease;}
-.card:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(12,20,40,.12);border-color:var(--gold);}
-.card-icon{width:52px;height:52px;border-radius:14px;background:var(--cream);color:var(--navy-mid);display:grid;place-items:center;margin-bottom:12px;transition:transform .25s ease,background .25s ease;}
-.card:hover .card-icon{transform:translateY(-3px) rotate(-4deg);background:var(--gold-soft);}
-section.slide:nth-of-type(even) .card-icon{background:var(--paper);}
-.card h3{font-size:1.08rem;font-weight:700;color:var(--navy);margin-bottom:6px;line-height:1.5;}
-.card p{font-size:.94rem;color:#3A4150;line-height:1.8;}
-
-/* ── tables ── */
-.tbl{width:100%;border-collapse:separate;border-spacing:0;margin-top:12px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
-.tbl th{background:var(--navy);color:var(--gold);font-weight:700;padding:12px 16px;text-align:right;font-size:.9rem;}
-.tbl td{padding:12px 16px;border-bottom:1px solid var(--line);font-size:.93rem;color:var(--ink);vertical-align:top;}
-.tbl tr:last-child td{border-bottom:none;}
-.tbl tbody tr:hover td{background:var(--paper);}
-.tbl td:first-child{font-weight:600;color:var(--navy);}
-
-/* ── numbers ── */
-.stats-row{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin:8px 0 28px;}
-.stat-box{background:var(--navy);color:#fff;border-radius:var(--radius);padding:20px 14px;text-align:center;}
-.stat-val{font-size:1.9rem;font-weight:800;color:var(--gold);line-height:1.3;font-variant-numeric:tabular-nums;}
-.stat-lbl{font-size:.82rem;color:#D7DCE8;margin-top:2px;}
-
-/* ── callouts ── */
-.highlight{background:#fff;border:1px solid var(--line);border-right:4px solid var(--gold);border-radius:var(--radius) 0 0 var(--radius);padding:22px 26px;margin:28px 0;}
-.highlight p{font-size:1.02rem;line-height:1.9;color:var(--ink);}
-.highlight .hl-title{font-size:1.15rem;font-weight:700;color:var(--navy);margin-bottom:8px;display:flex;align-items:center;gap:10px;}
-.highlight .hl-title .ic{color:var(--gold-deep);}
-.gold-box{background:radial-gradient(600px 240px at 90% 0,rgba(245,197,24,.18),transparent 60%),var(--navy);color:#fff;border-radius:var(--radius);padding:28px 30px;margin:28px 0;position:relative;overflow:hidden;}
-.gold-box::before{content:'';position:absolute;inset:0;background-image:var(--star);pointer-events:none;}
-.gold-box>*{position:relative;}
-.gold-box p{font-size:1.04rem;line-height:1.9;color:#E9ECF4;}
-.gold-title{font-size:1.3rem;font-weight:800;color:var(--gold);margin-bottom:12px;text-align:center;}
-
-/* ── lists ── */
-.check-list{list-style:none;margin-top:6px;display:grid;gap:12px;}
-.check-list li{display:flex;align-items:flex-start;gap:12px;font-size:.98rem;color:var(--ink);line-height:1.75;}
-.check-list li .ic{color:var(--gold-deep);flex-shrink:0;margin-top:5px;}
-.gold-box .check-list li{color:#E9ECF4;}
-.gold-box .check-list li .ic{color:var(--gold);}
-.x-list li .ic{color:var(--danger);}
-.tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
-.tag{background:var(--cream);border-radius:100px;padding:5px 15px;font-size:.85rem;color:var(--navy);}
-
-/* ── phases & timeline ── */
-.phase{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;}
-.phase::before{content:'';position:absolute;top:0;right:0;width:5px;height:100%;background:var(--gold);}
-.phase-num{display:inline-block;font-size:.78rem;color:var(--navy-deep);background:var(--gold-soft);border-radius:100px;padding:2px 12px;font-weight:700;margin-bottom:10px;}
-.phase h3{font-size:1.1rem;font-weight:700;color:var(--navy);margin-bottom:6px;}
-.phase p{font-size:.92rem;color:#3A4150;line-height:1.8;}
-.timeline{margin-top:12px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:4px 22px;}
-.tl-row{display:flex;gap:20px;padding:16px 0;border-bottom:1px dashed var(--line);align-items:baseline;}
-.tl-row:last-child{border-bottom:none;}
-.tl-year{min-width:62px;font-weight:800;color:var(--navy-deep);font-size:1.15rem;background:var(--gold);border-radius:10px;text-align:center;padding:0 8px;}
-.tl-text{font-size:.97rem;color:var(--ink);line-height:1.8;}
-
-/* ── closing call ── */
-.cta-section{background:radial-gradient(900px 420px at 15% 110%,rgba(245,197,24,.2),transparent 60%),linear-gradient(160deg,var(--navy) 0%,var(--navy-deep) 100%) !important;color:#fff;text-align:center;overflow:hidden;}
-.cta-section::before{content:'';position:absolute;inset:0;background-image:var(--star);pointer-events:none;}
-.cta-section .container{position:relative;}
-.cta-section .sec-label{color:var(--gold-soft);}
-.cta-title{font-size:clamp(1.8rem,4vw,2.7rem);font-weight:800;margin-bottom:12px;color:#fff;}
-.cta-title span{color:var(--gold);}
-.cta-sub{color:#D7DCE8;font-size:1.04rem;margin:0 auto 32px;max-width:620px;}
-.cta-contact{display:inline-flex;flex-direction:column;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(245,197,24,.35);border-radius:20px;padding:26px 36px;}
-.cta-contact a{color:var(--gold);text-decoration:none;font-size:1.05rem;font-weight:600;}
-.cta-contact a:hover{text-decoration:underline;}
-.cta-section p{color:#C9CFDD !important;}
-
-/* ── presentation mode ── */
-#pres-btn{position:fixed;bottom:20px;left:20px;z-index:9999;background:var(--navy);border:1px solid var(--navy-mid);color:#fff;border-radius:50px;padding:10px 18px;font-family:inherit;font-size:.85rem;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(12,20,40,.3);transition:background .2s;}
-#pres-btn:hover{background:var(--navy-mid);}
-#pres-btn:focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
-body.pres-mode{overflow:hidden;}
-body.pres-mode .slide{position:fixed;inset:0;height:100vh;padding:56px 0;opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:10;overflow-y:auto;display:flex;align-items:center;}
-body.pres-mode section.slide{background-color:var(--paper);}
-body.pres-mode section.slide:nth-of-type(even){background-color:var(--cream);}
-body.pres-mode .slide.on{opacity:1;pointer-events:auto;z-index:11;}
-#pres-nav{display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(12,20,40,.92);backdrop-filter:blur(8px);border:1px solid var(--navy-mid);border-radius:50px;padding:8px 16px;align-items:center;gap:12px;box-shadow:0 4px 24px rgba(0,0,0,.4);}
-body.pres-mode #pres-nav{display:flex;}
-#pres-nav button{background:none;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;}
-#pres-nav button:hover{background:var(--navy-mid);}
-#slide-counter{font-size:.82rem;color:#C9CFDD;min-width:48px;text-align:center;}
-#slide-dots{display:flex;gap:5px;align-items:center;}
-#slide-dots span{width:6px;height:6px;border-radius:50%;background:#3A4A72;cursor:pointer;transition:background .2s,transform .2s;display:block;}
-#slide-dots span.on{background:var(--gold);transform:scale(1.4);}
-
-/* ── buttons ── */
-.btn-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px;}
-.btn-gold,.btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:700;font-size:.97rem;border-radius:50px;padding:11px 24px;cursor:pointer;text-decoration:none;transition:background .2s,transform .2s,box-shadow .2s;line-height:1.4;}
-.btn-gold{background:var(--gold);color:var(--navy-deep);border:1px solid var(--gold);box-shadow:0 6px 18px rgba(199,154,0,.28);}
-.btn-gold:hover{background:#FFD43B;transform:translateY(-1px);}
-.btn-gold:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;}
-.btn-ghost{background:transparent;color:var(--navy);border:1.5px solid var(--navy);}
-.btn-ghost:hover{background:var(--navy);color:#fff;}
-#s1 .btn-ghost,.cta-section .btn-ghost{color:#fff;border-color:rgba(255,255,255,.5);}
-#s1 .btn-ghost:hover,.cta-section .btn-ghost:hover{background:rgba(255,255,255,.1);}
-.btn-gold:focus-visible,.btn-ghost:focus-visible,.fab-start:focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
-.cover-cta{margin:0;}
-
-/* ── tables that stack on a phone ── */
-.tbl-note{font-size:.78rem;color:var(--muted);font-weight:400;}
-
-/* ── numbered steps ── */
-.steps{list-style:none;counter-reset:st;display:grid;gap:12px;margin-top:4px;}
-.steps li{counter-increment:st;display:flex;flex-direction:column;gap:2px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;padding-right:66px;position:relative;font-size:.97rem;color:var(--ink);line-height:1.7;}
-.steps li::before{content:counter(st);position:absolute;right:16px;top:13px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-family:'Baloo Bhaijaan 2',sans-serif;font-weight:800;font-size:1rem;color:var(--navy-deep);background:var(--gold);clip-path:polygon(50% 0,61% 25%,85% 15%,75% 39%,100% 50%,75% 61%,85% 85%,61% 75%,50% 100%,39% 75%,15% 85%,25% 61%,0 50%,25% 39%,15% 15%,39% 25%);}
-.steps li strong{color:var(--navy);font-weight:700;}
-.steps li span{color:var(--muted);font-size:.93rem;}
-.steps a{color:var(--navy-mid);font-weight:600;}
-.steps-sm li{padding:10px 14px;padding-right:56px;}
-.steps-sm li::before{width:30px;height:30px;top:9px;right:14px;font-size:.88rem;}
-.steps-sm li span{color:var(--ink);}
-
-/* ── floating «ابدأ معنا» on phones ── */
-.fab-start{display:none;}
-
-/* ── wizard ── */
-body.wz-open{overflow:hidden;}
-.wz-overlay{position:fixed;inset:0;z-index:99990;background:rgba(12,20,40,.62);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;}
-.wz-overlay[hidden]{display:none;}
-.wz-card{width:100%;max-width:640px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--paper);border-radius:22px;box-shadow:0 24px 70px rgba(12,20,40,.45);overflow:hidden;}
-.wz-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 22px 14px;background:var(--navy);background-image:var(--star);}
-.wz-title{font-size:1.3rem;font-weight:800;color:var(--gold);line-height:1.4;}
-.wz-count{font-size:.82rem;color:#C9CFDD;}
-.wz-x{background:none;border:none;color:#C9CFDD;cursor:pointer;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
-.wz-x:hover{background:var(--navy-mid);color:#fff;}
-.wz-x:focus-visible{outline:2px solid var(--gold);}
-.wz-bar{height:5px;background:var(--line);}
-.wz-bar-fill{height:100%;width:0;background:var(--gold);transition:width .3s ease;}
-.wz-body{overflow-y:auto;padding:20px 22px 0;display:flex;flex-direction:column;flex:1;}
-.wz-step{border:none;min-width:0;}
-.wz-step[hidden],.wz-field[hidden]{display:none;}
-.wz-q{font-family:'Baloo Bhaijaan 2',sans-serif;font-size:1.25rem;font-weight:700;color:var(--navy-deep);margin-bottom:12px;padding:0;line-height:1.5;}
-.wz-hint{font-size:.88rem;color:var(--muted);margin:-4px 0 12px;}
-.wz-opts{display:grid;gap:10px;}
-.wz-opts-2{grid-template-columns:repeat(2,minmax(0,1fr));}
-.wz-opt{position:relative;display:flex;flex-direction:column;gap:2px;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;padding-right:44px;cursor:pointer;transition:border-color .15s,background .15s;}
-.wz-opt input{position:absolute;right:14px;top:16px;width:18px;height:18px;accent-color:var(--navy);margin:0;}
-.wz-opt:hover{border-color:var(--gold);}
-.wz-opt:has(input:checked){border-color:var(--navy);background:var(--gold-soft);}
-.wz-opt:has(input:focus-visible){outline:2px solid var(--gold);outline-offset:2px;}
-.wz-opt-t{font-weight:700;font-size:.98rem;color:var(--navy);}
-.wz-opt-d{font-size:.85rem;color:var(--muted);line-height:1.6;}
-.wz-opt-sm{padding-top:10px;padding-bottom:10px;}
-.wz-opt-sm input{top:14px;}
-.wz-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px;}
-.wz-field{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
-.wz-lbl{font-size:.88rem;font-weight:600;color:var(--navy);}
-.wz-opt-mark{font-weight:400;color:var(--muted);font-size:.8rem;}
-.wz-input{font-family:inherit;font-size:.97rem;background:#fff;color:var(--ink);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;width:100%;}
-.wz-input:focus{outline:none;border-color:var(--navy-mid);box-shadow:0 0 0 3px rgba(245,197,24,.35);}
-textarea.wz-input{resize:vertical;min-height:72px;}
-.wz-check{display:flex;align-items:flex-start;gap:10px;margin-top:16px;font-size:.93rem;color:var(--ink);cursor:pointer;}
-.wz-check input{width:18px;height:18px;margin-top:5px;accent-color:var(--navy);flex-shrink:0;}
-.wz-privacy{font-size:.8rem;color:var(--muted);margin-top:10px;}
-.wz-note{font-size:.93rem;color:var(--ink);margin-top:14px;}
-.wz-box{margin:12px 0;padding:14px 18px;}
-.wz-box p{font-size:.95rem;}
-.wz-switch{margin:4px 0 8px;}
-.wz-summary{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;}
-.wz-summary summary{cursor:pointer;font-weight:700;color:var(--navy);font-size:.92rem;}
-.wz-summary dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin-top:10px;font-size:.88rem;}
-.wz-summary dt{color:var(--muted);white-space:nowrap;}
-.wz-summary dd{color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;}
-.wz-ts{margin-top:16px;min-height:65px;}
-.wz-err{margin:14px 0 0;background:var(--danger-bg);border:1px solid #F0D3CB;color:var(--danger);border-radius:12px;padding:10px 14px;font-size:.9rem;}
-.wz-fail{margin-top:14px;background:var(--danger-bg);border:1px solid #F0D3CB;border-radius:12px;padding:14px;font-size:.9rem;color:var(--danger);}
-.wz-fail .btn-row{margin-top:10px;}
-.wz-fail .btn-ghost{font-size:.85rem;padding:7px 16px;}
-.wz-foot{position:sticky;bottom:0;display:flex;justify-content:space-between;gap:12px;padding:16px 0 20px;margin-top:auto;background:var(--paper);}
-.wz-foot #wz-next{margin-right:auto;}
-.wz-foot [hidden]{display:none;}
-.wz-done{text-align:center;padding:20px 0;}
-.wz-done p{color:var(--ink);line-height:1.9;}
-.wz-done a{color:var(--navy-mid);font-weight:600;}
-.wz-done-icon{width:66px;height:66px;background:var(--gold);color:var(--navy-deep);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;clip-path:polygon(50% 0,61% 25%,85% 15%,75% 39%,100% 50%,75% 61%,85% 85%,61% 75%,50% 100%,39% 75%,15% 85%,25% 61%,0 50%,25% 39%,15% 15%,39% 25%);}
-.wz-box.gold-box{padding:16px 18px;}
-.wz-box.gold-box p{font-size:.95rem;}
-
-/* ── covers of published works ── */
-.covers{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px;margin:0 0 24px;}
-.covers:empty{display:none;}
-.covers a{display:block;border-radius:12px;overflow:hidden;background:#fff;border:1px solid var(--line);box-shadow:0 6px 18px rgba(12,20,40,.08);transition:transform .25s ease,box-shadow .25s ease;}
-.covers a:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(12,20,40,.16);}
-.covers a:focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
-.covers img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--cream);}
-@media(max-width:640px){.covers{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}}
-
-/* ── responsive ── */
-@media(max-width:860px){
-  .cover-grid{grid-template-columns:1fr;gap:24px;}
-  .cover-art{aspect-ratio:16/10;order:2;}
-  .cover-kpis{grid-template-columns:repeat(3,minmax(0,1fr));}
-}
-@media(max-width:640px){
-  body{font-size:16px;}
-  .slide{padding:52px 0;}
-  #s1{padding:40px 0 48px;}
-  .container{padding:0 16px;}
-  .cover-logo{height:36px;margin-bottom:20px;}
-  .cover-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
-  .cover-kpis .kpi:last-child{grid-column:1/-1;}
-  .cards-2,.cards-3,.cards-4{grid-template-columns:1fr;}
-  .stats-row{grid-template-columns:repeat(2,minmax(0,1fr));}
-  .tbl{font-size:.85rem;}
-  .tbl th,.tbl td{padding:10px 12px;}
-  .tbl-stack{background:none;border:none;border-radius:0;overflow:visible;}
-  .tbl-stack thead{display:none;}
-  .tbl-stack,.tbl-stack tbody,.tbl-stack tr,.tbl-stack td{display:block;width:100%;}
-  .tbl-stack tr{background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:12px;padding:6px 0;}
-  .tbl-stack td{border-bottom:none;padding:6px 14px;}
-  .tbl-stack td[data-label]:not(:first-child)::before{content:attr(data-label);display:block;font-size:.74rem;color:var(--gold-deep);font-weight:700;}
-  .tbl-stack td:first-child{font-size:1.02rem;padding-top:10px;}
-  .highlight,.gold-box{padding:18px 18px;}
-  .tl-row{flex-direction:column;gap:6px;}
-  .tl-year{align-self:flex-start;}
-  body.pres-mode .slide{padding:40px 0;}
-  .fab-start{display:inline-flex;align-items:center;gap:8px;position:fixed;bottom:20px;right:16px;z-index:9998;background:var(--gold);color:var(--navy-deep);font-weight:700;font-size:.88rem;text-decoration:none;border-radius:50px;padding:10px 16px;box-shadow:0 6px 20px rgba(12,20,40,.35);}
-  body.pres-mode .fab-start,body.wz-open .fab-start{display:none;}
-  .wz-overlay{padding:0;align-items:stretch;}
-  .wz-card{max-height:none;height:100%;border-radius:0;}
-  .wz-opts-2,.wz-grid{grid-template-columns:1fr;}
-}
-@media(prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto;}
-  .card,.card-icon,.btn-gold,.wz-bar-fill{transition:none;}
-}
-</style>
-</head>
-<body>
-
-<!-- SVG icon sprites -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
   <symbol id="ic-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
   <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
@@ -340,60 +29,54 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   <symbol id="ic-mail" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
   <symbol id="ic-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
 </svg>
-
 <!-- Presentation toggle -->
-<button id="pres-btn" onclick="togglePres()">
+<button id="pres-btn" data-pres="toggle">
   <svg class="ic" width="18" height="18"><use href="#ic-expand"/></svg>
   عرض تقديمي
 </button>
 
 <!-- Presentation nav -->
 <div id="pres-nav">
-  <button onclick="prevSlide()" title="السابق">
+  <button data-pres="prev" title="السابق">
     <svg class="ic" width="20" height="20"><use href="#ic-arrr"/></svg>
   </button>
   <div id="slide-dots"></div>
-  <span id="slide-counter">1 / 26</span>
-  <button onclick="nextSlide()" title="التالي">
+  <span id="slide-counter"></span>
+  <button data-pres="next" title="التالي">
     <svg class="ic" width="20" height="20"><use href="#ic-arrl"/></svg>
   </button>
-  <button onclick="togglePres()" title="إغلاق العرض" style="margin-right:4px;color:var(--muted)">
+  <button data-pres="toggle" title="إغلاق العرض" style="margin-right:4px;color:var(--muted)">
     <svg class="ic" width="18" height="18"><use href="#ic-x"/></svg>
   </button>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     S1 — COVER
-═══════════════════════════════════════════ -->
-<section class="slide" id="s1">
+<section class="slide sv-hero" id="s1" style="--hero-img:url('/partnership/land-stories.webp')">
 <div class="container">
-  <img class="cover-logo" src="/logo%20gold.png" alt="Moslim Leader — مسلم ليدر" width="1000" height="282">
-  <div class="cover-grid">
-    <div>
-      <div class="cover-tag">Growth Partnership Deck — 2026</div>
-      <h1 class="cover-title">مسلم ليدر<br><span>التصور الاستراتيجي للشراكة</span></h1>
-      <p class="cover-slogan">معًا نبني قادة الغد</p>
-
-      <div class="cover-definition">
-    <strong style="color:var(--gold);display:block;margin-bottom:6px;">ما هي مسلم ليدر؟</strong>
-    مسلم ليدر هي شركة محتوى وتعليم إسلامي أسري، تُنتج كتبًا ومنتجات تربوية وأدوات تعليمية تحت علامة تجارية أصيلة 100% — تأسست عام 2020 وسُجِّلت رسميًا 2024، بحضور رقمي ومادي متكامل عبر 6 لغات.
-  </div>
-
-      <p class="cover-tagline">"نحن لا نبحث عن ممول. نبحث عن شريك يؤمن معنا بأن الطفل المسلم يستحق إصدارات تربوية ملموسة تبني فيه السعي إلى الإمامة في الدين والدنيا."</p>
-
-      <div class="btn-row cover-cta">
-    <a href="#request" class="btn-gold" data-open-wizard>
-      <svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> ابدأ معنا
-    </a>
-    <a href="#types" class="btn-ghost">أنواع التعاون</a>
-  </div>
+  <div class="hero-copy">
+    <div class="cover-tag">عرض الشراكة الاستراتيجية · 2026</div>
+    <h1 class="cover-title">مسلم ليدر<br><span>منظومة الطفل المسلم حول العالم</span></h1>
+    <p class="cover-lead">نبني البيئة المتكاملة التي يعيش فيها الطفل المسلم وأسرته — في أي بلد، وبأي لغة: من الكتاب والمدرسة والبيت، إلى الشاشة والمؤسسة، وصولًا إلى المكان نفسه.</p>
+    <p class="cover-tagline">"نحن لا نبحث عن ممول. نبحث عن شريك يؤمن بأن العلامة التجارية الإسلامية الأسرية الأكبر في العالم لم تُبنَ بعد."</p>
+    <div class="btn-row">
+      <a href="#request" class="btn-gold" data-open-wizard><svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة معنا</a>
+      <a href="/about#founder" class="btn-ghost"><svg class="ic" width="18" height="18"><use href="#ic-users"/></svg> عن المؤسس</a>
     </div>
-    <figure class="cover-art">
-      <img src="/family-hero.webp" alt="أسرة مسلمة تحمل إصدارات مسلم ليدر" width="2000" height="1203" fetchpriority="high">
-      <figcaption>إصدارات مسلم ليدر في يد الأسرة</figcaption>
-    </figure>
+    <p class="hero-note">معًا نبني قادة الغد · في الخلفية تصوّر مبدئي لمسلم ليدر لاند</p>
   </div>
-
+</div>
+</section>
+<div class="hdr-bg" aria-hidden="true"></div>
+<div class="tabs-wrap">
+  <div class="container tabs-row">
+    <div class="tabs" role="tablist" aria-label="أقسام عرض الشراكة"><button type="button" class="tab" role="tab" id="tabbtn-overview" aria-controls="tab-overview" aria-selected="true" tabindex="0" data-tab="overview"><span class="tab-num">01</span>نظرة عامة</button><button type="button" class="tab" role="tab" id="tabbtn-offer" aria-controls="tab-offer" aria-selected="false" tabindex="-1" data-tab="offer"><span class="tab-num">02</span>ما نقدّمه</button><button type="button" class="tab" role="tab" id="tabbtn-market" aria-controls="tab-market" aria-selected="false" tabindex="-1" data-tab="market"><span class="tab-num">03</span>السوق والأرقام</button><button type="button" class="tab" role="tab" id="tabbtn-vision" aria-controls="tab-vision" aria-selected="false" tabindex="-1" data-tab="vision"><span class="tab-num">04</span>الرؤية ومسلم ليدر لاند</button><button type="button" class="tab" role="tab" id="tabbtn-partner" aria-controls="tab-partner" aria-selected="false" tabindex="-1" data-tab="partner"><span class="tab-num">05</span>نموذج الشراكة</button><button type="button" class="tab" role="tab" id="tabbtn-apply" aria-controls="tab-apply" aria-selected="false" tabindex="-1" data-tab="apply"><span class="tab-num">06</span>قدّم طلبك</button></div>
+    <a href="#request" class="btn-gold tabs-cta" data-open-wizard>قدّم طلب الشراكة</a>
+  </div>
+</div>
+<div class="tab-panel" id="tab-overview" role="tabpanel" aria-labelledby="tabbtn-overview" data-panel="overview">
+<section class="slide" id="kpis">
+<div class="container">
+  <div class="sec-label">بالأرقام</div>
+  <h2 class="sec-title">علامة قائمة، <span>لا فكرة على الورق</span></h2>
   <div class="cover-kpis">
     <div class="kpi"><div class="kpi-val">1884+</div><div class="kpi-lbl">عميل فعلي</div></div>
     <div class="kpi"><div class="kpi-val">127</div><div class="kpi-lbl">إصدارًا متعدد اللغات</div></div>
@@ -403,7 +86,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      S5 — WHO IS MOSLIM LEADER
 ═══════════════════════════════════════════ -->
@@ -417,7 +99,8 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     <div class="card">
       <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-pen"/></svg></div>
       <h3>المؤسس</h3>
-      <p>يجمع بين التربية والتصميم والإعلام، ويتولى الرؤية وتطوير المحتوى والهوية البصرية.</p>
+      <p>د. إبراهيم حسن — يجمع بين التربية والتصميم والإعلام والعلوم الشرعية، ويتولى الرؤية وتطوير المحتوى والهوية البصرية.</p>
+      <p style="margin-top:10px;"><a href="/about#founder" style="color:var(--navy-mid);font-weight:700;border-bottom:2px solid var(--gold);text-decoration:none;">عن المؤسس ←</a></p>
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-shield"/></svg></div>
@@ -446,7 +129,22 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
+<section class="slide" id="eco">
+<div class="container">
+  <div class="sec-label">الفكرة الكبرى</div>
+  <h2 class="sec-title">منظومة متكاملة <span>حول الطفل المسلم</span></h2>
+  <p class="sec-sub">لا نبيع منتجًا واحدًا؛ نبني البيئة التي يعيش فيها الطفل المسلم وأسرته — في أي مكان في العالم، ومهما اختلفت لغته. ولهذا تستطيع العلامة أن تكبر لتغطي أماكن وقطاعات كثيرة في حياة الطفل والأسرة.</p>
+  <div class="eco">
+    <div class="eco-core"><h3>الطفل والأسرة</h3><p>في أي بلد · بأي لغة<br>محتوى بـ 6 لغات اليوم</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-book"/></svg></div><h3>المحتوى والقصص</h3><p>كتب وروايات وسلاسل قصصية بلغات متعددة.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-bag"/></svg></div><h3>المدرسة</h3><p>حقائب وأدوات دراسية تحمل الهوية.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-puzzle"/></svg></div><h3>البيت</h3><p>ألعاب أسرية، وأدوات القرآن، وهدايا وملابس.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-screen"/></svg></div><h3>الشاشة</h3><p>مكتبة رقمية، ووسائط مجانية، وتطبيقات وواقع معزز.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-school"/></svg></div><h3>المؤسسات</h3><p>الحضانات والمدارس والمراكز الإسلامية.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-pin"/></svg></div><h3>المكان</h3><p>مسلم ليدر لاند — مراكز للأسرة حول العالم.</p></div>
+  </div>
+</div>
+</section>
 <!-- ═══════════════════════════════════════════
      S2 — 4 SECTORS (القطاعات الأربعة)
 ═══════════════════════════════════════════ -->
@@ -479,7 +177,17 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
+<div class="panel-cta">
+  <div class="container">
+    <div><h2>مستعد للخطوة التالية؟</h2><p>قدّم طلب الشراكة معنا — أسئلة قصيرة، ثم ترى مسارك معنا.</p></div>
+    <div class="btn-row" style="margin:0;">
+      <button type="button" class="btn-gold" data-open-wizard><svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة معنا</button>
+      <button type="button" class="btn-ghost" data-go-tab="offer">التالي: ما نقدّمه <svg class="ic" width="16" height="16"><use href="#ic-arrl"/></svg></button>
+    </div>
+  </div>
+</div>
+</div>
+<div class="tab-panel" id="tab-offer" role="tabpanel" aria-labelledby="tabbtn-offer" data-panel="offer" hidden>
 <!-- ═══════════════════════════════════════════
      WORKS — من إصداراتنا (covers load from /api/books)
 ═══════════════════════════════════════════ -->
@@ -521,7 +229,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      S4 — BACK TO SCHOOL (قطاع مستقل)
 ═══════════════════════════════════════════ -->
@@ -564,7 +271,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      S11 — BUSINESS MODEL
 ═══════════════════════════════════════════ -->
@@ -598,7 +304,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      NURSERY — ركن القيم للحضانات (an offer that exists today)
 ═══════════════════════════════════════════ -->
@@ -619,7 +324,75 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
+<div class="panel-cta">
+  <div class="container">
+    <div><h2>مستعد للخطوة التالية؟</h2><p>قدّم طلب الشراكة معنا — أسئلة قصيرة، ثم ترى مسارك معنا.</p></div>
+    <div class="btn-row" style="margin:0;">
+      <button type="button" class="btn-gold" data-open-wizard><svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة معنا</button>
+      <button type="button" class="btn-ghost" data-go-tab="market">التالي: السوق والأرقام <svg class="ic" width="16" height="16"><use href="#ic-arrl"/></svg></button>
+    </div>
+  </div>
+</div>
+</div>
+<div class="tab-panel" id="tab-market" role="tabpanel" aria-labelledby="tabbtn-market" data-panel="market" hidden>
+<!-- ═══════════════════════════════════════════
+     S7 — NUMBERS
+═══════════════════════════════════════════ -->
+<section class="slide" id="s7">
+<div class="container">
+  <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-chart"/></svg> الإنجازات</div>
+  <h2 class="sec-title">الأرقام <span>تتحدث</span></h2>
+  <p class="sec-sub">مؤشرات حقيقية بدون استثمارات تسويقية ضخمة.</p>
 
+  <table class="tbl">
+    <thead><tr><th>المؤشر</th><th>القيمة</th><th>الدلالة</th></tr></thead>
+    <tbody>
+      <tr><td>إجمالي المبيعات التاريخية</td><td style="color:var(--hl);font-weight:700;">~2.4 مليون جنيه</td><td>قاعدة إيرادات عضوية حقيقية</td></tr>
+      <tr><td>العملاء الفعليون</td><td style="color:var(--hl);font-weight:700;">1884+</td><td>مشترون حقيقيون بأموال حقيقية</td></tr>
+      <tr><td>العملاء المتكررون</td><td style="color:var(--hl);font-weight:700;">282 (15%)</td><td>عملاء يعودون للشراء</td></tr>
+      <tr><td>الإصدارات متعددة اللغات</td><td style="color:var(--hl);font-weight:700;">127 إصدارًا</td><td>جاهز للتوسع الدولي الفوري</td></tr>
+      <tr><td>المنتجات الحالية</td><td style="color:var(--hl);font-weight:700;">23 منتجًا</td><td>مجموعة متنوعة لشرائح مختلفة</td></tr>
+      <tr><td>المتابعون العضويون</td><td style="color:var(--hl);font-weight:700;">17,000+</td><td>بدون إعلانات مدفوعة</td></tr>
+      <tr><td>معدل النمو السنوي</td><td style="color:var(--hl);font-weight:700;">20–40%</td><td>نمو عضوي مستدام</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+<!-- ═══════════════════════════════════════════
+     S6 — WHAT WE BUILT
+═══════════════════════════════════════════ -->
+<section class="slide" id="s6">
+<div class="container">
+  <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-layers"/></svg> مرحلة بناء الأصول</div>
+  <h2 class="sec-title">ماذا <span>بُني؟</span></h2>
+  <p class="sec-sub">ست سنوات من العمل الصامت أسفرت عن منظومة أصول متكاملة.</p>
+
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-val">26</div><div class="stat-lbl">عملًا فكريًا أصيلًا</div></div>
+    <div class="stat-box"><div class="stat-val">127</div><div class="stat-lbl">إصدارًا متعدد اللغات</div></div>
+    <div class="stat-box"><div class="stat-val">23</div><div class="stat-lbl">منتجًا حاليًا</div></div>
+    <div class="stat-box"><div class="stat-val">100+</div><div class="stat-lbl">API متكاملة</div></div>
+  </div>
+
+  <div class="cards cards-3" style="margin-top:8px;">
+    <div class="card">
+      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-screen"/></svg></div>
+      <h3>المنصة التقنية</h3>
+      <p>موقع Next.js متكامل + مكتبة رقمية + نظام اشتراكات + تطبيقات Android.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-award"/></svg></div>
+      <h3>الهوية البصرية</h3>
+      <p>شخصيات بصرية وعالم خاص قابل للترخيص — أصل تجاري مستقل بذاته.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-users"/></svg></div>
+      <h3>شبكة الموردين</h3>
+      <p>علاقات طباعة وإنتاج راسخة تُمكِّن من التنفيذ الفوري لأي طلب كبير.</p>
+    </div>
+  </div>
+</div>
+</section>
 <!-- ═══════════════════════════════════════════
      S3 — WHY NOW? (لماذا الآن؟)
 ═══════════════════════════════════════════ -->
@@ -651,7 +424,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      S9 — MARKET OPPORTUNITY
 ═══════════════════════════════════════════ -->
@@ -692,7 +464,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      S8 — WHY DIFFERENT
 ═══════════════════════════════════════════ -->
@@ -746,67 +517,17 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
-<!-- ═══════════════════════════════════════════
-     S6 — WHAT WE BUILT
-═══════════════════════════════════════════ -->
-<section class="slide" id="s6">
-<div class="container">
-  <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-layers"/></svg> مرحلة بناء الأصول</div>
-  <h2 class="sec-title">ماذا <span>بُني؟</span></h2>
-  <p class="sec-sub">ست سنوات من العمل الصامت أسفرت عن منظومة أصول متكاملة.</p>
-
-  <div class="stats-row">
-    <div class="stat-box"><div class="stat-val">26</div><div class="stat-lbl">عملًا فكريًا أصيلًا</div></div>
-    <div class="stat-box"><div class="stat-val">127</div><div class="stat-lbl">إصدارًا متعدد اللغات</div></div>
-    <div class="stat-box"><div class="stat-val">23</div><div class="stat-lbl">منتجًا حاليًا</div></div>
-    <div class="stat-box"><div class="stat-val">100+</div><div class="stat-lbl">API متكاملة</div></div>
-  </div>
-
-  <div class="cards cards-3" style="margin-top:8px;">
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-screen"/></svg></div>
-      <h3>المنصة التقنية</h3>
-      <p>موقع Next.js متكامل + مكتبة رقمية + نظام اشتراكات + تطبيقات Android.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-award"/></svg></div>
-      <h3>الهوية البصرية</h3>
-      <p>شخصيات بصرية وعالم خاص قابل للترخيص — أصل تجاري مستقل بذاته.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-users"/></svg></div>
-      <h3>شبكة الموردين</h3>
-      <p>علاقات طباعة وإنتاج راسخة تُمكِّن من التنفيذ الفوري لأي طلب كبير.</p>
+<div class="panel-cta">
+  <div class="container">
+    <div><h2>مستعد للخطوة التالية؟</h2><p>قدّم طلب الشراكة معنا — أسئلة قصيرة، ثم ترى مسارك معنا.</p></div>
+    <div class="btn-row" style="margin:0;">
+      <button type="button" class="btn-gold" data-open-wizard><svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة معنا</button>
+      <button type="button" class="btn-ghost" data-go-tab="vision">التالي: الرؤية ومسلم ليدر لاند <svg class="ic" width="16" height="16"><use href="#ic-arrl"/></svg></button>
     </div>
   </div>
 </div>
-</section>
-
-<!-- ═══════════════════════════════════════════
-     S7 — NUMBERS
-═══════════════════════════════════════════ -->
-<section class="slide" id="s7">
-<div class="container">
-  <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-chart"/></svg> الإنجازات</div>
-  <h2 class="sec-title">الأرقام <span>تتحدث</span></h2>
-  <p class="sec-sub">مؤشرات حقيقية بدون استثمارات تسويقية ضخمة.</p>
-
-  <table class="tbl">
-    <thead><tr><th>المؤشر</th><th>القيمة</th><th>الدلالة</th></tr></thead>
-    <tbody>
-      <tr><td>إجمالي المبيعات التاريخية</td><td style="color:var(--hl);font-weight:700;">~2.4 مليون جنيه</td><td>قاعدة إيرادات عضوية حقيقية</td></tr>
-      <tr><td>العملاء الفعليون</td><td style="color:var(--hl);font-weight:700;">1884+</td><td>مشترون حقيقيون بأموال حقيقية</td></tr>
-      <tr><td>العملاء المتكررون</td><td style="color:var(--hl);font-weight:700;">282 (15%)</td><td>عملاء يعودون للشراء</td></tr>
-      <tr><td>الإصدارات متعددة اللغات</td><td style="color:var(--hl);font-weight:700;">127 إصدارًا</td><td>جاهز للتوسع الدولي الفوري</td></tr>
-      <tr><td>المنتجات الحالية</td><td style="color:var(--hl);font-weight:700;">23 منتجًا</td><td>مجموعة متنوعة لشرائح مختلفة</td></tr>
-      <tr><td>المتابعون العضويون</td><td style="color:var(--hl);font-weight:700;">17,000+</td><td>بدون إعلانات مدفوعة</td></tr>
-      <tr><td>معدل النمو السنوي</td><td style="color:var(--hl);font-weight:700;">20–40%</td><td>نمو عضوي مستدام</td></tr>
-    </tbody>
-  </table>
 </div>
-</section>
-
+<div class="tab-panel" id="tab-vision" role="tabpanel" aria-labelledby="tabbtn-vision" data-panel="vision" hidden>
 <!-- ═══════════════════════════════════════════
      S10 — STRATEGIC TRANSFORMATION
 ═══════════════════════════════════════════ -->
@@ -840,7 +561,52 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
+<section class="slide" id="land">
+<div class="container">
+  <div class="sec-label">الرؤية الكبرى</div>
+  <h2 class="sec-title">مسلم ليدر لاند — <span>أرض القائد المسلم</span></h2>
+  <p class="sec-sub">مركز ترفيهي وثقافي واجتماعي وعلمي للأسرة المسلمة، تتحول فيه قصص مسلم ليدر وقيمها إلى تجارب يعيشها الطفل وأسرته — بفروع ومراكز حول العالم.</p>
+  <span class="concept-tag">تصوّر مبدئي · CONCEPT VISUAL</span>
 
+  <figure class="land-hero">
+    <img src="/partnership/land-stories.webp" alt="تصوّر لعالم الروايات التفاعلي في مسلم ليدر لاند" loading="lazy" width="1600" height="900">
+    <figcaption><strong>من القصص إلى التجارب</strong>عالم «فقيه في بلاد العجائب» على الشاشة الكبيرة، وألعاب تفاعلية، وجواز سفر المغامرة، ومتجر مسلم ليدر.</figcaption>
+  </figure>
+  <div class="land-grid">
+    <figure><img src="/partnership/land-prayer.webp" alt="تصوّر للمصلى" loading="lazy" width="1600" height="900"><figcaption><strong>المصلى</strong>في قلب المكان، يجمع الآباء والأبناء.</figcaption></figure>
+    <figure><img src="/partnership/land-scouts.webp" alt="تصوّر لركن الكشافة" loading="lazy" width="1600" height="900"><figcaption><strong>ركن الكشافة</strong>مغامرات وحبال وتسلّق وتخييم بإشراف قادة.</figcaption></figure>
+    <figure><img src="/partnership/land-cafe.webp" alt="تصوّر لمقهى العائلة" loading="lazy" width="1600" height="900"><figcaption><strong>مقهى العائلة</strong>مساحة هادئة تلتقي فيها الأسرة.</figcaption></figure>
+    <figure><img src="/partnership/land-youth.webp" alt="تصوّر لصالون الشباب" loading="lazy" width="1600" height="900"><figcaption><strong>صالون الشباب</strong>جزء من تجربة اليافعين داخل ركن الكشافة.</figcaption></figure>
+  </div>
+
+  <div class="land-pillars">
+    <div><strong>ترفيهي</strong><span>مغامرة وألعاب</span></div>
+    <div><strong>ثقافي</strong><span>قصص وسينما وقراءة</span></div>
+    <div><strong>اجتماعي</strong><span>لقاء الأسر</span></div>
+    <div><strong>علمي</strong><span>ورش ومعامل</span></div>
+    <div><strong>أسري</strong><span>أنشطة مشتركة</span></div>
+  </div>
+
+  <h3 class="land-sub">ماذا تضم أرض القائد المسلم؟</h3>
+  <div class="cards cards-3">
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-screen"/></svg></div><h3>سينما مسلم ليدر</h3><p>أفلام مأخوذة من روايات وقصص مسلم ليدر.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-award"/></svg></div><h3>مركز رياضي للبنات</h3><p>مساحة رياضية خاصة بالبنات تحفظ خصوصيتهن.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-pin"/></svg></div><h3>ركن الكشافة</h3><p>مغامرات وتحديات وتخييم تبني الشجاعة والقيادة.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-book"/></svg></div><h3>عالم الروايات التفاعلي</h3><p>شاشات وألعاب وجواز سفر يأخذ الطفل داخل القصة.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-shield"/></svg></div><h3>المصلى</h3><p>الصلاة في قلب التجربة لا على هامشها.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-users"/></svg></div><h3>مقهى العائلة وصالون الشباب</h3><p>خدمات يومية بهوية مسلم ليدر.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-notebook"/></svg></div><h3>مكتبة وركن للقرآن</h3><p>قاعة قراءة وحلقات تحفيظ للأطفال.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-zap"/></svg></div><h3>ورش ومعامل علمية</h3><p>تجارب علمية للأطفال تربط العلم بالإيمان.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic"><use href="#ic-bag"/></svg></div><h3>متجر مسلم ليدر</h3><p>كل منتجات العلامة في مكان واحد.</p></div>
+  </div>
+  <p class="land-note">القائمة تصوّر أولي يتطور مع الشركاء ودراسة كل موقع.</p>
+
+  <div class="gold-box">
+    <div class="gold-title">فروع ومراكز حول العالم</div>
+    <p style="text-align:center;">نموذج قابل للتكرار: مركز أول، ثم فروع في المدن التي تتركز فيها الأسر المسلمة — يديرها شركاء تشغيل محليون باتفاقات مكتوبة، وبهوية ومعايير واحدة.</p>
+  </div>
+</div>
+</section>
 <!-- ═══════════════════════════════════════════
      S12 — GEOGRAPHIC EXPANSION
 ═══════════════════════════════════════════ -->
@@ -869,7 +635,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      S15 — GROWTH SCENARIOS
 ═══════════════════════════════════════════ -->
@@ -888,7 +653,17 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
+<div class="panel-cta">
+  <div class="container">
+    <div><h2>مستعد للخطوة التالية؟</h2><p>قدّم طلب الشراكة معنا — أسئلة قصيرة، ثم ترى مسارك معنا.</p></div>
+    <div class="btn-row" style="margin:0;">
+      <button type="button" class="btn-gold" data-open-wizard><svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة معنا</button>
+      <button type="button" class="btn-ghost" data-go-tab="partner">التالي: نموذج الشراكة <svg class="ic" width="16" height="16"><use href="#ic-arrl"/></svg></button>
+    </div>
+  </div>
+</div>
+</div>
+<div class="tab-panel" id="tab-partner" role="tabpanel" aria-labelledby="tabbtn-partner" data-panel="partner" hidden>
 <!-- ═══════════════════════════════════════════
      S13 — PARTNERSHIP MODEL
 ═══════════════════════════════════════════ -->
@@ -927,12 +702,11 @@ textarea.wz-input{resize:vertical;min-height:72px;}
 
   <div class="btn-row" style="justify-content:center;">
     <a href="#request" class="btn-gold" data-open-wizard>
-      <svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> ابدأ معنا
+      <svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة
     </a>
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      COLLAB TYPES — أنواع التعاون
 ═══════════════════════════════════════════ -->
@@ -954,7 +728,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </table>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      S14 — WHAT WE LOOK FOR IN A PARTNER
 ═══════════════════════════════════════════ -->
@@ -988,7 +761,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      ACCEPTANCE — معايير قبول الشريك
 ═══════════════════════════════════════════ -->
@@ -1013,7 +785,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      STAGES — مراحل الشراكة
 ═══════════════════════════════════════════ -->
@@ -1033,7 +804,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </ol>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      EXCLUSIVITY — سياسة الحصرية
 ═══════════════════════════════════════════ -->
@@ -1051,7 +821,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      BRAND USE — استخدام البراند
 ═══════════════════════════════════════════ -->
@@ -1076,7 +845,17 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
+<div class="panel-cta">
+  <div class="container">
+    <div><h2>مستعد للخطوة التالية؟</h2><p>قدّم طلب الشراكة معنا — أسئلة قصيرة، ثم ترى مسارك معنا.</p></div>
+    <div class="btn-row" style="margin:0;">
+      <button type="button" class="btn-gold" data-open-wizard><svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة معنا</button>
+      <button type="button" class="btn-ghost" data-go-tab="apply">التالي: قدّم طلبك <svg class="ic" width="16" height="16"><use href="#ic-arrl"/></svg></button>
+    </div>
+  </div>
+</div>
+</div>
+<div class="tab-panel" id="tab-apply" role="tabpanel" aria-labelledby="tabbtn-apply" data-panel="apply" hidden>
 <!-- ═══════════════════════════════════════════
      REQUEST — طلب شراكة
 ═══════════════════════════════════════════ -->
@@ -1084,7 +863,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
 <div class="container">
   <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-mail"/></svg> طلب شراكة</div>
   <h2 class="sec-title">قدّم <span>طلبك</span></h2>
-  <p class="sec-sub">أسرع طريق: زر «ابدأ معنا» — أسئلة قصيرة، ثم ترى مسارك معنا وترسل طلبك. أو راسلنا مباشرة متضمّنًا ما يلي:</p>
+  <p class="sec-sub">أسرع طريق: زر «قدّم طلب الشراكة» — أسئلة قصيرة، ثم ترى مسارك معنا وترسل طلبك. أو راسلنا مباشرة متضمّنًا ما يلي:</p>
 
   <div class="cards cards-2">
     <div class="card">
@@ -1108,7 +887,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
 
   <div class="btn-row">
     <button type="button" class="btn-gold" data-open-wizard>
-      <svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> ابدأ معنا
+      <svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة
     </button>
     <a class="btn-ghost" href="mailto:edara@moslimleader.com?subject=%D8%B7%D9%84%D8%A8%20%D8%B4%D8%B1%D8%A7%D9%83%D8%A9%20%E2%80%94%20%D9%85%D8%B3%D9%84%D9%85%20%D9%84%D9%8A%D8%AF%D8%B1&amp;body=%D8%A7%D9%84%D8%A7%D8%B3%D9%85%20%D9%88%D8%A7%D9%84%D8%A8%D9%84%D8%AF%3A%0A%D8%A7%D8%B3%D9%85%20%D8%A7%D9%84%D8%B4%D8%B1%D9%83%D8%A9%20%D9%88%D8%B1%D9%88%D8%A7%D8%A8%D8%B7%D9%87%D8%A7%3A%0A%D8%A7%D9%84%D8%AF%D9%88%D8%B1%20%D8%A7%D9%84%D9%85%D8%B7%D9%84%D9%88%D8%A8%3A%0A%D8%A7%D9%84%D9%86%D8%B4%D8%A7%D8%B7%20%D8%A7%D9%84%D8%AD%D8%A7%D9%84%D9%8A%20%28%D9%82%D8%A7%D8%A6%D9%85/%D8%AA%D8%A3%D8%B3%D9%8A%D8%B3%29%3A%0A%D8%A7%D9%84%D8%AE%D8%A8%D8%B1%D8%A9%20%D8%A7%D9%84%D8%B3%D8%A7%D8%A8%D9%82%D8%A9%20%D9%85%D8%B9%20%D8%A3%D9%85%D8%AB%D9%84%D8%A9%3A%0A%D9%82%D9%86%D9%88%D8%A7%D8%AA%20%D8%A7%D9%84%D8%A8%D9%8A%D8%B9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%84%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D9%85%D8%AE%D8%B7%D8%B7%20%D9%84%D9%87%D8%A7%3A%0A%D8%A7%D9%84%D8%AA%D8%B5%D9%88%D8%B1%20%D8%A7%D9%84%D9%85%D8%A8%D8%AF%D8%A6%D9%8A%20%D9%84%D8%A5%D8%B7%D9%84%D8%A7%D9%82%20%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AC%D8%A7%D8%AA%3A%0A%D8%AD%D8%AC%D9%85%20%D8%A7%D9%84%D8%B7%D9%84%D8%A8%D9%8A%D8%A9%20%D8%A7%D9%84%D8%A3%D9%88%D9%84%D9%89%20%D8%A3%D9%88%20%D8%A7%D9%84%D9%85%D9%8A%D8%B2%D8%A7%D9%86%D9%8A%D8%A9%3A%0A%D8%B3%D8%A8%D8%A8%20%D8%A7%D9%84%D8%A7%D9%87%D8%AA%D9%85%D8%A7%D9%85%20%D8%A8%D9%85%D8%B3%D9%84%D9%85%20%D9%84%D9%8A%D8%AF%D8%B1%3A%0A">
       <svg class="ic" width="18" height="18"><use href="#ic-mail"/></svg> أرسل بالبريد
@@ -1116,7 +895,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      LEGAL — بيانات الشركة القانونية
 ═══════════════════════════════════════════ -->
@@ -1136,7 +914,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   <p class="sec-sub" style="margin-top:20px;margin-bottom:0;">تتوفر بيانات السجل التجاري والبطاقة الضريبية عند الطلب بعد مرحلة التعارف.</p>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      S16 — WHAT WE WON'T DO
 ═══════════════════════════════════════════ -->
@@ -1180,7 +957,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   </div>
 </div>
 </section>
-
 <!-- ═══════════════════════════════════════════
      S17 — CTA
 ═══════════════════════════════════════════ -->
@@ -1190,7 +966,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     <svg class="ic" width="16" height="16"><use href="#ic-rocket"/></svg> ابدأ المحادثة
   </div>
   <h2 class="cta-title">الشريك الصحيح يبدأ <span>بسؤال</span></h2>
-  <p class="cta-sub">إذا كنت تمتلك قنوات توزيع وتؤمن بأن الطفل المسلم يستحق إصدارات تربوية تبنيه — فالمحادثة مفتوحة.</p>
+  <p class="cta-sub">إذا كنت تمتلك قنوات التوزيع وتؤمن بأن العلامة الإسلامية الأسرية الأكبر في العالم لم تُبنَ بعد — فالمحادثة مفتوحة.</p>
 
   <div class="cta-contact">
     <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">للتواصل المباشر</div>
@@ -1199,7 +975,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
       edara@moslimleader.com
     </a>
     <button type="button" class="btn-gold" data-open-wizard style="margin-top:14px;">
-      <svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> ابدأ معنا
+      <svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة
     </button>
     <div style="font-size:.8rem;color:var(--muted);margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
       moslimleader.com — Growth Partnership Deck 2026
@@ -1208,19 +984,15 @@ textarea.wz-input{resize:vertical;min-height:72px;}
 
 </div>
 </section>
-
-<!-- ═══════════════════════════════════════════
-     «ابدأ معنا» — wizard (opened by any [data-open-wizard])
-═══════════════════════════════════════════ -->
-<a href="#request" class="fab-start" data-open-wizard aria-label="ابدأ معنا">
-  <svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> ابدأ معنا
+</div>
+<a href="#request" class="fab-start" data-open-wizard aria-label="قدّم طلب الشراكة">
+  <svg class="ic" width="18" height="18"><use href="#ic-rocket"/></svg> قدّم طلب الشراكة
 </a>
-
 <div class="wz-overlay" id="wizard" role="dialog" aria-modal="true" aria-labelledby="wz-title" hidden>
   <div class="wz-card">
     <div class="wz-head">
       <div>
-        <h2 id="wz-title" class="wz-title">ابدأ معنا</h2>
+        <h2 id="wz-title" class="wz-title">طلب الشراكة</h2>
         <p class="wz-count" id="wz-count" aria-live="polite">الخطوة 1 من 7</p>
       </div>
       <button type="button" class="wz-x" data-wz-close aria-label="إغلاق">
@@ -1370,366 +1142,3 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     </form>
   </div>
 </div>
-
-<script>
-(function(){
-  var slides = Array.from(document.querySelectorAll('.slide'));
-  var total  = slides.length;
-  var cur    = 0;
-  var inPres = false;
-
-  /* build dots */
-  var dotsEl = document.getElementById('slide-dots');
-  slides.forEach(function(_, i){
-    var d = document.createElement('span');
-    d.addEventListener('click', function(){ goTo(i); });
-    dotsEl.appendChild(d);
-  });
-
-  function updateUI(){
-    var dots = dotsEl.querySelectorAll('span');
-    dots.forEach(function(d,i){ d.classList.toggle('on', i===cur); });
-    document.getElementById('slide-counter').textContent = (cur+1)+' / '+total;
-  }
-
-  function goTo(n){
-    if(!inPres) return;
-    slides[cur].classList.remove('on');
-    cur = Math.max(0, Math.min(n, total-1));
-    slides[cur].classList.add('on');
-    slides[cur].scrollTop = 0;
-    updateUI();
-  }
-
-  window.nextSlide = function(){ goTo(cur+1); };
-  window.prevSlide = function(){ goTo(cur-1); };
-
-  window.togglePres = function(){
-    inPres = !inPres;
-    document.body.classList.toggle('pres-mode', inPres);
-    var btn = document.getElementById('pres-btn');
-    if(inPres){
-      slides.forEach(function(s){ s.classList.remove('on'); });
-      slides[cur].classList.add('on');
-      btn.innerHTML = '<svg class="ic" width="18" height="18"><use href="#ic-shrink"/></svg> إغلاق العرض';
-      updateUI();
-    } else {
-      slides.forEach(function(s){ s.classList.remove('on'); });
-      btn.innerHTML = '<svg class="ic" width="18" height="18"><use href="#ic-expand"/></svg> عرض تقديمي';
-      /* scroll to current slide */
-      slides[cur].scrollIntoView({behavior:'smooth'});
-    }
-  };
-
-  document.addEventListener('keydown', function(e){
-    if(!inPres || document.body.classList.contains('wz-open')) return;
-    if(e.key==='ArrowLeft'||e.key==='ArrowDown'||e.key===' '){ e.preventDefault(); nextSlide(); }
-    if(e.key==='ArrowRight'||e.key==='ArrowUp'){ e.preventDefault(); prevSlide(); }
-    if(e.key==='Escape'){ togglePres(); }
-  });
-
-  updateUI();
-})();
-</script>
-<script>
-/* ═══ «ابدأ معنا» wizard ═══
-   Seven questions, then «مسارك معنا» built from the answers, then POST /api/partnership-requests.
-   Answers live in sessionStorage while the visitor moves between steps, and survive a
-   failed send. Without JavaScript the buttons are plain links to the request section. */
-(function(){
-  var INBOX = 'edara@moslimleader.com';
-  var SITE_KEY = '0x4AAAAAACzKEGf-IQ39WfSB';
-  var STORE = 'ml-partner-wizard';
-  var QUESTIONS = 7;
-  var GULF_EG = ['السعودية','الإمارات','الكويت','قطر','البحرين','عُمان','مصر'];
-
-  var ROLE = {distributor:'موزّع',affiliate:'مسوّق بالعمولة',operator:'مشغّل محلي',licensee:'ترخيص المحتوى والشخصيات',investor:'مستثمر',unsure:'لست متأكدًا'};
-  var STAGE = {existing:'نشاط قائم',founding:'في مرحلة التأسيس',individual:'فرد بلا شركة بعد'};
-  var CHANNEL = {schools:'مدارس',nurseries:'حضانات',bookstores:'مكتبات','online-store':'متجر إلكتروني',marketplaces:'أمازون/نون','book-fairs':'معارض كتب','islamic-centers':'مراكز ومساجد إسلامية','direct-families':'بيع مباشر للأسر',other:'أخرى'};
-  var EXPERIENCE = {none:'لا خبرة سابقة',general:'خبرة في منتجات عامة',kids:'خبرة في الأطفال أو الكتب أو التعليم'};
-  var SIZE = {small:'تجربة صغيرة',medium:'متوسطة',large:'كبيرة',later:'أحدده بعد المكالمة'};
-
-  var PATHS = {
-    distributor: ['تواصل أولي عبر البريد','مكالمة تعارف أونلاين (20–30 دقيقة)','مستندات داعمة: ملف الشركة وأمثلة الأعمال السابقة','تجربة توزيع محدودة غير حصرية — المدة وحجم الطلبية بالاتفاق','تقييم بمستهدفات متفق عليها: المبيعات والسداد والالتزام بقواعد البراند','قرار: توسّع، أو حصرية محدودة، أو إنهاء التعاون'],
-    affiliate: ['مكالمة تعارف','مواد تسويق معتمدة','عمولة على المبيعات المحصّلة — النسبة تُحدَّد بالاتفاق'],
-    operator: ['مكالمة تعارف','عرض تشغيل ومسؤوليات مكتوبة','فترة تجريبية','اتفاق تشغيل'],
-    licensee: ['مكالمة تعارف','تحديد المحتوى أو الشخصيات، والنطاق، والمدة','عقد ترخيص محدود']
-  };
-
-  var overlay = document.getElementById('wizard');
-  if(!overlay) return;
-  var form = document.getElementById('wz-form');
-  var steps = Array.prototype.slice.call(form.querySelectorAll('.wz-step'));
-  var backBtn = document.getElementById('wz-back');
-  var nextBtn = document.getElementById('wz-next');
-  var errEl = document.getElementById('wz-err');
-  var statusEl = document.getElementById('wz-status');
-  var cur = 1, opener = null, sending = false, tsToken = null, tsWidget = null, tsState = 'idle';
-
-  /* ── answers ── */
-  function read(){
-    var fd = new FormData(form), a = {channels:[]};
-    fd.forEach(function(v,k){ if(k==='channels') a.channels.push(v); else a[k]=String(v); });
-    return a;
-  }
-  function save(){ try{ sessionStorage.setItem(STORE, JSON.stringify({a:read(), step:cur})); }catch(e){} }
-  function restore(){
-    var s; try{ s = JSON.parse(sessionStorage.getItem(STORE)||'null'); }catch(e){ s=null; }
-    if(!s || !s.a) return 1;
-    Array.prototype.forEach.call(form.elements, function(el){
-      if(!el.name || !(el.name in s.a) && el.name!=='channels') return;
-      var v = s.a[el.name];
-      if(el.type==='radio') el.checked = (el.value===v);
-      else if(el.type==='checkbox') el.checked = el.name==='channels' ? (s.a.channels||[]).indexOf(el.value)>-1 : v==='yes';
-      else if(v!=null) el.value = v;
-    });
-    return Math.min(Math.max(1, s.step|0), QUESTIONS+1);
-  }
-  function country(a){ return a.country==='other' ? (a.countryOther||'').trim() : (a.country||''); }
-
-  /* ── conditional fields ── */
-  function syncConditional(){
-    var a = read();
-    form.querySelectorAll('[data-show-if]').forEach(function(el){
-      var p = el.getAttribute('data-show-if').split('='), on;
-      on = p[0]==='channels' ? a.channels.indexOf(p[1])>-1 : a[p[0]]===p[1];
-      el.hidden = !on;
-    });
-  }
-
-  /* ── validation, one step at a time ── */
-  function problem(step, a){
-    if(step===1 && !a.role) return 'اختر الدور الأقرب لك.';
-    if(step===2 && !country(a)) return a.country==='other' ? 'اكتب اسم الدولة.' : 'اختر الدولة.';
-    if(step===3 && !a.businessStage) return 'اختر وضع نشاطك.';
-    if(step===4 && a.channels.indexOf('other')>-1 && !(a.channelsOther||'').trim()) return 'اكتب القنوات الأخرى، أو ألغِ اختيار «أخرى».';
-    if(step===5 && !a.experience) return 'اختر خبرتك السابقة.';
-    if(step===6 && !a.startSize) return 'اختر حجم البداية.';
-    if(step===7){
-      if(!(a.name||'').trim()) return 'اكتب اسمك.';
-      if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((a.email||'').trim())) return 'اكتب بريدًا إلكترونيًا صحيحًا.';
-      if(a.whatsapp && !/^[+\d\s()-]{6,40}$/.test(a.whatsapp.trim())) return 'رقم الواتساب غير صالح — أرقام فقط مع رمز الدولة.';
-      if(a.consent!=='yes') return 'نحتاج موافقتك على التواصل بخصوص الطلب.';
-    }
-    return null;
-  }
-  function showError(msg){ errEl.textContent = msg||''; errEl.hidden = !msg; }
-
-  /* ── «مسارك معنا» ── */
-  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  function suggested(a){ return a.channels.length ? 'distributor' : 'affiliate'; }
-  function list(items){ return '<ol class="steps steps-sm">'+items.map(function(t){return '<li><span>'+esc(t)+'</span></li>';}).join('')+'</ol>'; }
-  function note(html, gold){ return '<div class="'+(gold?'gold-box':'highlight')+' wz-box"><p>'+html+'</p></div>'; }
-
-  function renderPath(){
-    var a = read(), h = '', role = a.role;
-    if(role==='investor'){
-      h += note('مسلم ليدر تبحث عن <strong>شريك</strong> لا ممول فقط، ولا تبيع الملكية في هذه المرحلة. أي حصة مستقبلًا مرتبطة بالإنجاز وبنص اتفاق مكتوب.', true);
-      h += '<p class="wz-hint">يمكنك متابعة طلبك بدور عملي:</p><div class="btn-row wz-switch">'
-        + '<button type="button" class="btn-ghost" data-switch-role="operator">متابعة كمشغّل محلي</button>'
-        + '<button type="button" class="btn-ghost" data-switch-role="distributor">متابعة كموزّع</button></div>'
-        + '<p class="wz-hint">أو أرسل طلبك كما هو، وسنتواصل معك للتعارف.</p>';
-    } else if(role==='unsure'){
-      var s = suggested(a);
-      h += note('نبدأ بمكالمة تعارف. وبحسب إجاباتك، الدور الأنسب لك مبدئيًا: <strong>'+ROLE[s]+'</strong>'+(a.channels.length?' — لأن لديك قنوات بيع.':' — لأنه لا يحتاج قنوات بيع قائمة.'));
-      h += list(['مكالمة تعارف'].concat(PATHS[s].filter(function(t){return t.indexOf('مكالمة تعارف')!==0 && t.indexOf('تواصل أولي')!==0;})));
-    } else {
-      if(a.businessStage==='individual'){
-        var sg = suggested(a);
-        h += note('نبدأ بمكالمة تعارف.'+(sg!==role?' وبحسب إجاباتك قد يناسبك أيضًا دور <strong>'+ROLE[sg]+'</strong> — نناقشه معك في المكالمة.':''));
-      }
-      h += list(PATHS[role]);
-      if(role==='distributor') h += note('الحصرية تُناقش بعد نتيجة التجربة فقط، وليست شرطًا لبدء التعاون.', true);
-    }
-    var c = country(a);
-    if(c && GULF_EG.indexOf(c)===-1){
-      h += note('أسواق التوسع الحالية بالترتيب: الخليج، ثم أوروبا، ثم أمريكا الشمالية، كما في خارطة الطريق أعلاه — لذلك لا نَعِد بموعد لسوق '+esc(c)+'، لكن يسعدنا التعارف.');
-    }
-    if(a.businessStage==='individual' || a.businessStage==='founding'){
-      h += note('يسعدنا الاطلاع على خطة التأسيس والخبرات ذات الصلة.');
-    }
-    document.getElementById('wz-path').innerHTML = h;
-
-    var rows = [['الدور',ROLE[a.role]],['الدولة',c],['وضع النشاط',STAGE[a.businessStage]],
-      ['قنوات البيع',a.channels.map(function(k){return CHANNEL[k];}).join('، ')||'—'],
-      ['قنوات أخرى',(a.channelsOther||'').trim()||'—'],['الخبرة',EXPERIENCE[a.experience]],
-      ['أمثلة الخبرة',(a.experienceNotes||'').trim()||'—'],['حجم البداية',SIZE[a.startSize]],
-      ['الاسم',a.name],['البريد',a.email],['واتساب',(a.whatsapp||'').trim()||'—'],
-      ['الشركة',(a.company||'').trim()||'—'],['الروابط',(a.links||'').trim()||'—'],['الرسالة',(a.message||'').trim()||'—']];
-    document.getElementById('wz-summary').innerHTML = rows.map(function(r){return '<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1]||'—')+'</dd>';}).join('');
-    return rows;
-  }
-
-  /* ── Turnstile, loaded only when the last step is reached ── */
-  function mountTurnstile(){
-    var box = document.getElementById('wz-turnstile');
-    if(tsWidget!==null && window.turnstile){ return; }
-    var render = function(){
-      try{
-        tsWidget = window.turnstile.render(box, {
-          sitekey: SITE_KEY, language: 'ar', theme: 'dark',
-          callback: function(t){ tsToken = t; tsState = 'ok'; syncNext(); },
-          'expired-callback': function(){ tsToken = null; tsState = 'idle'; syncNext(); },
-          'error-callback': function(){ tsToken = null; tsState = 'error'; syncNext(); }
-        });
-      }catch(e){ tsState = 'error'; syncNext(); }
-    };
-    if(window.turnstile){ render(); return; }
-    window.mlTsReady = render;
-    var s = document.createElement('script');
-    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=mlTsReady';
-    s.async = true;
-    s.onerror = function(){ tsState = 'error'; syncNext(); };
-    document.head.appendChild(s);
-  }
-  function resetTurnstile(){ tsToken = null; tsState = 'idle'; try{ if(window.turnstile && tsWidget!==null) window.turnstile.reset(tsWidget); }catch(e){} }
-
-  /* ── navigation ── */
-  function syncNext(){
-    if(cur===8){
-      nextBtn.innerHTML = sending ? 'جارٍ الإرسال…' : 'إرسال الطلب';
-      // Without a token the check has not passed yet — unless it could not load at all,
-      // in which case the server decides and the visitor still has the email fallback.
-      nextBtn.disabled = sending || (tsState!=='ok' && tsState!=='error');
-    } else {
-      nextBtn.disabled = false;
-      nextBtn.innerHTML = (cur===7 ? 'اعرض مساري' : 'التالي') + ' <svg class="ic" width="16" height="16"><use href="#ic-arrl"/></svg>';
-    }
-  }
-  function show(n){
-    cur = n;
-    steps.forEach(function(s){ s.hidden = Number(s.getAttribute('data-step'))!==n; });
-    var q = Math.min(n, QUESTIONS);
-    document.getElementById('wz-count').textContent = n===9 ? 'تم الإرسال' : n===8 ? 'مسارك معنا' : 'الخطوة '+q+' من '+QUESTIONS;
-    document.getElementById('wz-bar').style.width = (n>=8 ? 100 : ((n-1)/QUESTIONS)*100) + '%';
-    backBtn.hidden = n===1 || n===9;
-    nextBtn.hidden = n===9;
-    showError('');
-    if(n===8){ renderPath(); mountTurnstile(); }
-    syncConditional();
-    syncNext();
-    save();
-    var first = steps[n-1] && steps[n-1].querySelector('input:checked, input:not([type=hidden]), select, textarea, button');
-    if(first) first.focus({preventScroll:true});
-    form.scrollTop = 0;
-  }
-
-  function mailtoHref(){
-    var rows = renderPath();
-    var body = rows.map(function(r){return r[0]+': '+(r[1]||'—');}).join('\n');
-    return 'mailto:'+INBOX+'?subject='+encodeURIComponent('طلب شراكة — مسلم ليدر')+'&body='+encodeURIComponent(body);
-  }
-  function failure(msg){
-    sending = false;
-    resetTurnstile();
-    statusEl.innerHTML = '<div class="wz-fail"><p>'+esc(msg)+'</p><p>إجاباتك محفوظة. اضغط «إرسال الطلب» لإعادة المحاولة، أو أرسلها بالبريد:</p>'
-      + '<div class="btn-row"><a class="btn-ghost" href="'+mailtoHref()+'">أرسل إلى '+INBOX+'</a>'
-      + '<button type="button" class="btn-ghost" id="wz-copy">نسخ الطلب</button></div></div>';
-    document.getElementById('wz-copy').onclick = function(){
-      var text = renderPath().map(function(r){return r[0]+': '+(r[1]||'—');}).join('\n');
-      var done = function(){ document.getElementById('wz-copy').textContent = 'تم النسخ'; };
-      if(navigator.clipboard){ navigator.clipboard.writeText(text).then(done, fallback); } else fallback();
-      function fallback(){ var t=document.createElement('textarea'); t.value=text; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); try{document.execCommand('copy');}catch(e){} t.remove(); done(); }
-    };
-    syncNext();
-  }
-  function submit(){
-    var a = read();
-    for(var i=1;i<=QUESTIONS;i++){ var p = problem(i,a); if(p){ show(i); showError(p); return; } }
-    sending = true; statusEl.innerHTML = ''; syncNext();
-    var payload = {
-      role:a.role, country:country(a), businessStage:a.businessStage, channels:a.channels,
-      channelsOther:a.channelsOther||'', experience:a.experience, experienceNotes:a.experienceNotes||'',
-      startSize:a.startSize, name:(a.name||'').trim(), email:(a.email||'').trim(), whatsapp:(a.whatsapp||'').trim(),
-      company:a.company||'', links:a.links||'', message:a.message||'', consent:a.consent==='yes', turnstileToken:tsToken
-    };
-    var ctrl = window.AbortController ? new AbortController() : null;
-    var timer = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 20000);
-    fetch('/api/partnership-requests', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), signal: ctrl ? ctrl.signal : undefined})
-      .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ return {ok:r.ok, d:d}; }); })
-      .then(function(res){
-        clearTimeout(timer);
-        if(!res.ok || !res.d.ok){ failure(res.d.error || 'تعذّر إرسال الطلب الآن.'); return; }
-        sending = false;
-        try{ sessionStorage.removeItem(STORE); }catch(e){}
-        form.reset();
-        show(9);
-      })
-      .catch(function(){ clearTimeout(timer); failure('تعذّر الاتصال بالخادم — تحقق من الإنترنت.'); });
-  }
-
-  form.addEventListener('submit', function(e){
-    e.preventDefault();
-    if(cur===8){ if(!sending) submit(); return; }
-    var p = problem(cur, read());
-    if(p){ showError(p); return; }
-    show(cur+1);
-  });
-  backBtn.addEventListener('click', function(){ if(cur>1) show(cur-1); });
-  form.addEventListener('change', function(){ syncConditional(); save(); showError(''); });
-  form.addEventListener('input', save);
-  form.addEventListener('click', function(e){
-    var b = e.target.closest('[data-switch-role]');
-    if(!b) return;
-    var r = form.querySelector('input[name=role][value="'+b.getAttribute('data-switch-role')+'"]');
-    if(r){ r.checked = true; save(); renderPath(); }
-  });
-
-  /* ── open / close, focus kept inside ── */
-  function open(e){
-    if(e) e.preventDefault();
-    opener = document.activeElement;
-    overlay.hidden = false;
-    document.body.classList.add('wz-open');
-    show(restore());
-  }
-  function close(){
-    overlay.hidden = true;
-    document.body.classList.remove('wz-open');
-    if(cur===9) cur = 1;
-    if(opener && opener.focus) opener.focus();
-  }
-  document.querySelectorAll('[data-open-wizard]').forEach(function(b){ b.addEventListener('click', open); });
-  overlay.querySelectorAll('[data-wz-close]').forEach(function(b){ b.addEventListener('click', close); });
-  overlay.addEventListener('click', function(e){ if(e.target===overlay) close(); });
-  document.addEventListener('keydown', function(e){
-    if(overlay.hidden) return;
-    if(e.key==='Escape'){ e.preventDefault(); close(); return; }
-    if(e.key==='Tab'){
-      var f = Array.prototype.filter.call(overlay.querySelectorAll('a[href],button:not([disabled]),input,select,textarea,summary,[tabindex]:not([tabindex="-1"])'), function(el){ return el.offsetParent!==null; });
-      if(!f.length) return;
-      var first=f[0], last=f[f.length-1];
-      if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
-      else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
-    }
-  }, true);
-  if(location.hash==='#start') open();
-})();
-
-/* Real covers of published Arabic titles, from the same API the library uses. If it fails,
-   the section still lists the works by name. */
-(function(){
-  var box = document.getElementById('works-covers');
-  if(!box || !window.fetch) return;
-  var ctrl = window.AbortController ? new AbortController() : null;
-  setTimeout(function(){ if(ctrl) ctrl.abort(); }, 8000);
-  fetch('/api/books', {signal: ctrl ? ctrl.signal : undefined})
-    .then(function(r){ return r.ok ? r.json() : {books:[]}; })
-    .then(function(d){
-      var seen = {}, out = [];
-      (d.books||[]).forEach(function(b){
-        if(out.length>=8 || !b.cover || (b.language && b.language!=='ar')) return;
-        var key = b.seriesId || b.id;      // one cover per series
-        if(seen[key]) return; seen[key] = 1;
-        out.push(b);
-      });
-      box.innerHTML = out.map(function(b){
-        var t = String(b.title||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});
-        return '<a href="/library/'+encodeURIComponent(b.id)+'" title="'+t+'"><img src="'+encodeURI(b.cover)+'" alt="'+t+'" loading="lazy" decoding="async"></a>';
-      }).join('');
-    })
-    .catch(function(){});
-})();
-</script>
-</body>
-</html>

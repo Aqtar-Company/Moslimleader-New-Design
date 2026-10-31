@@ -39,11 +39,12 @@ const nextConfig = {
       { source: '/auth/:path*', destination: '/login/:path*', permanent: true },
       { source: '/terka', destination: '/moro', permanent: true },
       { source: '/terka/:path*', destination: '/moro/:path*', permanent: true },
+      // The partnership deck is a real page now, inside the site's header and footer.
+      { source: '/strategic-vision.html', destination: '/partnership', permanent: true },
     ];
   },
   async rewrites() {
     return [
-      { source: '/partnership', destination: '/strategic-vision.html' },
       { source: '/moro', destination: '/moro/index.html' },
       { source: '/moro/', destination: '/moro/index.html' },
     ];

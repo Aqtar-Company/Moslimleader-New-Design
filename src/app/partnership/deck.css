@@ -46,11 +46,10 @@
 .sv .hero-note{margin-top:14px;font-size:.78rem;color:#AEB6C8;}
 
 /* ── tab bar ── */
-.sv .tabs-wrap{position:sticky;top:var(--hdr);z-index:40;background:var(--navy-deep);box-shadow:0 8px 24px rgba(12,20,40,.25);}
-/* Once the hero has scrolled away, a navy strip sits behind the site's transparent header
-   so its white icons stay readable over the light page. */
-.sv .hdr-bg{position:fixed;top:0;left:0;right:0;height:var(--hdr);background:var(--navy-deep);z-index:39;opacity:0;pointer-events:none;transition:opacity .2s;}
-.sv.past-hero .hdr-bg{opacity:1;}
+.sv .tabs-wrap{position:sticky;top:var(--hdr);z-index:40;background:var(--navy-deep);box-shadow:0 8px 24px rgba(12,20,40,.25);transition:top .25s ease;}
+/* Past the hero the site header slides away (deck-runtime.js) and the tab bar alone stays,
+   at the very top. */
+.sv.past-hero .tabs-wrap{top:0;}
 .sv .tabs-row{display:flex;align-items:center;gap:12px;}
 .sv .tabs{display:flex;gap:2px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none;}
 .sv .tabs::-webkit-scrollbar{display:none;}
@@ -81,9 +80,9 @@
 
 /* ── cards ── */
 .sv .cards{display:grid;gap:14px;}
-.sv .cards-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}
-.sv .cards-3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));}
-.sv .cards-4{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));}
+.sv .cards-2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.sv .cards-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.sv .cards-4{grid-template-columns:repeat(4,minmax(0,1fr));}
 .sv .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px;transition:border-color .2s;}
 .sv .card:hover{border-color:var(--gold);}
 .sv .card-icon{width:42px;height:42px;border-radius:10px;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
@@ -330,5 +329,22 @@ body.wz-open{overflow:hidden;}
 }
 
 .sv #land .cards-3{grid-template-columns:repeat(3,minmax(0,1fr));}
-@media(max-width:900px){.sv #land .cards-3{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
 @media(max-width:640px){.sv #land .cards-3{grid-template-columns:1fr;}}
+
+/* Card grids are fixed column counts so a set never strands one card on its own row:
+   pairs stay 2 across (4 → 2×2), fours sit 4 across and fold to 2×2. */
+@media(max-width:900px){
+  .sv .cards-4{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:640px){
+  .sv .cards-2,.sv .cards-3,.sv .cards-4{grid-template-columns:1fr;}
+}
+
+/* The five headline numbers: one row of five, then two by two on a phone with the fifth
+   across the full width. */
+.sv .cover-kpis{grid-template-columns:repeat(5,minmax(0,1fr));}
+@media(max-width:640px){
+  .sv .cover-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .sv .cover-kpis .kpi:last-child{grid-column:1 / -1;}
+}

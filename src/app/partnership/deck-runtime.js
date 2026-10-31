@@ -35,11 +35,24 @@ export function initDeck(root) {
   var bar = root.querySelector('.tabs-wrap');
   var hero = root.querySelector('.sv-hero');
   function heroBottom() { return hero ? hero.getBoundingClientRect().bottom + window.scrollY : 0; }
-  function barHeight() { return (bar ? bar.offsetHeight : 0) + ((header && header.offsetHeight) || 80); }
-  function onScroll() { root.classList.toggle('past-hero', window.scrollY > heroBottom() - ((header && header.offsetHeight) || 80) - 4); }
+  function barHeight() { return bar ? bar.offsetHeight : 0; }
+  // Past the hero, the site header slides up out of the way and the tab bar takes the top.
+  var past = null;
+  if (header) header.style.transition = 'transform .25s ease';
+  function onScroll() {
+    var now = window.scrollY > heroBottom() - ((header && header.offsetHeight) || 80) - 4;
+    if (now === past) return;
+    past = now;
+    root.classList.toggle('past-hero', now);
+    // -160%: the logo hangs below the header's own box, so -100% leaves its tip showing.
+    if (header) header.style.transform = now ? 'translateY(-160%)' : '';
+  }
   on(window, 'scroll', onScroll, { passive: true });
   onScroll();
-  cleanups.push(function () { root.classList.remove('past-hero'); });
+  cleanups.push(function () {
+    root.classList.remove('past-hero');
+    if (header) { header.style.transform = ''; header.style.transition = ''; }
+  });
 
   function showTab(key, opts) {
     opts = opts || {};

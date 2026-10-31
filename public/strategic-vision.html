@@ -256,6 +256,15 @@ textarea.wz-input{resize:vertical;min-height:72px;}
 .wz-box.gold-box{padding:16px 18px;}
 .wz-box.gold-box p{font-size:.95rem;}
 
+/* ── covers of published works ── */
+.covers{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px;margin:0 0 24px;}
+.covers:empty{display:none;}
+.covers a{display:block;border-radius:12px;overflow:hidden;background:#fff;border:1px solid var(--line);box-shadow:0 6px 18px rgba(12,20,40,.08);transition:transform .25s ease,box-shadow .25s ease;}
+.covers a:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(12,20,40,.16);}
+.covers a:focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
+.covers img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--cream);}
+@media(max-width:640px){.covers{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}}
+
 /* ── responsive ── */
 @media(max-width:860px){
   .cover-grid{grid-template-columns:1fr;gap:24px;}
@@ -344,7 +353,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     <svg class="ic" width="20" height="20"><use href="#ic-arrr"/></svg>
   </button>
   <div id="slide-dots"></div>
-  <span id="slide-counter">1 / 24</span>
+  <span id="slide-counter">1 / 26</span>
   <button onclick="nextSlide()" title="التالي">
     <svg class="ic" width="20" height="20"><use href="#ic-arrl"/></svg>
   </button>
@@ -370,7 +379,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     مسلم ليدر هي شركة محتوى وتعليم إسلامي أسري، تُنتج كتبًا ومنتجات تربوية وأدوات تعليمية تحت علامة تجارية أصيلة 100% — تأسست عام 2020 وسُجِّلت رسميًا 2024، بحضور رقمي ومادي متكامل عبر 6 لغات.
   </div>
 
-      <p class="cover-tagline">"نحن لا نبحث عن ممول. نبحث عن شريك يؤمن بأن العلامة التجارية الإسلامية الأسرية الأكبر في العالم لم تُبنَ بعد."</p>
+      <p class="cover-tagline">"نحن لا نبحث عن ممول. نبحث عن شريك يؤمن معنا بأن الطفل المسلم يستحق إصدارات تربوية ملموسة تبني فيه السعي إلى الإمامة في الدين والدنيا."</p>
 
       <div class="btn-row cover-cta">
     <a href="#request" class="btn-gold" data-open-wizard>
@@ -408,7 +417,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     <div class="card">
       <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-pen"/></svg></div>
       <h3>المؤسس</h3>
-      <p>يجمع بين التربية والتصميم والإعلام — ندرة حقيقية في السوق. يتولى الرؤية وتطوير المحتوى والهوية البصرية.</p>
+      <p>يجمع بين التربية والتصميم والإعلام، ويتولى الرؤية وتطوير المحتوى والهوية البصرية.</p>
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-shield"/></svg></div>
@@ -425,6 +434,15 @@ textarea.wz-input{resize:vertical;min-height:72px;}
       <h3>مادي + رقمي + تطبيقات</h3>
       <p>منتجات مادية + مكتبة رقمية + تطبيقات Android — نموذج متكامل لا يعتمد على قناة توزيع واحدة.</p>
     </div>
+  </div>
+
+  <div class="highlight">
+    <div class="hl-title"><svg class="ic" width="20" height="20"><use href="#ic-shield"/></svg> ما نلتزم به في المحتوى</div>
+    <ul class="check-list">
+      <li><svg class="ic" width="16" height="16"><use href="#ic-check"/></svg> القرآن والسنة مرجعنا، والتعلم بالمتعة، والأسرة أولًا.</li>
+      <li><svg class="ic" width="16" height="16"><use href="#ic-check"/></svg> بساطة الطرح والتوقف عند بديهيات الدين، وعدم الانحياز لأي فكر سياسي أو طائفة دينية.</li>
+      <li><svg class="ic" width="16" height="16"><use href="#ic-check"/></svg> المنتج الملموس أصلٌ: يبقى في البيت سنوات، ويُهدى، ويقلل وقت الشاشات — والرقمي امتداد داعم له.</li>
+    </ul>
   </div>
 </div>
 </section>
@@ -463,6 +481,48 @@ textarea.wz-input{resize:vertical;min-height:72px;}
 </section>
 
 <!-- ═══════════════════════════════════════════
+     WORKS — من إصداراتنا (covers load from /api/books)
+═══════════════════════════════════════════ -->
+<section class="slide" id="works">
+<div class="container">
+  <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-book"/></svg> من إصداراتنا</div>
+  <h2 class="sec-title">أعمال <span>منشورة ومتاحة</span></h2>
+  <p class="sec-sub">ما تراه هنا معروض للبيع اليوم في المتجر والمكتبة الرقمية.</p>
+
+  <div class="covers" id="works-covers" aria-live="polite"></div>
+
+  <div class="cards cards-4">
+    <div class="card">
+      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-layers"/></svg></div>
+      <h3>سلاسل القصص</h3>
+      <p>«سلسلة الصلاة» (6 قصص) · «ابني يسأل» (7 قصص) · «مسلسل البر» (7 قصص) — بالعربية، ومترجمة إلى لغات أخرى.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-book"/></svg></div>
+      <h3>كتب وروايات</h3>
+      <p>فلسطين في عيون أبنائي · البخاري على كوكب المريخ · فقيه في بلاد العجائب · رسائل أمهات العظماء · العقل الشجاع · إلى ابني وأستاذي الشاب.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-screen"/></svg></div>
+      <h3>واقع معزز مجاني</h3>
+      <p>منتجات مثل قصة الصلاة ولعبة الصلاة وقصة الحج لها تطبيقات واقع معزز مجانية على Google Play.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-star"/></svg></div>
+      <h3>وسائط مجانية</h3>
+      <p>أناشيد بدون معازف، وقصص قبل النوم، وفيديوهات ورسومات تلوين — متاحة للأسر مجانًا.</p>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <a class="btn-ghost" href="/">المتجر</a>
+    <a class="btn-ghost" href="/library">المكتبة الرقمية</a>
+    <a class="btn-ghost" href="/media">الوسائط المجانية</a>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════
      S4 — BACK TO SCHOOL (قطاع مستقل)
 ═══════════════════════════════════════════ -->
 <section class="slide" id="s4">
@@ -488,18 +548,18 @@ textarea.wz-input{resize:vertical;min-height:72px;}
   <div class="cards cards-3" style="margin-top:28px;">
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-chart"/></svg></div>
-      <h3>هامش ربح مرتفع</h3>
-      <p>منتجات قابلة للإنتاج بكميات كبيرة مع حفاظ على هامش جيد.</p>
+      <h3>إنتاج قابل للتوسع</h3>
+      <p>منتجات قابلة للإنتاج بكميات كبيرة.</p>
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-target"/></svg></div>
       <h3>تكرار سنوي</h3>
-      <p>كل عام دراسي جديد = دورة شراء جديدة. لا يتوقف الطلب.</p>
+      <p>كل عام دراسي جديد = دورة شراء جديدة.</p>
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-award"/></svg></div>
       <h3>انتشار يومي للعلامة</h3>
-      <p>الطفل يحمل علامة مسلم ليدر 8 ساعات يوميًا داخل المدرسة.</p>
+      <p>المنتج يرافق الطفل في يومه الدراسي، فتصل العلامة إلى المدرسة والبيت معًا.</p>
     </div>
   </div>
 </div>
@@ -540,6 +600,27 @@ textarea.wz-input{resize:vertical;min-height:72px;}
 </section>
 
 <!-- ═══════════════════════════════════════════
+     NURSERY — ركن القيم للحضانات (an offer that exists today)
+═══════════════════════════════════════════ -->
+<section class="slide" id="nursery">
+<div class="container">
+  <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-school"/></svg> عرض مؤسسي قائم</div>
+  <h2 class="sec-title">ركن القيم <span>للحضانات</span></h2>
+  <p class="sec-sub">مسار المؤسسات التعليمية ليس خطة على الورق: «مسلم ليدر × الحضانات» عرض قائم اليوم، بأسعار خاصة للحضانات والمؤسسات التعليمية.</p>
+
+  <div class="cards cards-3">
+    <div class="card"><div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-book"/></svg></div><h3>وقت القصة وركن القصص</h3><p>قصص مسلم ليدر جزء من يوم الطفل في الحضانة.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-puzzle"/></svg></div><h3>النشاط والاستيكر</h3><p>نشاط يومي للمعلمة، وتحفيز بالاستيكر.</p></div>
+    <div class="card"><div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-award"/></svg></div><h3>تكريم المتميز وركن القرآن</h3><p>برنامج يومي متكامل يربط القيم بالقرآن.</p></div>
+  </div>
+
+  <div class="btn-row">
+    <a class="btn-ghost" href="/nursery">تفاصيل ركن القيم</a>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════
      S3 — WHY NOW? (لماذا الآن؟)
 ═══════════════════════════════════════════ -->
 <section class="slide" id="s3">
@@ -556,7 +637,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     <div class="card">
       <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-shield"/></svg></div>
       <h3>الأصول جاهزة للتوسع</h3>
-      <p>6 سنوات من بناء الهوية والـ IP أُنجزت. الآن المطلوب هو التنفيذ والتوزيع — لا إعادة بناء.</p>
+      <p>6 سنوات من بناء الهوية والملكية الفكرية. المطلوب الآن هو التنفيذ والتوزيع.</p>
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-globe"/></svg></div>
@@ -619,7 +700,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
 <div class="container">
   <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-star"/></svg> الميزة التنافسية</div>
   <h2 class="sec-title">لماذا مسلم ليدر <span>مختلفة؟</span></h2>
-  <p class="sec-sub">ثماني ميزات تجعل منها أصلًا نادرًا يصعب تكراره.</p>
+  <p class="sec-sub">ثماني ميزات تميّز مسلم ليدر.</p>
 
   <div class="cards cards-2">
     <div class="card">
@@ -629,8 +710,8 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-award"/></svg></div>
-      <h3>مؤسس ذو ندرة حقيقية</h3>
-      <p>يجمع التربية + التصميم + الإعلام في شخص واحد — هذا التوليف نادر جدًا.</p>
+      <h3>مؤسس يجمع ثلاث خبرات</h3>
+      <p>التربية والتصميم والإعلام، فيخرج المحتوى والصورة والرسالة من رؤية واحدة.</p>
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-clock"/></svg></div>
@@ -650,7 +731,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-users"/></svg></div>
       <h3>جمهور عضوي حقيقي</h3>
-      <p>17K+ متابع بدون إعلانات مدفوعة — ولاء حقيقي لا أرقام مضخوخة.</p>
+      <p>17K+ متابع بدون إعلانات مدفوعة.</p>
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-shield"/></svg></div>
@@ -659,8 +740,8 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-rocket"/></svg></div>
-      <h3>قابلية توسع عالمية فورية</h3>
-      <p>6 لغات جاهزة + هوية بصرية متكاملة = دخول أي سوق بدون إعادة بناء.</p>
+      <h3>جاهزية للتوسع</h3>
+      <p>محتوى بـ 6 لغات وهوية بصرية متكاملة يختصران الطريق إلى أسواق جديدة.</p>
     </div>
   </div>
 </div>
@@ -716,7 +797,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     <tbody>
       <tr><td>إجمالي المبيعات التاريخية</td><td style="color:var(--hl);font-weight:700;">~2.4 مليون جنيه</td><td>قاعدة إيرادات عضوية حقيقية</td></tr>
       <tr><td>العملاء الفعليون</td><td style="color:var(--hl);font-weight:700;">1884+</td><td>مشترون حقيقيون بأموال حقيقية</td></tr>
-      <tr><td>العملاء المتكررون</td><td style="color:var(--hl);font-weight:700;">282 (15%)</td><td>ولاء عالٍ — المعدل الصناعي 10-12%</td></tr>
+      <tr><td>العملاء المتكررون</td><td style="color:var(--hl);font-weight:700;">282 (15%)</td><td>عملاء يعودون للشراء</td></tr>
       <tr><td>الإصدارات متعددة اللغات</td><td style="color:var(--hl);font-weight:700;">127 إصدارًا</td><td>جاهز للتوسع الدولي الفوري</td></tr>
       <tr><td>المنتجات الحالية</td><td style="color:var(--hl);font-weight:700;">23 منتجًا</td><td>مجموعة متنوعة لشرائح مختلفة</td></tr>
       <tr><td>المتابعون العضويون</td><td style="color:var(--hl);font-weight:700;">17,000+</td><td>بدون إعلانات مدفوعة</td></tr>
@@ -902,7 +983,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-star"/></svg></div>
       <h3>إيمان بالرسالة</h3>
-      <p>يرى في مسلم ليدر رسالة لا مجرد صفقة. الباحث عن ربح سريع لا يناسب هذا المشروع.</p>
+      <p>يرى في مسلم ليدر رسالة وتجارة معًا، ويبني معنا على المدى الطويل.</p>
     </div>
   </div>
 </div>
@@ -1063,7 +1144,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
 <div class="container">
   <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-shield"/></svg> الخطوط الحمراء</div>
   <h2 class="sec-title">ما الذي <span>لن نفعله؟</span></h2>
-  <p class="sec-sub">هذه الشريحة تستقطب الشريك المؤمن بالمشروع — لا الباحث فقط عن الربح.</p>
+  <p class="sec-sub">حدود ثابتة نلتزم بها، ونطلب من شركائنا الالتزام بها.</p>
 
   <div class="cards cards-2">
     <div class="card">
@@ -1109,7 +1190,7 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     <svg class="ic" width="16" height="16"><use href="#ic-rocket"/></svg> ابدأ المحادثة
   </div>
   <h2 class="cta-title">الشريك الصحيح يبدأ <span>بسؤال</span></h2>
-  <p class="cta-sub">إذا كنت تمتلك قنوات التوزيع وتؤمن بأن العلامة الإسلامية الأسرية الأكبر في العالم لم تُبنَ بعد — فالمحادثة مفتوحة.</p>
+  <p class="cta-sub">إذا كنت تمتلك قنوات توزيع وتؤمن بأن الطفل المسلم يستحق إصدارات تربوية تبنيه — فالمحادثة مفتوحة.</p>
 
   <div class="cta-contact">
     <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">للتواصل المباشر</div>
@@ -1125,11 +1206,6 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     </div>
   </div>
 
-  <div style="margin-top:48px;padding-top:32px;border-top:1px solid var(--border);">
-    <p style="color:var(--muted);font-size:.85rem;line-height:1.8;">
-      جميع الأرقام والبيانات الواردة دقيقة وموثقة.
-    </p>
-  </div>
 </div>
 </section>
 
@@ -1628,6 +1704,31 @@ textarea.wz-input{resize:vertical;min-height:72px;}
     }
   }, true);
   if(location.hash==='#start') open();
+})();
+
+/* Real covers of published Arabic titles, from the same API the library uses. If it fails,
+   the section still lists the works by name. */
+(function(){
+  var box = document.getElementById('works-covers');
+  if(!box || !window.fetch) return;
+  var ctrl = window.AbortController ? new AbortController() : null;
+  setTimeout(function(){ if(ctrl) ctrl.abort(); }, 8000);
+  fetch('/api/books', {signal: ctrl ? ctrl.signal : undefined})
+    .then(function(r){ return r.ok ? r.json() : {books:[]}; })
+    .then(function(d){
+      var seen = {}, out = [];
+      (d.books||[]).forEach(function(b){
+        if(out.length>=8 || !b.cover || (b.language && b.language!=='ar')) return;
+        var key = b.seriesId || b.id;      // one cover per series
+        if(seen[key]) return; seen[key] = 1;
+        out.push(b);
+      });
+      box.innerHTML = out.map(function(b){
+        var t = String(b.title||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});
+        return '<a href="/library/'+encodeURIComponent(b.id)+'" title="'+t+'"><img src="'+encodeURI(b.cover)+'" alt="'+t+'" loading="lazy" decoding="async"></a>';
+      }).join('');
+    })
+    .catch(function(){});
 })();
 </script>
 </body>

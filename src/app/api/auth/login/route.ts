@@ -8,9 +8,15 @@ import { checkRateLimit } from '@/lib/rate-limit';
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-    const { allowed } = checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
+    // A one-minute window: a person who mistyped a few times waits seconds, not a quarter
+    // of an hour. The answer says exactly how many seconds are left.
+    const { allowed, retryAfterMs } = checkRateLimit(`login:${ip}`, 10, 60 * 1000);
     if (!allowed) {
-      return NextResponse.json({ error: 'محاولات كثيرة، حاول بعد 15 دقيقة' }, { status: 429 });
+      const secs = Math.max(1, Math.ceil(retryAfterMs / 1000));
+      return NextResponse.json(
+        { error: `محاولات كثيرة، حاول بعد ${secs} ثانية`, retryAfterSec: secs },
+        { status: 429, headers: { 'Retry-After': String(secs) } },
+      );
     }
 
     const { email, password } = await req.json();

@@ -128,7 +128,7 @@ export default function AboutPage() {
     { logo: '/about/partners/qabed.webp', name: tx('قابض', 'Qabed'), field: tx('للأنظمة والبرمجيات', 'Systems & Software'), url: 'https://qabed.com', host: 'qabed.com',
       desc: tx('تطوير الأنظمة والبرمجيات للمؤسسات.', 'Systems and software for organisations.') },
     { logo: '/about/partners/kaleem.webp', name: tx('كليم', 'Kaleem'), field: tx('للسلامة النفسية', 'Mental Well-being'), url: 'https://kaleemai.com', host: 'kaleemai.com',
-      desc: tx('منصة دعم نفسي مدعومة بالذكاء الاصطناعي، بمنظور يحترم القيم الإسلامية.', 'AI-supported psychological support, grounded in Islamic values.') },
+      desc: tx('منصة دعم نفسي مدعومة بالذكاء الاصطناعي، بمنظور يحترم القيم الإسلامية — تديرها د. مروة علي.', 'AI-supported psychological support, grounded in Islamic values — directed by Dr. Marwa Ali.') },
     { logo: '/about/partners/waqf.webp', name: tx('وقف الأفكار', 'Waqf El Afkar'), field: tx('للوقف المعرفي', 'Knowledge Endowment'), url: 'https://waqfelafkar.com', host: 'waqfelafkar.com',
       desc: tx('منصة وقفية لدعم الأفكار والمشاريع المعرفية.', 'An endowment platform supporting ideas and knowledge projects.') },
   ];
@@ -154,7 +154,7 @@ export default function AboutPage() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a href="#founder" className="inline-flex items-center gap-2 bg-[#F5C518] text-[#0C1428] font-black px-6 py-3 rounded-full hover:bg-yellow-300 transition">
-              {tx('تعرّف على المؤسس', 'Meet the founder')}
+              {tx('تعرّف على المؤسسين', 'Meet the founders')}
             </a>
             <a href="#partners" className="inline-flex items-center gap-2 border border-white/40 text-white font-bold px-6 py-3 rounded-full hover:bg-white/10 transition">
               {tx('مؤسساتنا الشقيقة', 'Sister organisations')}
@@ -187,7 +187,7 @@ export default function AboutPage() {
               <img src="/about/founder.webp" alt={tx('د. إبراهيم حسن', 'Dr. Ibrahim Hassan')} width={600} height={688} className="relative w-full h-auto" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[#22335C] mb-2">{tx('المؤسس', 'The founder')}</p>
+              <p className="text-sm font-bold text-[#22335C] mb-2">{tx('المؤسس', 'Founder')}</p>
               <h2 className="text-3xl sm:text-4xl font-black text-[#0C1428] leading-snug">{tx('د. إبراهيم حسن', 'Dr. Ibrahim Hassan')}</h2>
               <p className="mt-2 text-[#5C6373] font-semibold">
                 {tx('مؤسس مسلم ليدر · أستاذ مشارك التصميم البصري والميديا الحديثة', 'Founder of Moslim Leader · Associate Professor of Visual Design and New Media')}
@@ -220,6 +220,29 @@ export default function AboutPage() {
                 <p className="text-sm text-[#3A4150] leading-relaxed">{f.body}</p>
               </div>
             ))}
+          </div>
+
+          {/* Co-founder. A drawn avatar, not a photograph — her choice, and the rule this
+              site follows for women's pictures everywhere. */}
+          <div className="mt-12 bg-white border border-[#EFE7CE] rounded-2xl p-6 sm:p-8 grid sm:grid-cols-[auto_minmax(0,1fr)] gap-6 items-center">
+            <div className="relative w-36 h-36 sm:w-40 sm:h-40 mx-auto">
+              <div className="absolute inset-0 rounded-full bg-[#FAF6E6] border-2 border-[#F5C518]" aria-hidden />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/about/cofounder-marwa.webp" alt={tx('د. مروة علي', 'Dr. Marwa Ali')} width={600} height={600} className="relative w-full h-full object-contain rounded-full p-3" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-[#22335C] mb-1">{tx('شريك مؤسس', 'Co-founder')}</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-[#0C1428] leading-snug">{tx('د. مروة علي', 'Dr. Marwa Ali')}</h3>
+              <p className="mt-2 text-[#5C6373] font-semibold">
+                {tx('دكتورة صيدلانية وباحثة في الفكر الإسلامي · مديرة منصة كليم للصحة النفسية', 'Pharmacist and researcher in Islamic thought · Director of the Kaleem mental well-being platform')}
+              </p>
+              <p className="mt-3 text-[#3A4150] leading-relaxed">
+                {tx(
+                  'شاركت في تأليف «مسلسل البر» و«فلسطين في عيون أبنائي» و«رسائل أمهات العظماء».',
+                  'Co-author of the Righteousness series, «Palestine in My Children\'s Eyes» and «Letters of the Mothers of the Great».',
+                )}
+              </p>
+            </div>
           </div>
         </div>
       </section>

@@ -14,6 +14,7 @@ export interface SeriesLangBook {
 }
 
 export interface SeriesPricedBook extends SeriesLangBook {
+  id?: string;
   price: number;
   priceUSD?: number | null;
 }
@@ -33,7 +34,9 @@ export function booksForLang<T extends SeriesLangBook>(books: T[], lang?: string
 }
 
 export interface SeriesLangPrice {
-  count: number;       // books published (and sold) now in this language
+  count: number;       // books published now in this language
+  owned: number;       // of those, books the buyer already has
+  payable: number;     // count - owned: the books this purchase actually adds
   planned: number;     // books the edition will have when complete (== count if not set)
   complete: boolean;   // count >= planned
   egp: number;
@@ -45,15 +48,23 @@ export interface SeriesLangPrice {
 //    (6 or 7 stories — the count may differ per language, the price does not). They are
 //    NOT divided by the number of languages.
 //  - Without a bundle price, the language's own books are simply summed.
+//  - A buyer who already owns some of the books pays only for the rest: the bundle price
+//    × (books not yet owned ÷ books in the edition). Pass `ownedIds` (the buyer's book ids)
+//    wherever a price is shown to or charged from a known buyer — the page, paypal-create
+//    and paypal-capture all do, so the number shown is still the number charged.
 export function seriesLangPrice(
   series: { seriesPrice?: number | null; seriesPriceUSD?: number | null; plannedBookCount?: number | null },
   allBooks: SeriesPricedBook[],
   lang?: string | null,
+  ownedIds?: Iterable<string> | null,
 ): SeriesLangPrice {
   const selected = booksForLang(allBooks, lang);
+  const ownedSet = new Set(ownedIds ?? []);
+  const unowned = selected.filter(b => !b.id || !ownedSet.has(b.id));
+  const owned = selected.length - unowned.length;
 
-  const sumEgp = selected.reduce((s, b) => s + Number(b.price || 0), 0);
-  const sumUsd = selected.reduce((s, b) => {
+  const sumEgp = unowned.reduce((s, b) => s + Number(b.price || 0), 0);
+  const sumUsd = unowned.reduce((s, b) => {
     const usd = b.priceUSD && b.priceUSD > 0 ? Number(b.priceUSD) : egpToUsd(Number(b.price || 0));
     return s + usd;
   }, 0);
@@ -63,17 +74,21 @@ export function seriesLangPrice(
     ? Math.round(Number(series.seriesPriceUSD) * 100) / 100
     : sumUsd;
 
-  // While the edition is still being uploaded (fewer published than planned), charge only
-  // for the books that exist: price × published / planned. Complete edition → full price.
+  // A bundle price is for the WHOLE edition. Charge the share of it this purchase adds:
+  //  - while the edition is still being uploaded, only the published books (× published ÷ planned);
+  //  - minus the books the buyer already owns (× not-owned ÷ edition).
+  // Both are one ratio: books added now ÷ books in the full edition. Complete and nothing
+  // owned → 1, the full price. (A summed price already counts only the unowned books.)
   const planned = series.plannedBookCount && series.plannedBookCount > 0 ? Math.floor(series.plannedBookCount) : selected.length;
   const complete = selected.length >= planned;
-  if (!complete && series.plannedBookCount) {
-    const ratio = selected.length / planned;
+  const edition = Math.max(planned, selected.length);
+  const ratio = edition > 0 ? unowned.length / edition : 0;
+  if (ratio < 1) {
     if (series.seriesPrice && series.seriesPrice > 0) egp = Math.round(egp * ratio);
     if (series.seriesPriceUSD && series.seriesPriceUSD > 0) usd = Math.round(usd * ratio * 100) / 100;
   }
 
-  return { count: selected.length, planned, complete, egp, usd };
+  return { count: selected.length, owned, payable: unowned.length, planned, complete, egp, usd };
 }
 
 export const SERIES_LANG_LABELS: Record<string, string> = {

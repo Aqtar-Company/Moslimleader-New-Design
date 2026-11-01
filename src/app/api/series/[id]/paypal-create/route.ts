@@ -38,11 +38,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'السلسلة غير متاحة' }, { status: 404 });
     }
 
-    // Nothing to sell if the buyer already owns every book of this language edition.
-    const owned = await prisma.bookAccess.count({
+    // Books of this edition the buyer already has — they are not paid for twice.
+    const ownedRows = await prisma.bookAccess.findMany({
       where: { userId: auth.userId, bookId: { in: langBooks.map(b => b.id) } },
+      select: { bookId: true },
     });
-    if (owned >= langBooks.length) {
+    const ownedIds = new Set(ownedRows.map(r => r.bookId));
+    if (ownedIds.size >= langBooks.length) {
       return NextResponse.json({ error: 'لديك بالفعل كل كتب هذه السلسلة بهذه اللغة' }, { status: 400 });
     }
 
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // The price of ONE language's share of the series — the same function the
     // product page and the buy page use, so shown price == charged price.
     // Egyptian users get the subsidised EGP price converted to USD.
-    const langPrice = seriesLangPrice(series, series.books, lang);
+    const langPrice = seriesLangPrice(series, series.books, lang, ownedIds);
     const priceUsd = isEgypt ? egpToUsd(langPrice.egp) : langPrice.usd;
 
     if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const finalUsd = Math.max(0.01, Math.round(priceUsd * 100) / 100);
     // Exactly the books being paid for NOW — books uploaded while the buyer is at PayPal
     // must not ride along for a price computed without them.
-    const bookIds = langBooks.map(b => b.id);
+    const bookIds = langBooks.filter(b => !ownedIds.has(b.id)).map(b => b.id);
     const referenceId = `series-${seriesId}-${lang}-${auth.userId}-${Date.now()}`;
 
     const paypalOrder = await createPayPalOrder(finalUsd, 'USD', referenceId);

@@ -153,6 +153,8 @@ function BookPageInner() {
   // «Buy the full series» is per LANGUAGE: only the stories in this book's language are
   // sold (and granted). The link carries that language to the series buy page.
   const seriesLangBooks = (book: BookData) => booksForLang(seriesBooks, book.language);
+  const seriesRemaining = (book: BookData) => seriesLangBooks(book).filter(b => !seriesOwnedIds.includes(b.id)).length;
+  const ownsSome = (book: BookData) => seriesRemaining(book) < seriesLangBooks(book).length;
   const seriesBuyHref = (book: BookData) =>
     `/library/series/${seriesSeriesId}/buy?lang=${encodeURIComponent(book.language || 'ar')}`;
   const seriesPriceLabel = () => formatPrice(resolvePrice(seriesPrice ?? 0, seriesPriceUSD ?? 0, zone, countryCode));
@@ -179,6 +181,9 @@ function BookPageInner() {
   const [seriesSeriesId, setSeriesSeriesId] = useState<string | null>(null);
   const [seriesPrice, setSeriesPrice] = useState<number | null>(null);
   const [seriesPriceUSD, setSeriesPriceUSD] = useState<number | null>(null);
+  // Stories of this series the reader already has: the series price above is already only
+  // for the rest (src/lib/series-lang.ts), and the button must say so.
+  const [seriesOwnedIds, setSeriesOwnedIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetch(`/api/books/${id}`, { credentials: 'include' })
@@ -194,6 +199,7 @@ function BookPageInner() {
         setSeriesSeriesId(d.seriesSeriesId ?? null);
         setSeriesPrice(d.seriesPrice ?? null);
         setSeriesPriceUSD(d.seriesPriceUSD ?? null);
+        setSeriesOwnedIds(d.seriesOwnedIds ?? []);
         let access = d.hasAccess ?? false;
 
         const refToken = searchParams.get('ref');
@@ -476,14 +482,18 @@ function BookPageInner() {
                 {isEn ? 'Sign in to Purchase' : 'سجّل دخولك للشراء'}
               </Link>
             )}
-            {book.seriesId && seriesSeriesId && seriesPrice && seriesLangBooks(book).length > 1 && (
+            {book.seriesId && seriesSeriesId && seriesPrice && seriesLangBooks(book).length > 1 && seriesRemaining(book) > 0 && (
               <Link
                 href={user ? seriesBuyHref(book) : `/login?redirect=${encodeURIComponent(seriesBuyHref(book))}`}
                 className="block w-full bg-[#1a1a2e] hover:bg-[#2a2a4e] text-[#F5C518] font-black py-3.5 rounded-xl text-center text-base transition shadow-md"
               >
-                {isEn
-                  ? `Buy the full series — ${seriesLangBooks(book).length} stories · ${seriesPriceLabel()}`
-                  : `اشترِ السلسلة كاملة — ${seriesLangBooks(book).length} قصة · ${seriesPriceLabel()}`}
+                {ownsSome(book)
+                  ? (isEn
+                    ? `Complete the series — ${seriesRemaining(book)} more stories · ${seriesPriceLabel()}`
+                    : `أكمل السلسلة — الباقي ${seriesRemaining(book)} قصة · ${seriesPriceLabel()}`)
+                  : (isEn
+                    ? `Buy the full series — ${seriesLangBooks(book).length} stories · ${seriesPriceLabel()}`
+                    : `اشترِ السلسلة كاملة — ${seriesLangBooks(book).length} قصة · ${seriesPriceLabel()}`)}
               </Link>
             )}
             {book.paperProductSlug && (
@@ -613,12 +623,14 @@ function BookPageInner() {
                   >
                     {user ? `رقمي — ${displayBookPrice(book)}` : 'سجّل دخولك'}
                   </Link>
-                  {book.seriesId && seriesSeriesId && seriesPrice && seriesLangBooks(book).length > 1 && (
+                  {book.seriesId && seriesSeriesId && seriesPrice && seriesLangBooks(book).length > 1 && seriesRemaining(book) > 0 && (
                     <Link
                       href={user ? seriesBuyHref(book) : `/login?redirect=${encodeURIComponent(seriesBuyHref(book))}`}
                       className="inline-block bg-[#1a1a2e] text-[#F5C518] font-black text-xs px-4 py-2 rounded-xl"
                     >
-                      {isEn ? `Full series — ${seriesPriceLabel()}` : `السلسلة كاملة — ${seriesPriceLabel()}`}
+                      {ownsSome(book)
+                        ? (isEn ? `Rest of the series — ${seriesPriceLabel()}` : `باقي السلسلة — ${seriesPriceLabel()}`)
+                        : (isEn ? `Full series — ${seriesPriceLabel()}` : `السلسلة كاملة — ${seriesPriceLabel()}`)}
                     </Link>
                   )}
                   {book.paperProductSlug && (
@@ -747,7 +759,7 @@ function BookPageInner() {
                 <span className="text-lg leading-tight">
                   {seriesPriceLabel()}
                 </span>
-                <span className="text-[10px] font-bold mt-0.5">{isEn ? 'Buy full series →' : 'شراء السلسلة كاملة →'}</span>
+                <span className="text-[10px] font-bold mt-0.5">{ownsSome(book) ? (isEn ? 'Complete the series →' : 'أكمل السلسلة →') : (isEn ? 'Buy full series →' : 'شراء السلسلة كاملة →')}</span>
               </Link>
             )}
           </div>

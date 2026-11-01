@@ -29,6 +29,8 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   const [orderId, setOrderId] = useState('');
   // A series is bought one language at a time (?lang=… from the book page, else chosen here).
   const [selectedLang, setSelectedLang] = useState<string>('');
+  // Stories the buyer already has — they are not paid for again (src/lib/series-lang.ts).
+  const [ownedIds, setOwnedIds] = useState<string[]>([]);
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
@@ -51,6 +53,11 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
     }
     if (isLoading) return;
 
+    fetch('/api/books/my', { credentials: 'include', signal: AbortSignal.timeout(15_000) })
+      .then(r => (r.ok ? r.json() : { books: [] }))
+      .then(d => setOwnedIds((d.books || []).map((b: { id: string }) => b.id)))
+      .catch(() => {});
+
     fetch('/api/series')
       .then(r => r.json())
       .then(d => {
@@ -71,8 +78,9 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   const langBooks = series ? booksForLang(series.books, selectedLang) : [];
   const availableLangs = series ? seriesLanguages(series.books) : [];
   const langPrice = series
-    ? seriesLangPrice(series, series.books, selectedLang)
-    : { count: 0, planned: 0, complete: true, egp: 0, usd: 0 };
+    ? seriesLangPrice(series, series.books, selectedLang, ownedIds)
+    : { count: 0, owned: 0, payable: 0, planned: 0, complete: true, egp: 0, usd: 0 };
+  const ownsAll = langPrice.count > 0 && langPrice.payable === 0;
   const displayPriceEgp = langPrice.egp;
   const displayPriceUsd = langPrice.usd;
   const priceUsd = isEgypt ? egpToUsd(displayPriceEgp) : displayPriceUsd;
@@ -170,6 +178,9 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
             {!langPrice.complete && (
               <p className="text-xs font-bold text-amber-600 mt-1">{isEn ? `${langPrice.count} of ${langPrice.planned} books are published so far — the price covers these only.` : `المنشور حتى الآن ${langPrice.count} من ${langPrice.planned} كتب — السعر يشمل المنشور فقط.`}</p>
             )}
+            {langPrice.owned > 0 && !ownsAll && (
+              <p className="text-xs font-bold text-emerald-700 mt-1">{isEn ? `You already have ${langPrice.owned} of these stories — you pay only for the other ${langPrice.payable}.` : `لديك بالفعل ${langPrice.owned} من قصص هذه السلسلة — تدفع ثمن الباقي فقط (${langPrice.payable}).`}</p>
+            )}
           </div>
         </div>
 
@@ -198,7 +209,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
 
         {/* Price */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <span className="text-gray-500 text-sm">{isEn ? 'Full Series Price' : 'سعر السلسلة كاملة'}</span>
+          <span className="text-gray-500 text-sm">{langPrice.owned > 0 ? (isEn ? 'Price of the rest of the series' : 'سعر باقي السلسلة') : (isEn ? 'Full Series Price' : 'سعر السلسلة كاملة')}</span>
           <div className="text-left">
             {isEgypt ? (
               <>
@@ -225,9 +236,15 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
 
         {/* Payment */}
         <div className="px-6 pb-6">
+          {ownsAll ? (
+            <div className="text-center py-4">
+              <p className="font-black text-gray-900 mb-1">{isEn ? 'You already have every story in this language.' : 'لديك بالفعل كل قصص السلسلة بهذه اللغة.'}</p>
+              <Link href="/account" className="text-sm font-bold text-[#F5C518] underline">{isEn ? 'Open my library' : 'افتح مكتبتي'}</Link>
+            </div>
+          ) : (<>
           <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">{isEn ? 'Choose Payment Method' : 'اختر طريقة الدفع'}</p>
           <PayPalBookButton
-            key={selectedLang}
+            key={`${selectedLang}-${langPrice.payable}`}
             createBody={{ lang: selectedLang }}
             extraBody={{ lang: selectedLang }}
             createEndpoint={`/api/series/${series.id}/paypal-create`}
@@ -240,6 +257,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
             onError={(msg) => addToast(msg, 'error')}
             isRtl
           />
+          </>)}
         </div>
       </div>
     </div>

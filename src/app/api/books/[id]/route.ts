@@ -61,6 +61,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     let seriesSeriesId: string | null = null;
     let seriesPrice: number | null = null;
     let seriesPriceUSD: number | null = null;
+    let seriesOwnedIds: string[] = [];
     if ((book as any).seriesId) {
       try {
         const series = await prisma.bookSeries.findUnique({
@@ -86,7 +87,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           seriesSeriesId = series.id;
           // Price of THIS book's language edition of the series (the same function the
           // PayPal routes charge with — see src/lib/series-lang.ts)
-          const langPrice = seriesLangPrice(series, series.books, (book as any).language);
+          // For a signed-in reader, minus the stories they already own.
+          let ownedIds: string[] = [];
+          if (auth) {
+            const rows = await prisma.bookAccess.findMany({
+              where: { userId: auth.userId, bookId: { in: series.books.map(b => b.id) } },
+              select: { bookId: true },
+            });
+            ownedIds = rows.map(r => r.bookId);
+            seriesOwnedIds = ownedIds;
+          }
+          const langPrice = seriesLangPrice(series, series.books, (book as any).language, ownedIds);
           seriesPrice = series.seriesPrice ? langPrice.egp : null;
           seriesPriceUSD = series.seriesPriceUSD ? langPrice.usd : null;
         }
@@ -95,7 +106,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    return NextResponse.json({ book, hasAccess, lastPage, viewCount, buyCount, seriesBooks, seriesName, seriesNameEn, seriesSeriesId, seriesPrice, seriesPriceUSD });
+    return NextResponse.json({ book, hasAccess, lastPage, viewCount, buyCount, seriesBooks, seriesName, seriesNameEn, seriesSeriesId, seriesPrice, seriesPriceUSD, seriesOwnedIds });
   } catch (err) {
     console.error('[books/:id GET]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });

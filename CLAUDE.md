@@ -977,6 +977,14 @@ Books are protected from download at two levels:
   variable is missing the request is accepted and `[partnership-requests] TURNSTILE_SECRET_KEY
   is not set` is logged — check for that line after deploying. No admin screen yet; `status`
   (new/contacted/trial/closed) is there for one.
+- **A series is priced for what the buyer does NOT already own.** `seriesLangPrice(series,
+  books, lang, ownedIds)` in `src/lib/series-lang.ts` charges the bundle price × (books not
+  owned ÷ books in the full edition) — one ratio that also covers an edition still being
+  uploaded. Every caller that knows the buyer passes `ownedIds`: the book page API
+  (`/api/books/[id]` → also returns `seriesOwnedIds` so the button reads «أكمل السلسلة»), the
+  buy page (from `/api/books/my`), `paypal-create` (which also stores only the unowned book
+  ids) and `paypal-capture`'s fallback. Leave one out and the page shows one number while
+  PayPal is asked for another, and capture rejects the payment as a mismatch.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

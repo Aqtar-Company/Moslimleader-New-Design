@@ -69,7 +69,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Fallback if Setting was lost (same per-language price as paypal-create)
-    const fallbackLangPrice = seriesLangPrice(series, series.books, lang);
+    const ownedNow = await prisma.bookAccess.findMany({
+      where: { userId: auth.userId, bookId: { in: langBooks.map(b => b.id) } },
+      select: { bookId: true },
+    });
+    const fallbackLangPrice = seriesLangPrice(series, series.books, lang, ownedNow.map(r => r.bookId));
     const fallbackUsd = series.seriesPriceUSD && series.seriesPriceUSD > 0
       ? fallbackLangPrice.usd
       : series.seriesPrice && series.seriesPrice > 0

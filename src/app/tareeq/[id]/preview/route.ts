@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { linkedVideoThumb, withoutUrls } from '@/lib/tareeq-link-thumb';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -107,13 +108,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     );
   }
 
-  const title = post.title?.trim() || cutAtWord(post.content ?? '', 60) || 'علامة في طريق';
-  const description = cutAtWord(post.content ?? '', 160);
-  const media = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null);
+  // Same choices as generateMetadata in ../page.tsx: no URLs in the words, and a YouTube
+  // link's own thumbnail when the post has no uploaded picture (tareeq-link-thumb).
+  const plain = withoutUrls(post.content);
+  const title = post.title?.trim() || cutAtWord(plain, 60) || 'علامة في طريق';
+  const description = cutAtWord(plain, 160);
+  const linkedThumb = linkedVideoThumb(post.content);
+  const media = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null) ?? linkedThumb;
   // og:image must be absolute or crawlers drop it. Falls back to the generated card route
   // for a text-only post — that one is slow, but it is the same fallback the page uses.
   const image = media ? new URL(media, SITE).toString() : `${SITE}/tareeq/${id}/opengraph-image`;
-  const isVideo = !!post.videoUrl;
+  const isVideo = !!post.videoUrl || (!post.imageUrl && !!linkedThumb);
 
   const html = `<!doctype html>
 <html lang="ar" dir="rtl">

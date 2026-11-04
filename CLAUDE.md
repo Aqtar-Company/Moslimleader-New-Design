@@ -985,6 +985,11 @@ Books are protected from download at two levels:
   buy page (from `/api/books/my`), `paypal-create` (which also stores only the unowned book
   ids) and `paypal-capture`'s fallback. Leave one out and the page shows one number while
   PayPal is asked for another, and capture rejects the payment as a mismatch.
+- **Every embedded player's host must be in the CSP's `frame-src` (next.config.mjs).** Facebook,
+  TikTok and Vimeo videos in طريق posts were each a grey box with Chrome's broken-page icon —
+  the card built a correct iframe and our own policy, which listed only PayPal, Cloudflare and
+  YouTube, refused to load it. Nothing is logged server-side; the refusal is only in the
+  browser console. Adding a new embed means adding its host there in the same commit.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

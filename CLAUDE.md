@@ -990,6 +990,12 @@ Books are protected from download at two levels:
   the card built a correct iframe and our own policy, which listed only PayPal, Cloudflare and
   YouTube, refused to load it. Nothing is logged server-side; the refusal is only in the
   browser console. Adding a new embed means adding its host there in the same commit.
+- **A طريق post whose video is a YouTube LINK shares with that video's thumbnail.**
+  `linkedVideoThumb()` in `src/lib/tareeq-link-thumb.ts` (`i.ytimg.com/vi/<id>/hqdefault.jpg`
+  — `maxresdefault` 404s for many videos, and a 404 og:image shows nothing). Both share paths
+  use it — `generateMetadata` in `src/app/tareeq/[id]/page.tsx` and the crawler route
+  `preview/route.ts` — and both drop URLs from the title/description. Facebook caches a
+  preview per URL: after a change, «Scrape Again» in the Sharing Debugger.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

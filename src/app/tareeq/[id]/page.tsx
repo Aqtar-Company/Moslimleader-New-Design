@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { linkedVideoThumb, withoutUrls } from '@/lib/tareeq-link-thumb';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { isBlockedEitherWay } from '@/lib/tareeq-guard';
@@ -39,8 +40,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   // An unpublished or moderated post must not describe itself to a scraper either.
   if (!post || post.isDraft || post.isHidden) return {};
 
-  const title = post.title ?? cutAtWord(post.content ?? '', 60) ?? 'علامة في طريق';
-  const description = cutAtWord(post.content ?? '', 160);
+  // URLs are left out of the title and description: the link is what the card IS, not text.
+  const plain = withoutUrls(post.content);
+  const title = post.title ?? (cutAtWord(plain, 60) || 'علامة في طريق');
+  const description = cutAtWord(plain, 160);
   const siteUrl = 'https://moslimleader.com';
   const pageUrl = `${siteUrl}/tareeq/${params.id}`;
 
@@ -49,9 +52,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   // or scrapers drop it. With no media we set nothing here on purpose: `images` left
   // undefined is what lets Next wire up the generated card from `opengraph-image.tsx`.
   // Naming a URL here would override it.
-  const mediaImage = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null);
+  // A post whose video is a YouTube LINK carries that video's thumbnail (tareeq-link-thumb).
+  const linkedThumb = linkedVideoThumb(post.content);
+  const mediaImage = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null) ?? linkedThumb;
   const ogImage = mediaImage ? new URL(mediaImage, siteUrl).toString() : null;
-  const isVideo = !!post.videoUrl;
+  const isVideo = !!post.videoUrl || (!post.imageUrl && !!linkedThumb);
 
   return {
     title: `${title} — طريق`,

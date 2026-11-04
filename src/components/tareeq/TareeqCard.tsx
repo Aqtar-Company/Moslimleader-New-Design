@@ -122,14 +122,18 @@ function FacebookVideoEmbed({ url, isRtl }: { url: string; isRtl: boolean }) {
     );
   }
 
+  // A reel is vertical: in a 16/9 frame it shrinks to a strip between black bars.
+  const isReel = /\/reel\/|\/share\/r\//.test(resolved) || /\/reel\/|\/share\/r\//.test(url);
   return (
     <div
-      className="mt-3 rounded-2xl overflow-hidden"
-      style={{ aspectRatio: '16/9', background: '#000', border: '1px solid var(--tr-border-subtle)' }}
+      className="mt-3 rounded-2xl overflow-hidden mx-auto"
+      style={{ aspectRatio: isReel ? '9/16' : '16/9', maxWidth: isReel ? 340 : undefined, background: '#000', border: '1px solid var(--tr-border-subtle)' }}
       onClick={e => e.stopPropagation()}
     >
       <iframe
-        src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(resolved)}&width=640&show_text=false&height=360`}
+        src={isReel
+          ? `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(resolved)}&width=340&height=604&show_text=false`
+          : `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(resolved)}&width=640&show_text=false&height=360`}
         allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
         allowFullScreen
         loading="lazy"

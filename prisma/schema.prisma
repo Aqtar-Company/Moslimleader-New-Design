@@ -668,6 +668,18 @@ model FreeMedia {
   viewCount     Int                 @default(0)
   downloadCount Int                 @default(0)
   createdAt     DateTime            @default(now())
+  /// The item's ONE discussion post in طريق. Its comments and reactions are what /media
+  /// shows, so a conversation started on either side is the same conversation. Made when
+  /// the admin publishes the item to طريق, or on the first comment/reaction (then dated
+  /// to the item's own date so it does not jump to the top of the feed).
+  /// SetNull: if the post is deleted in طريق, the next comment makes a new one.
+  discussionPostId    String?     @unique
+  discussionPost      TareeqPost? @relation("MediaDiscussion", fields: [discussionPostId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  /// Members' طريق posts that carry this item (the official one included).
+  tareeqPosts         TareeqPost[] @relation("MediaPosts")
+  /// When the followers of its category were told about it. Once per item: unpublishing
+  /// and publishing again must not notify everyone twice.
+  followersNotifiedAt DateTime?
 
   @@index([isPublished, type])
   @@index([categoryId])
@@ -712,8 +724,22 @@ model FreeMediaCategory {
   sortOrder Int         @default(0)
   createdAt DateTime    @default(now())
   items     FreeMedia[]
+  follows   FreeMediaCategoryFollow[]
 
   @@index([kind, sortOrder])
+}
+
+/// «تابع التصنيف» — the member is told in طريق when a new item is published on this shelf.
+/// `userId` is a plain id, like FreeMediaComment, so the shop's `User` model is not touched.
+model FreeMediaCategoryFollow {
+  id         Int               @id @default(autoincrement())
+  userId     String
+  categoryId Int
+  category   FreeMediaCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime          @default(now())
+
+  @@unique([userId, categoryId])
+  @@index([categoryId])
 }
 
 model Book {
@@ -1126,6 +1152,13 @@ model TareeqPost {
   shares       TareeqPost[] @relation("TareeqShares")
   shareCount   Int          @default(0)
 
+  // An item of the media library (/media) carried by the post: the card plays it in place
+  // and links to the library. SetNull: deleting the item leaves the post's own words.
+  mediaId      Int?
+  media        FreeMedia?   @relation("MediaPosts", fields: [mediaId], references: [id], onDelete: SetNull)
+  /// Set when this post IS an item's discussion (FreeMedia.discussionPostId).
+  discussionOf FreeMedia?   @relation("MediaDiscussion")
+
   likes         TareeqLike[]
   comments      TareeqComment[]
   bookmarks     TareeqBookmark[]
@@ -1145,6 +1178,7 @@ model TareeqPost {
   @@index([isDraft])
   @@index([publishedAt])
   @@index([hotScore])
+  @@index([mediaId])
   // Post search ran as `contains`, which MySQL executes as LIKE '%…%' — a full table scan
   // no index can help. This is the index that makes `search:` possible instead.
   @@fulltext([title, content])

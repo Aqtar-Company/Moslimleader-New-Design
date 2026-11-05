@@ -35,6 +35,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       // paragraph instead of the video's poster, and WhatsApp — which is far less patient
       // with a slow, large PNG — showed nothing at all.
       thumbnailUrl: true, videoUrl: true,
+      // A media-library item's cover (or a drawing's own preview) is its share image.
+      media: { select: { coverUrl: true, previewUrl: true, type: true, isPublished: true } },
     },
   });
   // An unpublished or moderated post must not describe itself to a scraper either.
@@ -54,9 +56,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   // Naming a URL here would override it.
   // A post whose video is a YouTube LINK carries that video's thumbnail (tareeq-link-thumb).
   const linkedThumb = linkedVideoThumb(post.content);
-  const mediaImage = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null) ?? linkedThumb;
+  const libraryImage = post.media?.isPublished ? (post.media.previewUrl ?? post.media.coverUrl) : null;
+  const mediaImage = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null) ?? libraryImage ?? linkedThumb;
   const ogImage = mediaImage ? new URL(mediaImage, siteUrl).toString() : null;
-  const isVideo = !!post.videoUrl || (!post.imageUrl && !!linkedThumb);
+  const isVideo = !!post.videoUrl || (!!libraryImage && (post.media?.type === 'video' || post.media?.type === 'reel')) || (!post.imageUrl && !libraryImage && !!linkedThumb);
 
   return {
     title: `${title} — طريق`,

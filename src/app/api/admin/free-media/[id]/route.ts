@@ -5,6 +5,7 @@ import { requirePerm } from '@/lib/permissions';
 import { Prisma } from '@prisma/client';
 import { parseMediaItem, parseWaveform } from '@/lib/free-media-input';
 import { removeStoredMedia, isAllowedMediaRef } from '@/lib/free-media';
+import { publishSideEffects, notifyCategoryFollowers } from '@/lib/media-tareeq';
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const guard = await requirePerm(['free-media.write', 'books.write']);
@@ -18,7 +19,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const parsed = await parseMediaItem(await req.json().catch(() => ({})));
     if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-    const item = await prisma.freeMedia.update({ where: { id }, data: parsed.data });
+    const updated = await prisma.freeMedia.update({ where: { id }, data: parsed.data });
+    const item = await publishSideEffects(updated, { postToTareeq: parsed.raw.postToTareeq === true });
 
     // Only AFTER the row points elsewhere: deleting first and then failing the update would
     // leave a published item pointing at nothing.
@@ -79,6 +81,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!Object.keys(data).length) return NextResponse.json({ error: 'لا شيء للتحديث' }, { status: 400 });
   try {
     const item = await prisma.freeMedia.update({ where: { id }, data });
+    if (data.isPublished === true) void notifyCategoryFollowers(id);
     return NextResponse.json({ item });
   } catch {
     return NextResponse.json({ error: 'غير موجود' }, { status: 404 });

@@ -17,6 +17,8 @@ import TareeqShareSheet from '@/components/tareeq/TareeqShareSheet';
 import TareeqImageViewer from '@/components/tareeq/TareeqImageViewer';
 import { postImages } from '@/lib/tareeq-post-images';
 import { SharedOriginalCard } from '@/components/tareeq/TareeqCard';
+import TareeqMediaCard from '@/components/tareeq/TareeqMediaCard';
+import type { PostMedia } from '@/lib/post-media';
 import type { SharedOriginal } from '@/components/tareeq/TareeqCard';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
@@ -39,8 +41,10 @@ interface Post {
   seriesTitle?: string | null;
   seriesOrder?: number | null;
   thumbnailUrl?: string | null;
+  mediaId?: number | null;
   sharedFromId?: string | null;
   sharedFrom?: SharedOriginal | null;
+  media?: PostMedia | null;
 }
 
 // ── Reaction config ───────────────────────────────────────────────────
@@ -133,7 +137,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const canEdit = !!isOwner && (isAdmin || msElapsed < EDIT_WINDOW_MS);
   const minutesLeft = Math.max(0, Math.ceil((EDIT_WINDOW_MS - msElapsed) / 60_000));
   // Mirrors the PUT route: media posts and shares may have a short or empty caption.
-  const editMinLen = (post.videoUrl || post.imageUrl || post.sharedFromId) ? 0 : 10;
+  const editMinLen = (post.videoUrl || post.imageUrl || post.sharedFromId || post.mediaId) ? 0 : 10;
   const editTimeLeft = isAdmin
     ? null
     : minutesLeft >= 60
@@ -545,6 +549,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 {post.sharedFromId && <SharedOriginalCard original={post.sharedFrom ?? null} isRtl={isRtl} />}
               </>
             )}
+
+            {/* A media-library item — plays here, opens in the library. */}
+            {!editing && !post.videoUrl && post.media?.isPublished && <TareeqMediaCard media={post.media} isRtl={isRtl} />}
 
             {/* Uploaded video */}
             {!editing && post.videoUrl && (

@@ -12,7 +12,7 @@ import Icon from './Icon';
  * Names are first names and there are no photos — see `PublicComment` in
  * free-media-social.ts for why.
  */
-type C = { id: number; content: string; createdAt: string; user: { id: string; name: string } };
+type C = { id: string; content: string; createdAt: string; user: { id: string; name: string } };
 
 function ago(iso: string, isEn: boolean): string {
   const s = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
@@ -36,7 +36,9 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
   const { addToast } = useToast();
   const router = useRouter();
   const [list, setList] = useState<C[]>([]);
-  const [nextBefore, setNextBefore] = useState<number | null>(null);
+  const [nextBefore, setNextBefore] = useState<string | null>(null);
+  // The item's discussion post in طريق, once it has one — replies live there.
+  const [postId, setPostId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [text, setText] = useState('');
@@ -45,14 +47,15 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
   const staff = !!user && ((user as { role?: string }).role === 'admin' || (user as { role?: string }).role === 'staff');
   const t = (ar: string, en: string) => (isEn ? en : ar);
 
-  const load = useCallback(async (before?: number) => {
+  const load = useCallback(async (before?: string) => {
     setLoading(true); setFailed(false);
     try {
-      const res = await fetch(`/api/media/${mediaId}/comments${before ? `?before=${before}` : ''}`, { signal: AbortSignal.timeout(12_000) });
+      const res = await fetch(`/api/media/${mediaId}/comments${before ? `?before=${encodeURIComponent(before)}` : ''}`, { signal: AbortSignal.timeout(12_000) });
       if (!res.ok) throw new Error();
       const d = await res.json();
       setList(prev => (before ? [...prev, ...d.comments] : d.comments));
       setNextBefore(d.nextBefore);
+      setPostId(d.postId ?? null);
     } catch { setFailed(true); }
     finally { setLoading(false); }
   }, [mediaId]);
@@ -71,18 +74,19 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { addToast(d.error || t('تعذّر نشر التعليق', 'Could not post'), 'error'); return; }
       setList(prev => [d.comment, ...prev]);
+      if (d.postId) setPostId(d.postId);
       setText('');
       onCount?.(1);
     } catch { addToast(t('لا يوجد اتصال', 'No connection'), 'error'); }
     finally { setSending(false); }
   };
 
-  const remove = async (id: number) => {
+  const remove = async (id: string) => {
     if (!confirm(t('حذف التعليق؟', 'Delete this comment?'))) return;
     const prev = list;
     setList(l => l.filter(c => c.id !== id));
     onCount?.(-1);
-    const res = await fetch(`/api/media/comments/${id}`, { method: 'DELETE' }).catch(() => null);
+    const res = await fetch(`/api/media/comments/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
     if (!res?.ok) { setList(prev); onCount?.(1); addToast(t('تعذّر الحذف', 'Could not delete'), 'error'); }
   };
 
@@ -102,7 +106,7 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
             id={`mc-${mediaId}`}
             ref={inputRef}
             value={text}
-            onChange={e => setText(e.target.value.slice(0, 1000))}
+            onChange={e => setText(e.target.value.slice(0, 500))}
             onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void send(); } }}
             rows={3}
             placeholder={t('شاركنا ما أعجبك، أو ما تعلّمه طفلك…', 'Tell us what you liked, or what your child learned…')}
@@ -126,7 +130,7 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
           <textarea
             ref={inputRef}
             value={text}
-            onChange={e => setText(e.target.value.slice(0, 1000))}
+            onChange={e => setText(e.target.value.slice(0, 500))}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
             rows={1}
             placeholder={t('اكتب تعليقاً…', 'Write a comment…')}
@@ -187,6 +191,15 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
             {t('تعذّر تحميل التعليقات.', 'Could not load comments.')}{' '}
             <button type="button" onClick={() => void load()} className="font-bold underline">{t('إعادة', 'Retry')}</button>
           </p>
+        )}
+        {postId && list.length > 0 && (
+          <a
+            href={`/tareeq/${postId}#comments`}
+            className={`mt-1 mb-2 inline-flex items-center gap-1.5 text-xs font-bold ${dark ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-[#1a1a2e]'}`}
+          >
+            <Icon name="comment" size={14} />
+            {t('النقاش كاملاً والردود في طريق', 'The full discussion and replies on Tareeq')}
+          </a>
         )}
         {nextBefore && !loading && (
           <button type="button" onClick={() => void load(nextBefore)} className={`w-full py-3 text-sm font-bold ${dark ? 'text-[#F5C518]' : 'text-[#1a1a2e]'}`}>

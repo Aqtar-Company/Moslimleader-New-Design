@@ -1,3 +1,5 @@
+import { POST_MEDIA_SELECT, type PostMedia } from '@/lib/post-media';
+
 /**
  * The embedded original carried by a share.
  *
@@ -24,14 +26,20 @@ export const SHARED_FROM_INCLUDE = {
       id: true, title: true, content: true, imageUrl: true, imageAlt: true, videoUrl: true, thumbnailUrl: true,
       authorName: true, userId: true, createdAt: true, isHidden: true,
       user: { select: { id: true, name: true, avatarUrl: true, tareeqGender: true } },
+      media: { select: POST_MEDIA_SELECT },
     },
   },
+  // The media-library item a post carries (the card plays it in place). Here rather than in
+  // each query for the same reason as `sharedFrom`: every card query spreads this object,
+  // so a query that forgot it would draw a media post as an empty text card.
+  media: { select: POST_MEDIA_SELECT },
 } as const;
 
 /** For queries that use `select` — the relation plus the scalars the card reads. */
 export const SHARED_FROM_SELECT = {
   shareCount: true,
   sharedFromId: true,
+  mediaId: true,
   ...SHARED_FROM_INCLUDE,
 } as const;
 
@@ -49,6 +57,7 @@ export interface RawSharedFrom {
   createdAt: Date;
   isHidden: boolean;
   user: { id: string; name: string; avatarUrl: string | null; tareeqGender: string | null } | null;
+  media: PostMedia | null;
 }
 
 /** The client-facing shape (matches SharedOriginal in TareeqCard). */
@@ -63,6 +72,7 @@ export interface SerializedSharedFrom {
   userId: string | null;
   createdAt: string;
   user: { id: string; name: string; avatarUrl: string | null; tareeqGender: string | null } | null;
+  media: PostMedia | null;
 }
 
 /**
@@ -73,6 +83,6 @@ export interface SerializedSharedFrom {
  */
 export function normalizeSharedFrom(shared: RawSharedFrom | null | undefined): SerializedSharedFrom | null {
   if (!shared || shared.isHidden) return null;
-  const { isHidden: _hidden, createdAt, ...rest } = shared;
-  return { ...rest, createdAt: createdAt.toISOString() };
+  const { isHidden: _hidden, createdAt, media, ...rest } = shared;
+  return { ...rest, media: media?.isPublished ? media : null, createdAt: createdAt.toISOString() };
 }

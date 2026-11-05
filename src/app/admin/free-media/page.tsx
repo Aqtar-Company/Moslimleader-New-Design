@@ -26,11 +26,15 @@ interface Item {
   previewUrl: string | null; waveform: unknown; description: string | null; descriptionEn: string | null;
   sortOrder: number; isPublished: boolean; categoryId: number | null; durationSec: number | null;
   viewCount: number; downloadCount: number;
+  /** Its discussion post in طريق, once it has one. */
+  discussionPostId: string | null;
 }
 type Form = {
   title: string; titleEn: string; type: string; url: string; coverUrl: string; previewUrl: string;
   description: string; descriptionEn: string; sortOrder: number; isPublished: boolean;
   categoryId: number | null; durationSec: number | null; waveform?: number[] | null;
+  /** «انشر في طريق أيضاً» — sent with the save; ignored for a hidden item. */
+  postToTareeq?: boolean;
 };
 
 const emptyForm = (kind: MediaKind): Form => ({
@@ -172,6 +176,16 @@ export default function FreeMediaAdminPage() {
     setItems(p => p.filter(i => i.id !== id));
     const res = await fetch(`/api/admin/free-media/${id}`, { method: 'DELETE' }).catch(() => null);
     if (!res?.ok) { setItems(prev); setError('تعذّر الحذف'); }
+  }
+
+  async function publishToTareeq(item: Item) {
+    if (!confirm(`نشر «${item.title}» في طريق كمنشور رسمي؟`)) return;
+    setError(''); setSuccess('');
+    const res = await fetch(`/api/admin/free-media/${item.id}/tareeq`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => null);
+    const d = res ? await json<{ postId?: string }>(res) : { error: 'لا يوجد اتصال' };
+    if (!res?.ok || !d.postId) { setError(d.error || 'تعذّر النشر في طريق'); return; }
+    upsertItem({ ...item, discussionPostId: d.postId });
+    setSuccess('نُشرت في طريق');
   }
 
   async function togglePublished(item: Item) {
@@ -622,6 +636,12 @@ export default function FreeMediaAdminPage() {
           <input type="checkbox" checked={form.isPublished} onChange={e => setForm(f => ({ ...f, isPublished: e.target.checked }))} />
           منشور (يظهر في صفحة الوسائط)
         </label>
+        {!(editId && items.find(i => i.id === editId)?.discussionPostId) && (
+          <label className={`flex items-center gap-2 text-sm mb-4 ${form.isPublished ? 'cursor-pointer' : 'opacity-50'}`}>
+            <input type="checkbox" disabled={!form.isPublished} checked={!!form.postToTareeq && form.isPublished} onChange={e => setForm(f => ({ ...f, postToTareeq: e.target.checked }))} />
+            انشر في طريق أيضاً — منشور رسمي يشغّل المادة داخل طريق، وتعليقاته هي تعليقات المادة هنا
+          </label>
+        )}
 
         <div className="flex gap-3">
           <button onClick={save} disabled={saving || !!fileStage || coverPct !== null}
@@ -668,6 +688,11 @@ export default function FreeMediaAdminPage() {
               <button onClick={() => togglePublished(item)} className={`${btn} ${item.isPublished ? 'text-gray-600 hover:bg-gray-50' : 'text-green-600 hover:bg-green-50'}`}>
                 <Icon name={item.isPublished ? 'close' : 'check'} size={14} /> {item.isPublished ? 'إخفاء' : 'نشر'}
               </button>
+              {item.discussionPostId ? (
+                <a href={`/tareeq/${item.discussionPostId}`} target="_blank" rel="noopener" className={`${btn} hover:bg-gray-50 text-gray-700`} title="منشورها في طريق"><Icon name="comment" size={14} /> في طريق</a>
+              ) : item.isPublished ? (
+                <button onClick={() => void publishToTareeq(item)} className={`${btn} hover:bg-amber-50 text-amber-700`}><Icon name="send" size={14} /> انشر في طريق</button>
+              ) : null}
               <button onClick={() => startEdit(item)} className={`${btn} hover:bg-blue-50 text-blue-600`}><Icon name="edit" size={14} /> تعديل</button>
               <button onClick={() => remove(item.id)} className={`${btn} hover:bg-red-50 text-red-600`} aria-label="حذف" title="حذف"><Icon name="trash" size={14} /></button>
             </div>

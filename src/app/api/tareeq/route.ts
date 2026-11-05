@@ -299,7 +299,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const hasMedia = !!(imageUrl || (imageUrls?.length) || videoUrl);
+  // A media-library item («شارك في طريق» on /media). Only a published item, and never on
+  // a share — a share's body is the original.
+  let mediaId: number | null = null;
+  if (body.mediaId !== undefined && body.mediaId !== null && body.mediaId !== '' && !sharedFromId) {
+    const n = Number(body.mediaId);
+    const item = Number.isInteger(n)
+      ? await prisma.freeMedia.findFirst({ where: { id: n, isPublished: true }, select: { id: true } })
+      : null;
+    if (!item) return NextResponse.json({ error: 'المادة غير موجودة في مكتبة الوسائط' }, { status: 404 });
+    mediaId = item.id;
+  }
+
+  const hasMedia = !!(imageUrl || (imageUrls?.length) || videoUrl || mediaId);
   // A share carries the original as its body, so an empty note is a complete post.
   if (!hasMedia && !sharedFromId && content.length < 1) {
     return NextResponse.json({ error: 'أضف نصاً أو صورة' }, { status: 400 });
@@ -368,6 +380,7 @@ export async function POST(req: NextRequest) {
       hotScore: isDraft ? 0 : computeHotScore({ at: new Date() }),
       videoUrl,
       ...(thumbnailUrl ? { thumbnailUrl } : {}),
+      ...(mediaId ? { mediaId } : {}),
       userId: user.userId,
       authorName: dbUser?.name ?? 'مجهول',
       ...(seriesId ? { seriesId, seriesTitle: rawSeriesTitle, seriesOrder } : {}),

@@ -31,7 +31,7 @@ export function parseWaveform(v: unknown): number[] | null | undefined {
   return out;
 }
 
-export async function parseMediaItem(body: Record<string, unknown>): Promise<{ data: MediaItemInput } | { error: string }> {
+export async function parseMediaItem(body: Record<string, unknown>): Promise<{ data: MediaItemInput; raw: Record<string, unknown> } | { error: string }> {
   const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
   const title = str(body.title, 190);
   const type = str(body.type, 10);
@@ -55,6 +55,7 @@ export async function parseMediaItem(body: Record<string, unknown>): Promise<{ d
 
   const dur = Number(body.durationSec);
   return {
+    raw: body,
     data: {
       title,
       titleEn: str(body.titleEn, 190) || null,

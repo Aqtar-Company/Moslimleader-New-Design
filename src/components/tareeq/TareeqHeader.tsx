@@ -140,6 +140,7 @@ function NotifIcon({ type }: { type: string }) {
   if (type === 'call')        return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(239,68,68,0.18)', border: '1px solid rgba(239,68,68,0.40)' }}>📞</div>;
   if (type === 'perk_new')    return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(212,168,83,0.25)', border: '1px solid rgba(212,168,83,0.50)' }}>🎁</div>;
   if (type === 'product_new') return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(212,168,83,0.25)', border: '1px solid rgba(212,168,83,0.50)' }}>🛍️</div>;
+  if (type === 'media_new'  ) return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(212,168,83,0.25)', border: '1px solid rgba(212,168,83,0.50)' }}>🎧</div>;
   if (type !== 'message')     return <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(148,163,184,0.18)', border: '1px solid rgba(148,163,184,0.40)' }}>🔔</div>;
   /* message — the envelope, and only here */
   return (

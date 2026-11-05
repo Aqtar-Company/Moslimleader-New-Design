@@ -14,6 +14,7 @@ import AudioStage from '@/components/media/AudioStage';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
 import type { Summary } from '@/components/media/MediaReactions';
 import MediaEngage from '@/components/media/MediaEngage';
+import MediaQuickBar from '@/components/media/MediaQuickBar';
 import MediaShareSheet from '@/components/media/MediaShareSheet';
 
 /**
@@ -169,6 +170,10 @@ export default function MediaWatch({ item, upNext, reactions, commentCount }: {
   const downloadById = useMediaDownload();
   const download = () => downloadById(item.id);
 
+  // The slim reactions/comment strip on the media box itself.
+  const quickBar = <MediaQuickBar mediaId={item.id} isEn={isEn} initialReactions={reactions} commentCount={commentCount} />;
+  const quickBarLight = <MediaQuickBar mediaId={item.id} isEn={isEn} initialReactions={reactions} commentCount={commentCount} tone="light" />;
+
   const sleepLeft = sleep?.until ? Math.max(0, Math.ceil((sleep.until - now) / 60_000)) : null;
   const sleepValue = !sleep ? 'off' : sleep.endOfTrack ? 'end' : 'custom';
 
@@ -192,6 +197,7 @@ export default function MediaWatch({ item, upNext, reactions, commentCount }: {
           <div className="min-w-0">
             <div className="relative">
               {item.kind === 'video' && (
+                <div className="rounded-2xl overflow-hidden bg-black">
                 <video
                   ref={mediaRef}
                   key={item.id}
@@ -202,8 +208,10 @@ export default function MediaWatch({ item, upNext, reactions, commentCount }: {
                   preload="metadata"
                   onEnded={onEnded}
                   onPlay={() => setCountdown(null)}
-                  className="w-full aspect-video rounded-2xl bg-black object-contain"
+                  className="w-full aspect-video bg-black object-contain block"
                 />
+                <div className="px-3 py-2 bg-[#0f1424] border-t border-white/10">{quickBar}</div>
+                </div>
               )}
               {item.kind === 'audio' && (
                 <AudioStage
@@ -218,16 +226,21 @@ export default function MediaWatch({ item, upNext, reactions, commentCount }: {
                   isEn={isEn}
                   onEnded={onEnded}
                   onPlay={() => setCountdown(null)}
+                  footer={quickBar}
                 />
               )}
               {item.kind === 'image' && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.previewUrl ?? item.url} alt={title} decoding="async" className="w-full max-h-[80vh] object-contain rounded-2xl bg-white border border-gray-100" />
+                <div className="rounded-2xl overflow-hidden bg-white border border-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.previewUrl ?? item.url} alt={title} decoding="async" className="w-full max-h-[80vh] object-contain block" />
+                  <div className="px-3 py-2 border-t border-gray-100">{quickBarLight}</div>
+                </div>
               )}
               {item.kind === 'pdf' && (
                 <div className="rounded-2xl bg-white border border-gray-100 p-6 flex flex-col items-center text-center gap-4">
                   <MediaThumb kind="pdf" coverUrl={item.coverUrl} title={title} className="w-48 aspect-[3/4]" />
                   <p className="text-sm text-gray-500">{t('ملف PDF — اضغط «تحميل» لحفظه وفتحه.', 'A PDF file — press Download to save and open it.')}</p>
+                  <div className="w-full pt-3 border-t border-gray-100">{quickBarLight}</div>
                 </div>
               )}
 

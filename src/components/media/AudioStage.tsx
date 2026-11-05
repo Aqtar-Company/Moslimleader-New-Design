@@ -1,5 +1,6 @@
 'use client';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { formatDuration } from '@/lib/free-media-shared';
 import Icon from './Icon';
 
@@ -36,6 +37,8 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
   useImperativeHandle(ref, () => audioRef.current as HTMLAudioElement);
 
   const [playing, setPlaying] = useState(false);
+  // The cover, full screen — a story's picture is something to SHOW the child.
+  const [zoom, setZoom] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState<number>(durationSec ?? 0);
   const [loading, setLoading] = useState(false);
@@ -112,8 +115,21 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
           second focusable control: the yellow button below is the keyboard's. */}
       <div className="absolute inset-0 cursor-pointer" onClick={toggle} aria-hidden />
 
+      {/* Enlarge the picture. Its own control, so a tap on the cover still plays. */}
+      {coverUrl && (
+        <button
+          type="button"
+          onClick={e => { e.stopPropagation(); setZoom(true); }}
+          aria-label={isEn ? 'Show the picture full screen' : 'تكبير الصورة'}
+          title={isEn ? 'Full screen picture' : 'تكبير الصورة'}
+          className="absolute top-3 end-3 z-10 w-11 h-11 rounded-full bg-black/55 hover:bg-black/70 text-white backdrop-blur flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]"
+        >
+          <Icon name="expand" size={20} />
+        </button>
+      )}
+
       {/* Title, top — clicks pass through to the cover. */}
-      <div className="absolute top-0 inset-x-0 p-4 sm:p-6 pointer-events-none">
+      <div className={`absolute top-0 inset-x-0 p-4 sm:p-6 pointer-events-none ${coverUrl ? 'pe-16 sm:pe-20' : ''}`}>
         {label && <p className="inline-block text-[11px] font-bold px-2 py-0.5 rounded bg-black/55 text-[#F5C518] mb-1.5">{label}</p>}
         <p className="text-white text-base sm:text-2xl font-black leading-snug drop-shadow line-clamp-2">
           <span className="bg-black/45 box-decoration-clone px-1.5 rounded">{title}</span>
@@ -187,8 +203,36 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
         onEnded={() => { setPlaying(false); onEnded(); }}
         className="hidden"
       />
+
+      {zoom && coverUrl && typeof document !== 'undefined' && createPortal(
+        <CoverViewer src={coverUrl} title={title} isEn={isEn} onClose={() => setZoom(false)} />,
+        document.body,
+      )}
     </div>
   );
 });
 
 export default AudioStage;
+
+/** The cover alone on a dark screen, as large as the screen allows. Esc, ✕ or a tap closes it;
+ *  the sound keeps playing underneath. */
+function CoverViewer({ src, title, isEn, onClose }: { src: string; title: string; isEn: boolean; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+  return (
+    <div role="dialog" aria-modal="true" aria-label={title} onClick={onClose}
+      className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-3 sm:p-8">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={title} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
+      <button type="button" onClick={onClose} aria-label={isEn ? 'Close' : 'إغلاق'} autoFocus
+        className="absolute top-4 end-4 w-12 h-12 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
+        <Icon name="close" size={24} />
+      </button>
+    </div>
+  );
+}

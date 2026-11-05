@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { formatDuration } from '@/lib/free-media-shared';
 import type { PublicMediaItem } from '@/lib/free-media-query';
@@ -9,13 +8,15 @@ import Icon from '@/components/media/Icon';
 import AudioStage from '@/components/media/AudioStage';
 import MediaShareSheet from '@/components/media/MediaShareSheet';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
+import MediaEngage from '@/components/media/MediaEngage';
 
 /**
  * The audio and video tabs of /media open straight on a player: the first item of the
  * chosen category, with the rest of the category as a playlist beside it (below it on a
  * phone). Picking an item plays it here, without leaving the page; when one ends the next
  * starts, as a playlist does. The grid of cells is one tap away (the toggle in
- * MediaBrowser), and each item's own page — comments, reactions, sleep timer — is linked.
+ * MediaBrowser). Reactions and comments for the item playing sit under the player
+ * (MediaEngage); its own page adds the sleep timer.
  *
  * «تشغيل تلقائي» shares its stored switch with the item page (`ml-media-autoplay`).
  */
@@ -91,7 +92,7 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
       {/* ── the player ── */}
-      <div className="min-w-0">
+      <div className="min-w-0 lg:col-start-1 lg:row-start-1">
         {current.kind === 'video' ? (
           <video
             ref={mediaRef}
@@ -139,9 +140,6 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
           <button onClick={() => setShareOpen(true)} className={`${pill} bg-[#EFEBE2] text-[#1a1a2e] hover:bg-[#E5DFD2]`}>
             <Icon name="share" size={18} /> {t('مشاركة', 'Share')}
           </button>
-          <Link href={`/media/${current.id}`} className={`${pill} bg-[#EFEBE2] text-[#1a1a2e] hover:bg-[#E5DFD2]`}>
-            <Icon name="comment" size={18} /> {t('التعليقات والتفاعل', 'Comments & reactions')}
-          </Link>
           <label className="w-full sm:w-auto sm:ms-auto mt-1 sm:mt-0 flex items-center gap-2.5 cursor-pointer select-none text-sm font-semibold text-[#1a1a2e]">
             <button
               type="button"
@@ -158,7 +156,7 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
       </div>
 
       {/* ── the playlist ── */}
-      <aside className="min-w-0 rounded-2xl bg-white border border-gray-100 overflow-hidden">
+      <aside className="min-w-0 rounded-2xl bg-white border border-gray-100 overflow-hidden lg:col-start-2 lg:row-start-1 lg:row-span-2">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <h2 className="text-sm font-black text-[#1a1a2e] flex items-center gap-2"><Icon name="list" size={18} /> {t('قائمة التشغيل', 'Playlist')}</h2>
           <span className="text-xs font-bold text-gray-400 tabular-nums">{at + 1} / {items.length}</span>
@@ -196,6 +194,12 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
           })}
         </ul>
       </aside>
+
+      {/* Reactions and comments for what is playing — under the player on a computer, after
+          the playlist on a phone (the list stays right under the song). */}
+      <div className="min-w-0 lg:col-start-1">
+        <MediaEngage key={current.id} mediaId={current.id} isEn={isEn} />
+      </div>
 
       <MediaShareSheet
         open={shareOpen}

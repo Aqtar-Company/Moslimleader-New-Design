@@ -26,12 +26,14 @@ type Props = {
   isEn: boolean;
   onEnded: () => void;
   onPlay: () => void;
+  /** Rendered under the waveform, inside the player (the reactions bar). */
+  footer?: React.ReactNode;
 };
 
 const BARS = 120;
 
 const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
-  { src, coverUrl, title, label, waveform, durationSec, isEn, onEnded, onPlay }, ref,
+  { src, coverUrl, title, label, waveform, durationSec, isEn, onEnded, onPlay, footer }, ref,
 ) {
   const audioRef = useRef<HTMLAudioElement>(null);
   useImperativeHandle(ref, () => audioRef.current as HTMLAudioElement);
@@ -143,6 +145,7 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
           type="button"
           onClick={toggle}
           aria-label={playing ? (isEn ? 'Pause' : 'إيقاف مؤقت') : (isEn ? 'Play' : 'تشغيل')}
+          style={footer ? { marginBottom: 66 } : undefined}
           className="shrink-0 mb-6 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[#F5C518] text-[#1a1a2e] flex items-center justify-center shadow-xl hover:scale-105 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           {loading && !playing ? <Icon name="loader" size={26} spin /> : <Icon name={playing ? 'pause' : 'play'} size={26} className={playing ? '' : 'translate-x-[1px]'} />}
@@ -187,6 +190,7 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
           <span>{formatDuration(time) ?? '0:00'}</span>
           <span>{formatDuration(duration) ?? '--:--'}</span>
         </div>
+        {footer && <div className="mt-2.5">{footer}</div>}
         </div>
       </div>
 

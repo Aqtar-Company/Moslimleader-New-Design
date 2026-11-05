@@ -9,6 +9,7 @@ import AudioStage from '@/components/media/AudioStage';
 import MediaShareSheet from '@/components/media/MediaShareSheet';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
 import MediaEngage from '@/components/media/MediaEngage';
+import MediaQuickBar from '@/components/media/MediaQuickBar';
 
 /**
  * The audio and video tabs of /media open straight on a player: the first item of the
@@ -94,6 +95,7 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
       {/* ── the player ── */}
       <div className="min-w-0 lg:col-start-1 lg:row-start-1">
         {current.kind === 'video' ? (
+          <div className="rounded-2xl overflow-hidden bg-black">
           <video
             ref={mediaRef}
             key={current.id}
@@ -104,8 +106,12 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
             preload="metadata"
             onPlay={onPlay}
             onEnded={onEnded}
-            className="w-full aspect-video rounded-2xl bg-black object-contain"
+            className="w-full aspect-video bg-black object-contain block"
           />
+          <div className="px-3 py-2 bg-[#0f1424] border-t border-white/10">
+            <MediaQuickBar key={current.id} mediaId={current.id} isEn={isEn} />
+          </div>
+          </div>
         ) : (
           <AudioStage
             ref={mediaRef}
@@ -119,6 +125,7 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
             isEn={isEn}
             onPlay={onPlay}
             onEnded={onEnded}
+            footer={<MediaQuickBar key={current.id} mediaId={current.id} isEn={isEn} />}
           />
         )}
 

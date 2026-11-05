@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import MediaReactions, { type Summary } from './MediaReactions';
+import MediaReactions, { broadcastReactions, type Summary } from './MediaReactions';
 import MediaComments from './MediaComments';
 import Icon from './Icon';
 
@@ -14,6 +14,8 @@ import Icon from './Icon';
  * them; remounting with `key={id}` resets it for the next item of a playlist.
  */
 const EMPTY: Summary = { counts: {}, total: 0, mine: null };
+/** Comment added (+1) / removed (-1), for the count on the player's bar. */
+export const COMMENT_EVENT = 'ml-media-comment';
 
 export default function MediaEngage({ mediaId, isEn, initialReactions, initialCount, onCount }: {
   mediaId: number;
@@ -33,7 +35,7 @@ export default function MediaEngage({ mediaId, isEn, initialReactions, initialCo
     if (initialReactions) return;
     fetch(`/api/media/${mediaId}/reactions`, { signal: AbortSignal.timeout(10_000) })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d) setReactions(d); })
+      .then(d => { if (d) { setReactions(d); broadcastReactions(mediaId, d); } })
       .catch(() => {});
   }, [mediaId, initialReactions]);
 
@@ -53,7 +55,11 @@ export default function MediaEngage({ mediaId, isEn, initialReactions, initialCo
         mediaId={mediaId}
         isEn={isEn}
         prominent
-        onCount={d => { setCount(c => Math.max(0, c + d)); onCount?.(d); }}
+        onCount={d => {
+          setCount(c => Math.max(0, c + d));
+          onCount?.(d);
+          window.dispatchEvent(new CustomEvent(COMMENT_EVENT, { detail: { id: mediaId, delta: d } }));
+        }}
       />
     </section>
   );

@@ -16,11 +16,18 @@ import Icon from './Icon';
  */
 export type Summary = { counts: Record<string, number>; total: number; mine: string | null };
 
+/** Every copy of the reactions for an item (the bar on the player, the «شاركنا رأيك» block)
+ *  shows the same summary: a change in one is broadcast on this event to the others. */
+export const REACTION_EVENT = 'ml-media-reaction';
+export function broadcastReactions(mediaId: number, s: Summary) {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(REACTION_EVENT, { detail: { id: mediaId, s } }));
+}
+
 export default function MediaReactions({ mediaId, initial, isEn, layout = 'inline', tone = 'light' }: {
   mediaId: number;
   initial: Summary;
   isEn: boolean;
-  layout?: 'inline' | 'stack';
+  layout?: 'inline' | 'stack' | 'bar';
   tone?: 'light' | 'dark';
 }) {
   const { user } = useAuth();
@@ -32,6 +39,14 @@ export default function MediaReactions({ mediaId, initial, isEn, layout = 'inlin
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setS(initial); }, [initial]);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ id: number; s: Summary }>).detail;
+      if (d?.id === mediaId) setS(d.s);
+    };
+    window.addEventListener(REACTION_EVENT, on);
+    return () => window.removeEventListener(REACTION_EVENT, on);
+  }, [mediaId]);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent | TouchEvent) => { if (!boxRef.current?.contains(e.target as Node)) setOpen(false); };
@@ -58,15 +73,18 @@ export default function MediaReactions({ mediaId, initial, isEn, layout = 'inlin
     const counts = { ...s.counts };
     if (s.mine) counts[s.mine] = Math.max(0, (counts[s.mine] ?? 1) - 1);
     if (!takingBack) counts[type] = (counts[type] ?? 0) + 1;
-    setS({ counts, total: Object.values(counts).reduce((a, b) => a + b, 0), mine: takingBack ? null : type });
+    const optimistic = { counts, total: Object.values(counts).reduce((a, b) => a + b, 0), mine: takingBack ? null : type };
+    setS(optimistic);
+    broadcastReactions(mediaId, optimistic);
     setBusy(true);
     try {
       const res = await fetch(`/api/media/${mediaId}/reactions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }),
       });
-      if (res.ok) setS(await res.json());
-      else setS(prev);
-    } catch { setS(prev); }
+      const next: Summary = res.ok ? await res.json() : prev;
+      setS(next);
+      broadcastReactions(mediaId, next);
+    } catch { setS(prev); broadcastReactions(mediaId, prev); }
     finally { setBusy(false); }
   };
 
@@ -92,6 +110,31 @@ export default function MediaReactions({ mediaId, initial, isEn, layout = 'inlin
       ))}
     </div>
   );
+
+  if (layout === 'bar') {
+    // The slim strip on the player itself: a ghost pill, the top faces and the total.
+    return (
+      <div ref={boxRef} className="relative inline-flex items-center">
+        {picker}
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          aria-expanded={open}
+          className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${dark ? 'border-white/35 bg-black/25 text-white hover:bg-black/45 backdrop-blur' : 'border-gray-300 text-[#1a1a2e] hover:bg-gray-50'}`}
+          style={mine ? { borderColor: mine.color } : undefined}
+        >
+          {mine ? <span className="text-base leading-none">{mine.emoji}</span> : <Icon name="smile" size={15} />}
+          {mine ? (isEn ? mine.labelEn : mine.labelAr) : (isEn ? 'React' : 'تفاعل')}
+          {s.total > 0 && (
+            <span className={`ms-1 inline-flex items-center gap-1 ${dark ? 'text-white/80' : 'text-gray-500'}`}>
+              <span className="tracking-[-3px]">{top.join('')}</span>
+              <span className="tabular-nums ms-1">{s.total}</span>
+            </span>
+          )}
+        </button>
+      </div>
+    );
+  }
 
   if (layout === 'stack') {
     return (

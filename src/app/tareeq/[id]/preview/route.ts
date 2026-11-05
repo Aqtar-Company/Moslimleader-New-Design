@@ -60,6 +60,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       select: {
         title: true, content: true, authorName: true,
         imageUrl: true, thumbnailUrl: true, videoUrl: true,
+        media: { select: { coverUrl: true, previewUrl: true, type: true, isPublished: true } },
         isDraft: true, isHidden: true,
       },
     })
@@ -114,11 +115,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const title = post.title?.trim() || cutAtWord(plain, 60) || 'علامة في طريق';
   const description = cutAtWord(plain, 160);
   const linkedThumb = linkedVideoThumb(post.content);
-  const media = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null) ?? linkedThumb;
+  const libraryImage = post.media?.isPublished ? (post.media.previewUrl ?? post.media.coverUrl) : null;
+  const media = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null) ?? libraryImage ?? linkedThumb;
   // og:image must be absolute or crawlers drop it. Falls back to the generated card route
   // for a text-only post — that one is slow, but it is the same fallback the page uses.
   const image = media ? new URL(media, SITE).toString() : `${SITE}/tareeq/${id}/opengraph-image`;
-  const isVideo = !!post.videoUrl || (!post.imageUrl && !!linkedThumb);
+  const isVideo = !!post.videoUrl || (!!libraryImage && (post.media?.type === 'video' || post.media?.type === 'reel')) || (!post.imageUrl && !libraryImage && !!linkedThumb);
 
   const html = `<!doctype html>
 <html lang="ar" dir="rtl">

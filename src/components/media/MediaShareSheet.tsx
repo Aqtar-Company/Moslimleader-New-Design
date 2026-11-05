@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { createPortal } from 'react-dom';
 import type { MediaKind } from '@/lib/free-media-shared';
 import MediaThumb from './MediaThumb';
@@ -47,7 +48,9 @@ const APPS: App[] = [
   },
 ];
 
-export default function MediaShareSheet({ open, onClose, url, title, coverUrl, kind, isEn }: {
+export default function MediaShareSheet({ open, onClose, url, title, coverUrl, kind, isEn, mediaId }: {
+  /** The item, for «شارك في طريق». Read from the link (/media/<id>, /media/reels/<id>) when omitted. */
+  mediaId?: number;
   open: boolean;
   onClose: () => void;
   url: string;
@@ -59,6 +62,12 @@ export default function MediaShareSheet({ open, onClose, url, title, coverUrl, k
   const [copied, setCopied] = useState(false);
   const [canNative, setCanNative] = useState(false);
   const t = (ar: string, en: string) => (isEn ? en : ar);
+  const { user } = useAuth();
+  const itemId = mediaId ?? Number(url.match(/\/media\/(?:reels\/)?(\d+)/)?.[1] ?? NaN);
+  // «شارك في طريق»: closed → writing → posting → posted (with the new post's id).
+  const [tareeq, setTareeq] = useState<'closed' | 'writing' | 'posting' | { postId: string }>('closed');
+  const [note, setNote] = useState('');
+  const [tareeqError, setTareeqError] = useState<string | null>(null);
 
   // Rendered only after mount: it portals into <body>, which the server render has none of.
   const [mounted, setMounted] = useState(false);
@@ -66,6 +75,7 @@ export default function MediaShareSheet({ open, onClose, url, title, coverUrl, k
   useEffect(() => {
     if (!open) return;
     setCopied(false);
+    setTareeq('closed'); setNote(''); setTareeqError(null);
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -86,6 +96,25 @@ export default function MediaShareSheet({ open, onClose, url, title, coverUrl, k
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2200);
+  };
+
+  const postToTareeq = async () => {
+    if (!Number.isInteger(itemId)) return;
+    setTareeq('posting'); setTareeqError(null);
+    try {
+      const res = await fetch('/api/tareeq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: note.trim(), mediaId: itemId }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.id) { setTareeqError(d.error || t('تعذّر النشر — حاول مرة أخرى', 'Could not post — try again')); setTareeq('writing'); return; }
+      setTareeq({ postId: d.id });
+    } catch {
+      setTareeqError(t('لا يوجد اتصال — حاول مرة أخرى', 'No connection — try again'));
+      setTareeq('writing');
+    }
   };
 
   const native = async () => {
@@ -116,6 +145,63 @@ export default function MediaShareSheet({ open, onClose, url, title, coverUrl, k
             <p className="text-xs text-gray-400 truncate mt-0.5" dir="ltr">{url.replace(/^https?:\/\//, '')}</p>
           </div>
         </div>
+
+        {/* Share into طريق: the item plays inside the post, and the post links back here. */}
+        {Number.isInteger(itemId) && (
+          <div className="mb-5">
+            {typeof tareeq === 'object' ? (
+              <div className="flex items-center gap-3 rounded-2xl bg-green-50 border border-green-200 px-4 py-3">
+                <Icon name="check" size={20} className="text-green-700 shrink-0" />
+                <p className="flex-1 text-sm font-bold text-green-900">{t('نُشرت في طريق', 'Posted to Tareeq')}</p>
+                <a href={`/tareeq/${tareeq.postId}`} className="shrink-0 text-sm font-bold text-[#1a1a2e] underline">{t('افتح المنشور', 'Open post')}</a>
+              </div>
+            ) : tareeq === 'closed' ? (
+              user ? (
+                <button
+                  type="button"
+                  onClick={() => setTareeq('writing')}
+                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-[#1a1a2e] text-[#F5C518] font-bold text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5C518]"
+                >
+                  <Icon name="send" size={18} /> {t('شارك في طريق', 'Share on Tareeq')}
+                </button>
+              ) : (
+                <a
+                  href={`/login?redirect=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/media')}`}
+                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-2xl border-2 border-[#1a1a2e] text-[#1a1a2e] font-bold text-sm"
+                >
+                  <Icon name="send" size={18} /> {t('سجّل الدخول لتشارك في طريق', 'Sign in to share on Tareeq')}
+                </a>
+              )
+            ) : (
+              <div className="rounded-2xl border-2 border-[#1a1a2e]/15 p-3">
+                <label htmlFor="ml-share-tareeq" className="block text-sm font-bold text-[#1a1a2e] mb-2">{t('شارك في طريق', 'Share on Tareeq')}</label>
+                <textarea
+                  id="ml-share-tareeq"
+                  value={note}
+                  onChange={e => setNote(e.target.value.slice(0, 2000))}
+                  rows={3}
+                  autoFocus
+                  placeholder={t('اكتب كلمة مع المشاركة (اختياري)…', 'Add a few words (optional)…')}
+                  className="w-full resize-none rounded-xl px-3 py-2.5 text-sm bg-[#FAF8F3] border border-gray-200 outline-none focus:border-[#F5C518]"
+                  style={{ overflowWrap: 'anywhere' }}
+                />
+                {tareeqError && <p className="mt-2 text-sm text-red-700" role="alert">{tareeqError}</p>}
+                <div className="mt-2 flex items-center justify-end gap-2">
+                  <button type="button" onClick={() => setTareeq('closed')} className="h-10 px-4 rounded-full text-sm font-bold text-gray-500 hover:bg-gray-100">{t('إلغاء', 'Cancel')}</button>
+                  <button
+                    type="button"
+                    onClick={() => void postToTareeq()}
+                    disabled={tareeq === 'posting'}
+                    className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-[#1a1a2e] text-[#F5C518] text-sm font-bold disabled:opacity-50"
+                  >
+                    {tareeq === 'posting' ? <Icon name="loader" size={16} spin /> : <Icon name="send" size={16} />}
+                    {t('انشر', 'Post')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-4 gap-y-4 mb-5">
           {APPS.map(a => (

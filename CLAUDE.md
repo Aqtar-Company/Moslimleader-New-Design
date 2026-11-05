@@ -940,6 +940,25 @@ Books are protected from download at two levels:
   an account; comments go through طريق's `filterContent` and are REFUSED (not hidden) when
   flagged; the writer or free-media staff can delete. Comments show a FIRST NAME and a
   letter, never a photo — طريق veils women's photos and a public page must not undo that.
+- **The media library and طريق are one conversation (`src/lib/media-tareeq.ts`).** Each
+  published item has at most ONE discussion post (`FreeMedia.discussionPostId`, a طريق post
+  with `mediaId` set). /media's comments and reactions ARE that post's top-level comments and
+  reactions — the `/api/media/[id]/comments|reactions` routes write `TareeqComment` /
+  `TareeqReaction` and keep `commentCount`/`likeCount` in step. The post is made by the admin
+  («انشر في طريق» per item, or the checkbox in the form — dated now) or lazily on the first
+  comment/reaction (dated to the item's own `createdAt`, so old items do not flood the feed).
+  When it is made, the item's legacy `FreeMediaComment`/`FreeMediaReaction` rows are MOVED into
+  it in the same transaction and deleted, so a bridged item reads from one place only; an
+  unbridged item still reads the legacy tables (`free-media-social.ts` picks per item).
+  Official posts are written as the user in Setting `tareeq-official-author`, else the
+  oldest admin. Members can also share an item into طريق from the share sheet (POST
+  /api/tareeq with `mediaId`); `TareeqMediaCard` plays it inside the post. The card and
+  every `<a>` near it must stay OUTSIDE the text card's post `<Link>` — an `<a>` inside an
+  `<a>` is re-parented by the browser and the page fails to hydrate (this is also why the
+  shared original now sits outside it). The media select lives in `SHARED_FROM_INCLUDE`, so
+  every card query already carries it. «تابع التصنيف» (`FreeMediaCategoryFollow`) sends a
+  `media_new` notification (group `media`) once per item — `followersNotifiedAt` stops an
+  unpublish/republish from notifying twice.
 - **Sharing a media item.** `MediaShareSheet` (item page and reels): the item's thumbnail and
   title, WhatsApp / Facebook / Telegram / X / email, «نسخ الرابط» (with an `execCommand`
   fallback for in-app browsers), and the phone's own share menu when it exists. What the

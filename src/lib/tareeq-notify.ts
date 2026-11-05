@@ -23,6 +23,8 @@ export type TareeqNotifType =
   | 'comment' | 'subscribed_comment'
   | 'mention' | 'follow' | 'share' | 'message' | 'call'
   | 'post_update' | 'perk_new' | 'product_new' | 'generic'
+  // A new item on a media-library shelf the member follows («تابع التصنيف»). postId = item id.
+  | 'media_new'
   // Admin broadcasts (src/lib/admin-broadcast.ts) — one per BROADCAST_KINDS entry.
   | 'admin_update' | 'admin_announcement' | 'admin_reminder' | 'admin_note';
 
@@ -43,6 +45,7 @@ export const NOTIF_GROUP: Record<TareeqNotifType, string> = {
   call: 'calls',
   post_update: 'updates',
   perk_new: 'announcements', product_new: 'announcements', generic: 'announcements',
+  media_new: 'media',
   admin_update: 'announcements', admin_announcement: 'announcements',
   admin_reminder: 'announcements', admin_note: 'announcements',
 };
@@ -58,6 +61,7 @@ export const NOTIF_GROUPS: { key: string; ar: string; en: string }[] = [
   { key: 'calls',         ar: 'المكالمات',                  en: 'Calls' },
   { key: 'updates',       ar: 'تحديثات المنشورات المتابَعة', en: 'Updates on posts I follow' },
   { key: 'announcements', ar: 'إعلانات المنصة',             en: 'Platform announcements' },
+  { key: 'media',         ar: 'تصنيفات الوسائط التي أتابعها', en: 'Media shelves I follow' },
 ];
 
 type Prefs = Record<string, boolean>;

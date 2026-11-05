@@ -26,5 +26,7 @@ export function notificationHref(n: NotifLinkInput): string | null {
   if (n.type.startsWith('admin_')) return n.postId ? `/tareeq/notices/${n.postId}` : '/tareeq/notices';
   if (n.type === 'perk_new') return '/membership';
   if (n.type === 'product_new') return n.postId ? `/shop/${n.postId}` : '/shop';
+  // postId is the media item's id; /media/<id> redirects a reel to its own player.
+  if (n.type === 'media_new') return n.postId ? `/media/${n.postId}` : '/media';
   return n.postId ? `/tareeq/${n.postId}` : null;
 }

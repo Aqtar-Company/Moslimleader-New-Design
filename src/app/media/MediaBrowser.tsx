@@ -9,6 +9,7 @@ import MediaThumb from '@/components/media/MediaThumb';
 import MediaPlaylist from './MediaPlaylist';
 import Icon from '@/components/media/Icon';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
+import FollowCategoryButton from '@/components/media/FollowCategoryButton';
 
 /**
  * /media — the library as a browsing page: kind tabs on top, the kind's categories as a
@@ -144,6 +145,7 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
                   );
                 })}
               </div>
+              {cat !== null && <FollowCategoryButton categoryId={cat} isEn={isEn} />}
               {playable && (
                 <div className="shrink-0 flex rounded-lg bg-[#EFEBE2] p-0.5" role="group" aria-label={t('طريقة العرض', 'View')}>
                   {([['player', 'list', t('قائمة تشغيل', 'Playlist')], ['grid', 'grid', t('خلايا', 'Grid')]] as const).map(([v, icon, label]) => (

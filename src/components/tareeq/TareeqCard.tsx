@@ -3,6 +3,8 @@ import { useState, useRef, useEffect } from 'react';
 import TareeqImageViewer from './TareeqImageViewer';
 import TareeqVideo from './TareeqVideo';
 import TareeqAvatarImg from './TareeqAvatarImg';
+import TareeqMediaCard from './TareeqMediaCard';
+import type { PostMedia } from '@/lib/post-media';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TareeqTip from '@/components/tareeq/TareeqTip';
@@ -265,6 +267,9 @@ export interface TareeqPostSummary {
   sharedFromId?: string | null;
   sharedFrom?: SharedOriginal | null;
   shareCount?: number;
+  /** A media-library item carried by the post — played in place by TareeqMediaCard. */
+  mediaId?: number | null;
+  media?: PostMedia | null;
 }
 
 export interface SharedOriginal {
@@ -279,6 +284,7 @@ export interface SharedOriginal {
   userId?: string | null;
   createdAt: string;
   user?: { id: string; name: string; avatarUrl?: string | null; tareeqGender?: string | null } | null;
+  media?: PostMedia | null;
 }
 
 /**
@@ -341,7 +347,7 @@ export function SharedOriginalCard({ original, isRtl }: { original: SharedOrigin
             {displayMentions(original.content.replace(/\n{2,}/g, '\n'))}
           </p>
         )}
-        {!original.content && !original.title && !original.imageUrl && !original.videoUrl && (
+        {!original.content && !original.title && !original.imageUrl && !original.videoUrl && !original.media && (
           <p className="px-3 pt-1 pb-2.5 text-[12.5px]" style={{ color: 'var(--tr-text-muted)' }}>
             {isRtl ? 'اضغط لفتح المنشور' : 'Open the post'}
           </p>
@@ -363,6 +369,9 @@ export function SharedOriginalCard({ original, isRtl }: { original: SharedOrigin
             style={{ maxHeight: 240, display: 'block', background: '#000' }}
           />
         </div>
+      )}
+      {original.media && !original.imageUrl && !original.videoUrl && (
+        <div className="px-2 pb-2"><TareeqMediaCard media={original.media} isRtl={isRtl} compact /></div>
       )}
     </div>
   );
@@ -1576,7 +1585,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
   /* ── TEXT CARD ──────────────────────────────────────────────────── */
   const isLong = post.content.length > SNIPPET_LEN || post.content.split('\n').length > 4;
-  const isTextOnly = !post.imageUrl && !post.videoUrl;
+  const hasLibraryMedia = !!post.media?.isPublished;
+  const isTextOnly = !post.imageUrl && !post.videoUrl && !hasLibraryMedia;
 
   return (
     <>
@@ -1726,9 +1736,6 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             return null;
           })()}
 
-          {/* The shared original, under its own author. Rendered before the link preview so
-              a share reads as "X's words, passed on by Y" rather than as Y's own text. */}
-          {post.sharedFromId && <SharedOriginalCard original={post.sharedFrom ?? null} isRtl={isRtl} />}
 
           {/* Link preview — shown only when no image/video and no video embed detected */}
           {!post.sharedFromId && isTextOnly && !extractYouTubeId(post.content) && !extractTikTokId(post.content) && !extractVimeoId(post.content) && !extractFacebookVideoUrl(post.content) && (() => {
@@ -1774,6 +1781,24 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </div>
           )}
         </Link>
+
+        {/* The shared original, under its own author — OUTSIDE the post <Link>, because the
+            original is a link of its own and an <a> inside an <a> is re-parented by the
+            browser, which made every share in the feed fail to hydrate. */}
+        {post.sharedFromId && (
+          <div className="px-4 pb-3.5 -mt-1.5">
+            <SharedOriginalCard original={post.sharedFrom ?? null} isRtl={isRtl} />
+          </div>
+        )}
+
+        {/* A media-library item: plays here, opens in the library. OUTSIDE the post <Link>:
+            its player and its own links inside an <a> are invalid nesting, and the browser
+            re-parents them — the page then fails to hydrate. */}
+        {hasLibraryMedia && !post.videoUrl && !hasImage && (
+          <div className="px-4 pb-3.5 -mt-1.5">
+            <TareeqMediaCard media={post.media} isRtl={isRtl} />
+          </div>
+        )}
 
         {/* Social summary - all screens */}
         <SocialSummary />

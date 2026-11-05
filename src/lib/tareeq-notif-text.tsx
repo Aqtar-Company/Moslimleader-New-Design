@@ -76,6 +76,7 @@ export function notifWording(n: NotifTextInput, isRtl: boolean): NotifWording {
     // ── platform ─────────────────────────────────────────────────────────────────
     case 'perk_new':    return { text: on('✨ ميزة جديدة في عضويتك', '✨ New membership benefit'), preview: body };
     case 'product_new': return { text: on('🛍️ منتج جديد في المتجر', '🛍️ New product in the store'), preview: body };
+    case 'media_new':   return { text: on(`🎧 جديد في «${actor}»`, `🎧 New in «${actor}»`), preview: body };
   }
 
   if (n.type.startsWith('admin_')) {

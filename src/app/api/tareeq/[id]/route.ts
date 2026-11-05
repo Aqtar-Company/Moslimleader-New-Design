@@ -78,7 +78,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const post = await prisma.tareeqPost.findUnique({
     where: { id: params.id },
-    select: { userId: true, createdAt: true, videoUrl: true, imageUrl: true, sharedFromId: true },
+    select: { userId: true, createdAt: true, videoUrl: true, imageUrl: true, sharedFromId: true, mediaId: true },
   });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   if (post.userId !== user.userId) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
@@ -110,7 +110,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   // short caption or none. Requiring ten characters here — while create required none —
   // made every video post with a short caption, and every share, impossible to edit; the
   // author saw a greyed Save button with no explanation.
-  const hasMediaOrShare = !!(post.videoUrl || post.imageUrl || post.sharedFromId);
+  const hasMediaOrShare = !!(post.videoUrl || post.imageUrl || post.sharedFromId || post.mediaId);
   if (content.length < (hasMediaOrShare ? 0 : 10)) return NextResponse.json({ error: 'اكتب أكثر' }, { status: 400 });
   if (content.length > 5000) return NextResponse.json({ error: 'النص طويل جداً' }, { status: 400 });
 

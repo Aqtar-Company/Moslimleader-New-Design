@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePerm } from '@/lib/permissions';
 import { parseMediaItem } from '@/lib/free-media-input';
+import { publishSideEffects } from '@/lib/media-tareeq';
 
 // The permission the admin nav already used for this page. The routes checked
 // `role === 'admin'` instead, so a staff member granted «الوسائط المجانية» saw the page
@@ -31,7 +32,9 @@ export async function POST(req: NextRequest) {
   try {
     const parsed = await parseMediaItem(await req.json().catch(() => ({})));
     if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
-    const item = await prisma.freeMedia.create({ data: parsed.data });
+    const body = parsed.raw;
+    const created = await prisma.freeMedia.create({ data: parsed.data });
+    const item = await publishSideEffects(created, { postToTareeq: body.postToTareeq === true });
     return NextResponse.json({ item });
   } catch (err) {
     console.error('[admin free-media POST]', err);

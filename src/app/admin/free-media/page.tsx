@@ -40,10 +40,12 @@ type Form = {
 const emptyForm = (kind: MediaKind): Form => ({
   title: '', titleEn: '', type: KIND_TO_TYPE[kind], url: '', coverUrl: '', previewUrl: '', description: '', descriptionEn: '',
   sortOrder: 0, isPublished: false, categoryId: null, durationSec: null,
+  // On by default: an item the admin publishes is expected to appear in طريق too.
+  postToTareeq: true,
 });
 
 /** One file in the multi-upload queue. Category and publish are fixed WHEN ADDED. */
-type QueueRow = { key: string; name: string; size: number; kind: MediaKind; stage: UploadStage; pct: number; note?: string; itemId?: number; file: File; categoryId: number | null; publish: boolean };
+type QueueRow = { key: string; name: string; size: number; kind: MediaKind; stage: UploadStage; pct: number; note?: string; itemId?: number; file: File; categoryId: number | null; publish: boolean; tareeq: boolean };
 
 const STAGE_LABEL: Record<UploadStage, string> = {
   queued: 'في الانتظار', measuring: 'يقرأ الملف', compressing: 'يضغط', uploading: 'يرفع', finishing: 'يجهّز الغلاف', done: 'تم', error: 'فشل',
@@ -73,6 +75,8 @@ export default function FreeMediaAdminPage() {
   const [queue, setQueue] = useState<QueueRow[]>([]);
   const [bulkCat, setBulkCat] = useState<number | null>(null);
   const [bulkPublish, setBulkPublish] = useState(true);
+  // A published upload also gets its طريق post, unless the admin unticks it.
+  const [bulkTareeq, setBulkTareeq] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const coverRef = useRef<HTMLInputElement>(null);
@@ -208,6 +212,7 @@ export default function FreeMediaAdminPage() {
         // The batch's category applies only to files of the tab's own kind.
         categoryId: k === kind ? bulkCat : null,
         publish: bulkPublish,
+        tareeq: bulkPublish && bulkTareeq,
       });
     }
     if (rejected.length) setError(`تجاهلنا ملفات غير مدعومة: ${rejected.join('، ')}`);
@@ -236,7 +241,7 @@ export default function FreeMediaAdminPage() {
         body: JSON.stringify({
           title: titleFromFile(row.name), type: KIND_TO_TYPE[row.kind], url: r.url, coverUrl: r.coverUrl ?? '',
           previewUrl: r.previewUrl ?? '', durationSec: r.durationSec, waveform: r.waveform ?? undefined,
-          categoryId: row.categoryId, isPublished: row.publish, sortOrder: 0,
+          categoryId: row.categoryId, isPublished: row.publish, sortOrder: 0, postToTareeq: row.tareeq,
         }),
       });
       const d = await json<{ item: Item }>(res);
@@ -503,6 +508,9 @@ export default function FreeMediaAdminPage() {
           </label>
           <label className="text-sm flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={bulkPublish} onChange={e => setBulkPublish(e.target.checked)} /> انشرها مباشرة
+          </label>
+          <label className={`text-sm flex items-center gap-2 ${bulkPublish ? 'cursor-pointer' : 'opacity-50'}`}>
+            <input type="checkbox" disabled={!bulkPublish} checked={bulkPublish && bulkTareeq} onChange={e => setBulkTareeq(e.target.checked)} /> وانشرها في طريق
           </label>
         </div>
         <input ref={bulkRef} type="file" multiple accept={Object.values(ACCEPT).join(',')} className="hidden"

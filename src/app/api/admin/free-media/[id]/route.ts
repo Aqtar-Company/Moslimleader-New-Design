@@ -22,6 +22,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const updated = await prisma.freeMedia.update({ where: { id }, data: parsed.data });
     const item = await publishSideEffects(updated, { postToTareeq: parsed.raw.postToTareeq === true });
 
+    // A bulk upload is titled from its FILE NAME and usually renamed afterwards — the
+    // طريق post follows the rename, unless someone already gave the post a title of its own.
+    if (item.discussionPostId && existing.title !== updated.title) {
+      await prisma.tareeqPost.updateMany({
+        where: { id: item.discussionPostId, title: existing.title.slice(0, 190) },
+        data: { title: updated.title.slice(0, 190) },
+      }).catch(() => {});
+    }
+
     // Only AFTER the row points elsewhere: deleting first and then failing the update would
     // leave a published item pointing at nothing.
     // In the background: the admin is waiting on the SAVE, not on storage housekeeping.

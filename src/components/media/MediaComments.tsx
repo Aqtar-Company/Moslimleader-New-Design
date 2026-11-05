@@ -21,13 +21,16 @@ function ago(iso: string, isEn: boolean): string {
   return isEn ? 'just now' : 'الآن';
 }
 
-export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, autoFocus = false }: {
+export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, autoFocus = false, prominent = false }: {
   mediaId: number;
   isEn: boolean;
   tone?: 'light' | 'dark';
   /** Called with +1 / -1 as comments are added or removed, so a counter elsewhere can follow. */
   onCount?: (delta: number) => void;
   autoFocus?: boolean;
+  /** A writer that announces itself: a prompt line, a taller box and a labelled button —
+   *  for the item pages, where a bare one-line field went unnoticed. */
+  prominent?: boolean;
 }) {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -90,7 +93,35 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
   return (
     <div className="flex flex-col min-h-0 h-full">
       {/* Writer */}
-      {user ? (
+      {user && prominent ? (
+        <div className="pb-4 mb-1 border-b border-gray-100">
+          <label htmlFor={`mc-${mediaId}`} className="block text-sm font-bold text-[#1a1a2e] mb-2">
+            {t('ما رأيك؟ اكتب تعليقك هنا', 'What did you think? Write a comment')}
+          </label>
+          <textarea
+            id={`mc-${mediaId}`}
+            ref={inputRef}
+            value={text}
+            onChange={e => setText(e.target.value.slice(0, 1000))}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void send(); } }}
+            rows={3}
+            placeholder={t('شاركنا ما أعجبك، أو ما تعلّمه طفلك…', 'Tell us what you liked, or what your child learned…')}
+            className="w-full resize-y rounded-2xl px-4 py-3 text-sm outline-none bg-white border-2 border-[#F5C518]/60 text-[#1a1a2e] focus:border-[#F5C518] focus-visible:ring-2 focus-visible:ring-[#F5C518]/40"
+            style={{ overflowWrap: 'anywhere' }}
+          />
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => void send()}
+              disabled={!text.trim() || sending}
+              className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-[#1a1a2e] text-[#F5C518] text-sm font-bold disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5C518]"
+            >
+              {sending ? <Icon name="loader" size={16} spin /> : <Icon name="send" size={16} />}
+              {t('نشر التعليق', 'Post comment')}
+            </button>
+          </div>
+        </div>
+      ) : user ? (
         <div className={`flex items-end gap-2 pb-3 mb-1 border-b ${dark ? 'border-white/10' : 'border-gray-100'}`}>
           <textarea
             ref={inputRef}
@@ -116,8 +147,9 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
         <button
           type="button"
           onClick={() => router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)}
-          className={`mb-3 w-full text-sm font-bold rounded-2xl px-4 py-3 border border-dashed ${dark ? 'border-white/25 text-white/85' : 'border-gray-300 text-[#1a1a2e] hover:bg-[#FAF8F3]'}`}
+          className={`mb-3 w-full inline-flex items-center justify-center gap-2 text-sm font-bold rounded-2xl px-4 py-3 ${dark ? 'border border-dashed border-white/25 text-white/85' : prominent ? 'border-2 border-[#F5C518]/70 bg-[#FFFBEA] text-[#1a1a2e] hover:bg-[#FFF5CC]' : 'border border-dashed border-gray-300 text-[#1a1a2e] hover:bg-[#FAF8F3]'}`}
         >
+          <Icon name="comment" size={18} />
           {t('سجّل الدخول لتكتب تعليقاً', 'Sign in to comment')}
         </button>
       )}

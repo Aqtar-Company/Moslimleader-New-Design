@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import Icon from './Icon';
+import { useKeepAboveKeyboard } from './useKeyboard';
 
 /**
  * Comments on a media item: newest first, «تحميل المزيد», a box to write in, and delete for
@@ -21,7 +22,7 @@ function ago(iso: string, isEn: boolean): string {
   return isEn ? 'just now' : 'الآن';
 }
 
-export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, autoFocus = false, prominent = false }: {
+export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, autoFocus = false, prominent = false, inSheet = false }: {
   mediaId: number;
   isEn: boolean;
   tone?: 'light' | 'dark';
@@ -31,6 +32,8 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
   /** A writer that announces itself: a prompt line, a taller box and a labelled button —
    *  for the item pages, where a bare one-line field went unnoticed. */
   prominent?: boolean;
+  /** Rendered inside a fixed sheet: the page must not be scrolled to show the writer. */
+  inSheet?: boolean;
 }) {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -44,6 +47,10 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // The writer (box + button) is kept above the phone's keyboard while it has focus —
+  // in the page. Inside a fixed sheet the sheet itself rides the keyboard instead.
+  const pageWriter = useRef<HTMLDivElement>(null);
+  useKeepAboveKeyboard(pageWriter);
   const staff = !!user && ((user as { role?: string }).role === 'admin' || (user as { role?: string }).role === 'staff');
   const t = (ar: string, en: string) => (isEn ? en : ar);
 
@@ -98,7 +105,7 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
     <div className="flex flex-col min-h-0 h-full">
       {/* Writer */}
       {user && prominent ? (
-        <div className="pb-4 mb-1 border-b border-gray-100">
+        <div ref={inSheet ? undefined : pageWriter} className="pb-4 mb-1 border-b border-gray-100">
           <label htmlFor={`mc-${mediaId}`} className="block text-sm font-bold text-[#1a1a2e] mb-2">
             {t('ما رأيك؟ اكتب تعليقك هنا', 'What did you think? Write a comment')}
           </label>
@@ -126,7 +133,7 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
           </div>
         </div>
       ) : user ? (
-        <div className={`flex items-end gap-2 pb-3 mb-1 border-b ${dark ? 'border-white/10' : 'border-gray-100'}`}>
+        <div ref={inSheet ? undefined : pageWriter} className={`flex items-end gap-2 pb-3 mb-1 border-b ${dark ? 'border-white/10' : 'border-gray-100'}`}>
           <textarea
             ref={inputRef}
             value={text}

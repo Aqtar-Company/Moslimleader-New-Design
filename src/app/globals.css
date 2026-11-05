@@ -192,5 +192,19 @@ html[dir="ltr"],
   body[data-ameen-open] .wa-float { display: none !important; }
 }
 
+/* Floating launchers while typing (src/components/TypingFlag.tsx). On a touch screen the
+   keyboard lifts Ameen and WhatsApp up the page and they sit on top of the field being
+   typed in, so they fade out until the field loses focus. The Ameen launcher stays while
+   its own chat is open — there it is the way back. */
+.wa-float, .ameen-launcher { transition: opacity .18s ease, transform .18s ease, background-color .2s; }
+@media (pointer: coarse) {
+  html[data-typing] .wa-float,
+  html[data-typing] body:not([data-ameen-open]) .ameen-launcher {
+    opacity: 0 !important;
+    transform: translateY(18px) scale(.85) !important;
+    pointer-events: none !important;
+  }
+}
+
 /* Media library icons: arrows mirror in right-to-left text (src/components/media/Icon.tsx). */
 [dir="rtl"] .icon-dir-flip { transform: scaleX(-1); }

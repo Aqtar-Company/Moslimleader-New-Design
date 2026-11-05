@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useKeyboardInset } from './useKeyboard';
 import { createPortal } from 'react-dom';
 import type { MediaKind } from '@/lib/free-media-shared';
 import MediaThumb from './MediaThumb';
@@ -63,6 +64,8 @@ export default function MediaShareSheet({ open, onClose, url, title, coverUrl, k
   const [canNative, setCanNative] = useState(false);
   const t = (ar: string, en: string) => (isEn ? en : ar);
   const { user } = useAuth();
+  // While the «شارك في طريق» box is being typed in, the sheet sits ON the keyboard.
+  const kb = useKeyboardInset(open);
   const itemId = mediaId ?? Number(url.match(/\/media\/(?:reels\/)?(\d+)/)?.[1] ?? NaN);
   // «شارك في طريق»: closed → writing → posting → posted (with the new post's id).
   const [tareeq, setTareeq] = useState<'closed' | 'writing' | 'posting' | { postId: string }>('closed');
@@ -125,12 +128,13 @@ export default function MediaShareSheet({ open, onClose, url, title, coverUrl, k
   const circle = 'w-14 h-14 rounded-full flex items-center justify-center text-white transition group-hover:scale-105 group-focus-visible:ring-2 group-focus-visible:ring-offset-2 group-focus-visible:ring-[#F5C518]';
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/55" onClick={onClose} dir={isEn ? 'ltr' : 'rtl'}>
+    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/55" onClick={onClose} dir={isEn ? 'ltr' : 'rtl'} style={{ paddingBottom: kb.inset }}>
       <div
         role="dialog"
         aria-label={t('مشاركة', 'Share')}
         onClick={e => e.stopPropagation()}
-        className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+        className="w-full sm:max-w-md max-h-[92dvh] overflow-y-auto overscroll-contain bg-white rounded-t-3xl sm:rounded-3xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+        style={kb.inset && kb.visibleHeight ? { maxHeight: kb.visibleHeight - 8 } : undefined}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-black text-[#1a1a2e] flex items-center gap-2"><Icon name="share" size={20} /> {t('مشاركة', 'Share')}</h2>

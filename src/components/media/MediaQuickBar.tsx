@@ -35,13 +35,16 @@ export default function MediaQuickBar({ mediaId, isEn, initialReactions, comment
 
   const goComment = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const block = document.getElementById(`engage-${mediaId}`);
-    block?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // The writer when signed in, else the sign-in prompt — both are in the block.
-    setTimeout(() => {
-      const box = document.getElementById(`mc-${mediaId}`) as HTMLTextAreaElement | null;
-      box?.focus({ preventScroll: true });
-    }, 450);
+    const box = document.getElementById(`mc-${mediaId}`) as HTMLTextAreaElement | null;
+    if (box) {
+      // Focused INSIDE the tap, not after a timer: a phone only opens its keyboard for a
+      // focus that comes straight from a touch. The writer then scrolls itself above the
+      // keyboard (useKeepAboveKeyboard in MediaComments).
+      box.focus({ preventScroll: true });
+      return;
+    }
+    // Signed out: the block holds the sign-in prompt instead of a box.
+    document.getElementById(`engage-${mediaId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const dark = tone === 'dark';

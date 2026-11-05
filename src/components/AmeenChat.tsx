@@ -469,7 +469,7 @@ export default function AmeenChat() {
       <button
         onClick={() => { setOpen(o => !o); setShowBadge(false); }}
         aria-label={isEn ? 'Open Ameen chat' : 'افتح دردشة أمين'}
-        className="fixed bottom-7 right-5 md:bottom-10 md:right-10 z-40 w-16 h-16 md:w-[72px] md:h-[72px] rounded-full bg-[#1a1a2e] hover:bg-[#2d1060] text-white shadow-lg flex items-center justify-center transition print:hidden"
+        className="ameen-launcher fixed bottom-7 right-5 md:bottom-10 md:right-10 z-40 w-16 h-16 md:w-[72px] md:h-[72px] rounded-full bg-[#1a1a2e] hover:bg-[#2d1060] text-white shadow-lg flex items-center justify-center transition print:hidden"
         style={{ boxShadow: '0 8px 28px rgba(26,26,46,0.45)' }}
       >
         {/* Pulse rings — only visible when the panel is closed so we

@@ -7,6 +7,7 @@ import type { PublicMediaItem } from '@/lib/free-media-query';
 import Icon from '@/components/media/Icon';
 import MediaReactions, { type Summary } from '@/components/media/MediaReactions';
 import MediaComments from '@/components/media/MediaComments';
+import { useKeyboardInset } from '@/components/media/useKeyboard';
 import MediaShareSheet from '@/components/media/MediaShareSheet';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
 
@@ -41,6 +42,7 @@ export default function ReelsViewer({ reels, startIndex, social }: {
   const [muted, setMuted] = useState(true);
   const [paused, setPaused] = useState(false);
   const [commentsFor, setCommentsFor] = useState<number | null>(null);
+  const kb = useKeyboardInset(commentsFor !== null);
   const [counts, setCounts] = useState<Record<number, number>>(() => Object.fromEntries(Object.entries(social).map(([k, v]) => [Number(k), v.comments])));
   const scrollerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -210,12 +212,18 @@ export default function ReelsViewer({ reels, startIndex, social }: {
 
       {/* Comments sheet */}
       {commentsFor !== null && (
-        <div className="absolute inset-0 z-30 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setCommentsFor(null)}>
+        <div
+          className="absolute inset-0 z-30 flex items-end sm:items-center justify-center bg-black/50"
+          onClick={() => setCommentsFor(null)}
+          // The sheet sits ON the keyboard, not under it, and never taller than what is visible.
+          style={{ paddingBottom: kb.inset }}
+        >
           <div
             role="dialog"
             aria-label={t('التعليقات', 'Comments')}
             onClick={e => e.stopPropagation()}
             className="w-full sm:max-w-md h-[72dvh] bg-white text-[#1a1a2e] rounded-t-3xl sm:rounded-3xl p-4 flex flex-col"
+            style={kb.inset && kb.visibleHeight ? { height: Math.min(kb.visibleHeight - 12, window.innerHeight * 0.72) } : undefined}
           >
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-black flex items-center gap-2"><Icon name="comment" size={20} /> {t('التعليقات', 'Comments')} <span className="text-gray-400 font-bold text-sm">{counts[commentsFor] || ''}</span></h3>
@@ -226,6 +234,7 @@ export default function ReelsViewer({ reels, startIndex, social }: {
                 mediaId={commentsFor}
                 isEn={isEn}
                 autoFocus
+                inSheet
                 onCount={d => setCounts(c => ({ ...c, [commentsFor]: Math.max(0, (c[commentsFor] ?? 0) + d) }))}
               />
             </div>

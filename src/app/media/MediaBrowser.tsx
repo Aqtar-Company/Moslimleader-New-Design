@@ -112,25 +112,38 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
           </div>
         ) : (
           <>
-            {/* Kind tabs */}
-            <div role="tablist" className="flex gap-1 bg-white border border-gray-100 rounded-2xl p-1 mb-4 w-fit max-w-full overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-              {kinds.map(k => (
-                <button
-                  key={k}
-                  role="tab"
-                  aria-selected={kind === k}
-                  onClick={() => setParam({ kind: k })}
-                  className={`shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${kind === k ? 'bg-[#1a1a2e] text-[#F5C518]' : 'text-gray-600 hover:text-[#1a1a2e]'}`}
-                >
-                  <span className="inline-flex items-center gap-1.5"><Icon name={k} size={17} />{isEn ? KIND_LABEL[k].en : KIND_LABEL[k].ar}</span>
-                </button>
-              ))}
+            {/* Three levels, three weights, and nothing hidden at any width:
+                1. KIND — the library's sections: big solid tabs, all five always on screen
+                   (a five-column grid on a phone, icon over label);
+                2. CATEGORY — shelves inside the section: light outlined chips that WRAP
+                   instead of scrolling out of sight, the chosen one in soft gold;
+                3. TOOLS — follow, playlist/grid: small, on their own line, after a rule. */}
+            <div
+              role="tablist"
+              aria-label={t('أقسام المكتبة', 'Library sections')}
+              className="grid grid-flow-col auto-cols-fr gap-0.5 min-[360px]:gap-1 sm:flex sm:w-fit bg-white border border-gray-200/80 rounded-2xl p-1 min-[360px]:p-1.5 shadow-[0_1px_3px_rgba(26,26,46,0.06)] mb-5"
+            >
+              {kinds.map(k => {
+                const on = kind === k;
+                return (
+                  <button
+                    key={k}
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => setParam({ kind: k })}
+                    className={`min-w-0 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-0.5 min-[360px]:px-1 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${on ? 'bg-[#1a1a2e] text-white shadow-sm' : 'text-gray-500 hover:text-[#1a1a2e] hover:bg-[#FAF8F3]'}`}
+                  >
+                    <Icon name={k} size={22} className={on ? 'text-[#F5C518]' : ''} />
+                    <span className="max-w-full truncate text-[11px] min-[360px]:text-[12px] sm:text-[15px] leading-tight">
+                      {isEn ? KIND_LABEL[k].en : <><span className="sm:hidden">{KIND_LABEL[k].short}</span><span className="hidden sm:inline">{KIND_LABEL[k].ar}</span></>}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Category chips, and the player / cells switch for what can be played */}
-            {(kindCats.length > 0 || playable) && (
-            <div className="flex items-start gap-3 mb-6">
-              <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {kindCats.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3" role="group" aria-label={t('التصنيفات', 'Categories')}>
                 {[...kindCats.map(c => ({ id: c.id as number | null, label: isEn && c.nameEn ? c.nameEn : c.name })), { id: null as number | null, label: t('الكل', 'All') }].map(chip => {
                   const active = cat === chip.id;
                   return (
@@ -138,32 +151,42 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
                       key={String(chip.id)}
                       onClick={() => setParam({ cat: chip.id })}
                       aria-pressed={active}
-                      className={`shrink-0 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${active ? 'bg-[#1a1a2e] text-white' : 'bg-[#EFEBE2] text-[#1a1a2e] hover:bg-[#E5DFD2]'}`}
+                      className={`h-9 px-3.5 rounded-full border text-[13px] whitespace-nowrap transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#F5C518] ${active ? 'bg-[#FFF3C4] border-[#F5C518] text-[#1a1a2e] font-bold' : 'bg-transparent border-[#1a1a2e]/15 text-[#1a1a2e]/75 font-semibold hover:border-[#1a1a2e]/40 hover:text-[#1a1a2e]'}`}
                     >
                       {chip.label}
                     </button>
                   );
                 })}
               </div>
-              {cat !== null && <FollowCategoryButton categoryId={cat} isEn={isEn} />}
-              {playable && (
-                <div className="shrink-0 flex rounded-lg bg-[#EFEBE2] p-0.5" role="group" aria-label={t('طريقة العرض', 'View')}>
-                  {([['player', 'list', t('قائمة تشغيل', 'Playlist')], ['grid', 'grid', t('خلايا', 'Grid')]] as const).map(([v, icon, label]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setParam({ view: v })}
-                      aria-pressed={view === v}
-                      title={label}
-                      className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${view === v ? 'bg-[#1a1a2e] text-[#F5C518]' : 'text-[#1a1a2e] hover:bg-[#E5DFD2]'}`}
-                    >
-                      <Icon name={icon} size={16} /><span className="hidden sm:inline">{label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
             )}
+
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-6 pt-3 border-t border-gray-200/70">
+              <p className="text-xs text-gray-500 tabular-nums">
+                {isEn
+                  ? `${shown.length} item${shown.length === 1 ? '' : 's'}`
+                  // Arabic counts: «مادة واحدة», «مادتان», «٣ مواد», «١١ مادة».
+                  : shown.length === 1 ? 'مادة واحدة' : shown.length === 2 ? 'مادتان'
+                  : `${shown.length.toLocaleString('ar-EG')} ${shown.length <= 10 ? 'مواد' : 'مادة'}`}
+              </p>
+              <div className="flex items-center gap-2">
+                {cat !== null && <FollowCategoryButton categoryId={cat} isEn={isEn} />}
+                {playable && (
+                  <div className="flex rounded-lg bg-[#EFEBE2] p-0.5" role="group" aria-label={t('طريقة العرض', 'View')}>
+                    {([['player', 'list', t('قائمة', 'Playlist')], ['grid', 'grid', t('خلايا', 'Grid')]] as const).map(([v, icon, label]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setParam({ view: v })}
+                        aria-pressed={view === v}
+                        className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${view === v ? 'bg-[#1a1a2e] text-[#F5C518]' : 'text-[#1a1a2e] hover:bg-[#E5DFD2]'}`}
+                      >
+                        <Icon name={icon} size={16} />{label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {shown.length === 0 ? (
               <p className="text-center text-gray-400 py-16">{t('لا نتائج هنا.', 'Nothing here.')}</p>

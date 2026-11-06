@@ -28,12 +28,14 @@ type Props = {
   onPlay: () => void;
   /** Rendered under the waveform, inside the player (the reactions bar). */
   footer?: React.ReactNode;
+  /** A strip attached under the cover, inside the same box — the comment line. */
+  below?: React.ReactNode;
 };
 
 const BARS = 120;
 
 const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
-  { src, coverUrl, title, label, waveform, durationSec, isEn, onEnded, onPlay, footer }, ref,
+  { src, coverUrl, title, label, waveform, durationSec, isEn, onEnded, onPlay, footer, below }, ref,
 ) {
   const audioRef = useRef<HTMLAudioElement>(null);
   useImperativeHandle(ref, () => audioRef.current as HTMLAudioElement);
@@ -99,7 +101,8 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-[#1a1a2e] aspect-[4/3] sm:aspect-[21/9]">
+    <div className="overflow-hidden rounded-2xl bg-[#1a1a2e]">
+    <div className="relative overflow-hidden aspect-[4/3] sm:aspect-[21/9]">
       {/* The cover, large. Without one, the kind's tile. */}
       {coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -212,6 +215,8 @@ const AudioStage = forwardRef<HTMLAudioElement, Props>(function AudioStage(
         <CoverViewer src={coverUrl} title={title} isEn={isEn} onClose={() => setZoom(false)} />,
         document.body,
       )}
+    </div>
+    {below && <div className="px-3 sm:px-4 py-2.5 border-t border-white/10">{below}</div>}
     </div>
   );
 });

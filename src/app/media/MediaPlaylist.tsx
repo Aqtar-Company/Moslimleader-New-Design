@@ -10,6 +10,7 @@ import MediaShareSheet from '@/components/media/MediaShareSheet';
 import { useMediaDownload } from '@/components/media/useMediaDownload';
 import MediaEngage from '@/components/media/MediaEngage';
 import MediaQuickBar from '@/components/media/MediaQuickBar';
+import MediaQuickComment from '@/components/media/MediaQuickComment';
 
 /**
  * The audio and video tabs of /media open straight on a player: the first item of the
@@ -125,7 +126,8 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
             isEn={isEn}
             onPlay={onPlay}
             onEnded={onEnded}
-            footer={<MediaQuickBar key={current.id} mediaId={current.id} isEn={isEn} />}
+            footer={<MediaQuickBar key={current.id} mediaId={current.id} isEn={isEn} writer={false} />}
+            below={<MediaQuickComment key={current.id} mediaId={current.id} isEn={isEn} />}
           />
         )}
 

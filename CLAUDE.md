@@ -976,6 +976,19 @@ Books are protected from download at two levels:
   measured on /media: 19 legacy thumbnails, 28.6 MB, per page view (the server answered in
   0.04 s; all of the slowness was this). File rules now come AFTER the HTML rule. Any new
   rule for files must go below it, or it does nothing.
+- **Small pictures go through `/api/media/thumb` (`mediaThumbUrl()` in free-media-shared).**
+  The site runs with `images.unoptimized: true`, and covers are stored at up to 1280px
+  (~150 KB), so /media downloaded ~20 of them at full size for 56–300px slots — 3 MB of
+  pictures per view on a phone (measured 2026-11-06, with a 917 KB `amin-profile.png` on
+  EVERY page on top; it is now a 13 KB `amin-profile.webp`). The route resizes a library
+  file once with sharp (WebP, widths 160/320/640), keeps it in `.cache/media-thumbs/`
+  (gitignored, survives deploys) and serves it with a year's immutable cache; it accepts
+  only `isAllowedMediaRef` files, and redirects to the original on any failure.
+  `MediaThumb` takes `width` (320 for the playlist/share sheet/«التالي», 640 for the grid).
+  **R2 objects carry `Cache-Control: public, max-age=31536000, immutable`** from `putToR2`
+  and the Tareeq upload route — every key is unique, so a changed file is a new URL. Objects
+  uploaded before that have no Cache-Control at all (r2.dev sends none). An empty cart no
+  longer fetches `/api/products` on every page.
 - **Video thumbnails are made automatically.** Opening `/admin/free-media` once per visit
   compresses heavy covers (`optimize`) and gives every video/reel without a cover one, from a
   frame of the video itself — read through `/api/media/[id]/download?inline=1` (staff only,
@@ -1001,6 +1014,9 @@ Books are protected from download at two levels:
   variable is missing the request is accepted and `[partnership-requests] TURNSTILE_SECRET_KEY
   is not set` is logged — check for that line after deploying. No admin screen yet; `status`
   (new/contacted/trial/closed) is there for one.
+- **«من نحن» — the founders:** two portrait cards side by side, **Dr. Marwa Ali first**
+  (المدير العام · شريك مؤسس — the owner's wording), then Dr. Ibrahim Hassan; the text below
+  follows the same order. Her picture is the drawn avatar, never a photograph.
 - **«أرض القائد المسلم» has its own page, `/land` (`src/app/land/`).** A future project laid
   out as one: the idea, the principles («البصائر»: الإحسان، الاقتصاد وعدم التبذير، احترام
   العقل، روابط الأسرة — and no individualism, addictive practices or fear-as-fun), an SVG

@@ -132,6 +132,9 @@ async function apiClearCart() {
 
 // Refresh cart items from the latest products API (prices, images, names, etc.)
 async function refreshCartPrices(items: CartItem[]): Promise<CartItem[]> {
+  // An empty cart has nothing to refresh — and this used to download the whole product
+  // list (~60 KB) on every page of the site for every visitor.
+  if (items.length === 0) return items;
   try {
     const res = await fetch('/api/products', { cache: 'no-store' });
     if (!res.ok) return items;

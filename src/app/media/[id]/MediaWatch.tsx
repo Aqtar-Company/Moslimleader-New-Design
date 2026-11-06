@@ -338,6 +338,7 @@ export default function MediaWatch({ item, upNext, reactions, commentCount }: {
                         title={u.title}
                         durationSec={u.durationSec}
                         className={`w-40 shrink-0 ${u.kind === 'image' || u.kind === 'pdf' ? 'aspect-[4/3]' : 'aspect-video'}`}
+                        width={320}
                       />
                       <div className="min-w-0 py-0.5">
                         {i === 0 && autoplay && playable && <p className="text-[10px] font-bold text-amber-700 mb-0.5">{t('يُشغَّل تلقائياً', 'Plays next')}</p>}

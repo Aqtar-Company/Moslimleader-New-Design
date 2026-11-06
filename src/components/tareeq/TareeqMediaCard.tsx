@@ -2,7 +2,7 @@
 import { useRef } from 'react';
 import TareeqVideo from './TareeqVideo';
 import type { PostMedia } from '@/lib/post-media';
-import { TYPE_TO_KIND, KIND_LABEL, formatDuration, mediaPath } from '@/lib/free-media-shared';
+import { TYPE_TO_KIND, KIND_LABEL, formatDuration, mediaPath, mediaThumbUrl } from '@/lib/free-media-shared';
 
 /**
  * An item of the media library inside a طريق post: it plays HERE, in the feed, and a link
@@ -63,7 +63,7 @@ export default function TareeqMediaCard({ media, isRtl, compact = false }: {
     body = (
       <div className="flex items-center gap-3 p-3" style={{ background: 'var(--tr-raised)' }}>
         {media.coverUrl ? (
-          <img src={media.coverUrl} alt="" loading="lazy" className={`${compact ? 'w-14 h-14' : 'w-20 h-20'} shrink-0 rounded-xl object-cover`} />
+          <img src={mediaThumbUrl(media.coverUrl, 320) ?? media.coverUrl} alt="" loading="lazy" className={`${compact ? 'w-14 h-14' : 'w-20 h-20'} shrink-0 rounded-xl object-cover`} />
         ) : (
           <span className={`${compact ? 'w-14 h-14' : 'w-20 h-20'} shrink-0 rounded-xl flex items-center justify-center`} style={{ background: '#1a1a2e', color: '#F5C518' }} aria-hidden>
             <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
@@ -85,7 +85,7 @@ export default function TareeqMediaCard({ media, isRtl, compact = false }: {
     body = (
       <span {...linkProps} className="flex items-center gap-3 p-3 cursor-pointer" style={{ background: 'var(--tr-raised)' }}>
         {media.coverUrl
-          ? <img src={media.coverUrl} alt="" loading="lazy" className="w-16 h-20 shrink-0 rounded-lg object-cover" />
+          ? <img src={mediaThumbUrl(media.coverUrl, 320) ?? media.coverUrl} alt="" loading="lazy" className="w-16 h-20 shrink-0 rounded-lg object-cover" />
           : <span className="w-16 h-20 shrink-0 rounded-lg flex items-center justify-center text-xs font-black" style={{ background: '#1a1a2e', color: '#F5C518' }}>PDF</span>}
         <span className="text-[13.5px] font-bold leading-snug line-clamp-3" style={{ color: 'var(--tr-text-primary)' }}>{title}</span>
       </span>

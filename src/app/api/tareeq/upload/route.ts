@@ -100,6 +100,8 @@ export async function POST(req: NextRequest) {
     Key: key,
     Body: fileData,
     ContentType: contentType,
+    // Timestamped key: a new file is a new URL, so the long cache is safe.
+    CacheControl: 'public, max-age=31536000, immutable',
   }));
 
   const publicUrl = process.env.R2_PUBLIC_URL!;

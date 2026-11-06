@@ -136,7 +136,7 @@ function AminAvatar({ size = 48 }: { size?: number }) {
   // story — combined, the file is fetched once and reused for a year.
   return (
     <img
-      src="/amin-profile.png"
+      src="/amin-profile.webp"
       alt="أمين"
       width={size}
       height={size}

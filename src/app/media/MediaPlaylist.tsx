@@ -190,6 +190,7 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
                     coverUrl={it.coverUrl ?? null}
                     title={itTitle}
                     className={`shrink-0 ${it.kind === 'video' ? 'w-28 aspect-video' : 'w-14 aspect-square'}`}
+                    width={320}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-bold leading-snug line-clamp-2">{itTitle}</span>

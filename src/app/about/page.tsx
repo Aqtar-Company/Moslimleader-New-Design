@@ -176,80 +176,113 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ── Founder ── */}
+      {/* ── Founders ── Two portrait cards side by side — Dr. Marwa Ali, general manager, first
+          — then the words, in the same order. Her picture is a drawn avatar, not a
+          photograph: her choice, and the rule this site follows for women's pictures. */}
       <section id="founder" className="bg-[#FAF6E6] py-16 scroll-mt-24">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="grid md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-10 items-center mb-12">
-            <div className="relative mx-auto w-full max-w-sm">
-              <div className="absolute inset-x-6 bottom-0 top-10 rounded-[2rem] bg-[#16223F]" style={{ backgroundImage: STAR }} aria-hidden />
-              <div className="absolute -top-2 end-4 w-16 h-16 bg-[#F5C518]" style={{ clipPath: STAR_CLIP }} aria-hidden />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/about/founder.webp" alt={tx('د. إبراهيم حسن', 'Dr. Ibrahim Hassan')} width={600} height={688} className="relative w-full h-auto" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-[#22335C] mb-2">{tx('المؤسس', 'Founder')}</p>
-              <h2 className="text-3xl sm:text-4xl font-black text-[#0C1428] leading-snug">{tx('د. إبراهيم حسن', 'Dr. Ibrahim Hassan')}</h2>
-              <p className="mt-2 text-[#5C6373] font-semibold">
-                {tx('مؤسس مسلم ليدر · أستاذ مشارك التصميم البصري والميديا الحديثة', 'Founder of Moslim Leader · Associate Professor of Visual Design and New Media')}
-              </p>
-              <blockquote className="mt-6 bg-white border border-[#EFE7CE] border-s-4 border-s-[#F5C518] rounded-e-2xl p-5 text-[#1C2430] leading-loose">
-                {tx(
-                  '«أؤمن أن نهضة الفرد والمجتمع تبدأ من مدى شعور الفرد بالمسؤولية… فالإنسان ينتهي به الأمر إلى أن يقف بين يدي الله يُسأَل عن كل ما مكّنه الله فيه، ويشمل ذلك علمه وماله وعمله. لا أفصل بين الدنيا والآخرة.»',
-                  '“I believe the renewal of a person and of a society begins with how responsible a person feels… for in the end we stand before Allah and are asked about everything He enabled us in — our knowledge, our wealth and our work. I do not separate this world from the next.”',
-                )}
-              </blockquote>
-              <p className="mt-5 text-[#3A4150] leading-relaxed">
-                {tx(
-                  'يجمع بين التربية والتصميم والإعلام والعلوم الشرعية، ومن هذا الجمع وُلدت مسلم ليدر: محتوى يقوم على الشريعة، ويُصمَّم بلغة بصرية معاصرة، ويُختبر بالبحث.',
-                  'He brings together education, design, media and Islamic scholarship — and Moslim Leader grew out of that combination: content rooted in the Sharia, designed in a contemporary visual language, and tested by research.',
-                )}
-              </p>
-              <a href="https://ibrahimhassan.net" target="_blank" rel="noopener" className="mt-6 inline-flex items-center gap-2 font-bold text-[#16223F] border-b-2 border-[#F5C518] pb-0.5 hover:text-[#22335C]">
-                ibrahimhassan.net <Icon name="external" size={16} />
-              </a>
-            </div>
-          </div>
+          <SectionHead eyebrow={tx('من يقود مسلم ليدر', 'Who leads Moslim Leader')} title={tx('المؤسسون', 'The founders')} />
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {founderFacts.map(f => (
-              <div key={f.title} className="bg-white border border-[#EFE7CE] rounded-2xl p-5">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="w-10 h-10 rounded-xl bg-[#FAF6E6] text-[#22335C] flex items-center justify-center"><Icon name={f.icon} size={20} /></span>
-                  <h3 className="font-black text-[#16223F]">{f.title}</h3>
+          <div className="grid sm:grid-cols-2 gap-5">
+            {[
+              {
+                key: 'marwa',
+                img: '/about/cofounder-marwa.webp', w: 600, h: 600, avatar: true,
+                name: tx('د. مروة علي', 'Dr. Marwa Ali'),
+                role: tx('المدير العام · شريك مؤسس', 'General Manager · Co-founder'),
+                line: tx('دكتورة صيدلانية وباحثة في الفكر الإسلامي', 'Pharmacist and researcher in Islamic thought'),
+              },
+              {
+                key: 'ibrahim',
+                img: '/about/founder.webp', w: 600, h: 688, avatar: false,
+                name: tx('د. إبراهيم حسن', 'Dr. Ibrahim Hassan'),
+                role: tx('المؤسس', 'Founder'),
+                line: tx('أستاذ مشارك التصميم البصري والميديا الحديثة', 'Associate Professor of Visual Design and New Media'),
+              },
+            ].map(p => (
+              <a key={p.key} href={`#about-${p.key}`} className="group block rounded-[2rem] overflow-hidden bg-white border border-[#EFE7CE] hover:border-[#F5C518] hover:shadow-lg transition">
+                <div className="relative aspect-[5/4] overflow-hidden" style={{ background: 'radial-gradient(600px 300px at 80% 0%, rgba(245,197,24,.20), transparent 60%), linear-gradient(160deg, #16223F 0%, #0C1428 100%)' }}>
+                  <div className="absolute inset-0" style={{ backgroundImage: STAR }} aria-hidden />
+                  <div className="absolute top-4 end-4 w-12 h-12 bg-[#F5C518]" style={{ clipPath: STAR_CLIP }} aria-hidden />
+                  {p.avatar ? (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="relative w-[62%] aspect-square">
+                        <div className="absolute inset-0 rounded-full bg-[#FAF6E6] ring-4 ring-[#F5C518] ring-offset-4 ring-offset-[#16223F]" aria-hidden />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.img} alt={p.name} width={p.w} height={p.h} className="relative w-full h-full object-contain rounded-full p-3" />
+                      </div>
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.img} alt={p.name} width={p.w} height={p.h} className="absolute bottom-0 inset-x-0 mx-auto h-[94%] w-auto object-contain" />
+                  )}
                 </div>
-                <p className="text-sm text-[#3A4150] leading-relaxed">{f.body}</p>
-              </div>
+                <div className="p-6">
+                  <p className="inline-block text-xs font-bold text-[#0C1428] bg-[#F5C518] rounded-full px-3 py-1">{p.role}</p>
+                  <h3 className="mt-3 text-2xl sm:text-3xl font-black text-[#0C1428] leading-snug">{p.name}</h3>
+                  <p className="mt-1 text-[#5C6373] font-semibold">{p.line}</p>
+                </div>
+              </a>
             ))}
           </div>
 
-          {/* Co-founder — a partner in the whole of Moslim Leader, so she gets a block of her
-              own weight, not a footnote under the founder. A drawn avatar, not a photograph:
-              her choice, and the rule this site follows for women's pictures everywhere. */}
-          <div
-            className="mt-12 relative overflow-hidden rounded-[2rem] text-white p-8 sm:p-10 grid md:grid-cols-[auto_minmax(0,1fr)] gap-8 items-center"
-            style={{ background: 'radial-gradient(700px 320px at 10% 0%, rgba(245,197,24,.18), transparent 60%), linear-gradient(160deg, #16223F 0%, #0C1428 100%)' }}
-          >
+          {/* Dr. Marwa first */}
+          <article id="about-marwa" className="mt-12 relative overflow-hidden rounded-[2rem] text-white p-8 sm:p-10 scroll-mt-24"
+            style={{ background: 'radial-gradient(700px 320px at 10% 0%, rgba(245,197,24,.18), transparent 60%), linear-gradient(160deg, #16223F 0%, #0C1428 100%)' }}>
             <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: STAR }} aria-hidden />
-            <div className="relative mx-auto w-44 h-44 sm:w-52 sm:h-52">
-              <div className="absolute -top-1 -end-1 w-14 h-14 bg-[#F5C518]" style={{ clipPath: STAR_CLIP }} aria-hidden />
-              <div className="absolute inset-0 rounded-full bg-[#FAF6E6] ring-4 ring-[#F5C518] ring-offset-4 ring-offset-[#16223F]" aria-hidden />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/about/cofounder-marwa.webp" alt={tx('د. مروة علي', 'Dr. Marwa Ali')} width={600} height={600} className="relative w-full h-full object-contain rounded-full p-4" />
-            </div>
-            <div className="relative">
-              <p className="inline-block text-sm font-bold text-[#0C1428] bg-[#F5C518] rounded-full px-4 py-1 mb-3">{tx('شريك مؤسس', 'Co-founder')}</p>
+            <div className="relative max-w-3xl">
+              <p className="text-sm font-bold text-[#FBEEBB] mb-2">{tx('المدير العام', 'General Manager')}</p>
               <h2 className="text-3xl sm:text-4xl font-black leading-snug">{tx('د. مروة علي', 'Dr. Marwa Ali')}</h2>
-              <p className="mt-2 text-[#FBEEBB] font-semibold">
-                {tx('دكتورة صيدلانية وباحثة في الفكر الإسلامي · مديرة منصة كليم للصحة النفسية', 'Pharmacist and researcher in Islamic thought · Director of the Kaleem mental well-being platform')}
-              </p>
-              <p className="mt-5 text-[#D7DCE8] text-base sm:text-lg leading-loose max-w-2xl">
+              <p className="mt-5 text-[#D7DCE8] text-base sm:text-lg leading-loose">
                 {tx(
-                  'شريكة في رؤية مسلم ليدر وفي منتجاتها كلها: من الفكرة والرسالة، إلى المحتوى التربوي، إلى المنتج الذي يصل إلى الطفل وأسرته.',
-                  'A partner in Moslim Leader\'s vision and in everything it makes: from the idea and the message, to the educational content, to the product that reaches the child and the family.',
+                  'المدير العام لمسلم ليدر وشريكة مؤسسة فيها؛ شريكة في رؤيتها وفي منتجاتها كلها: من الفكرة والرسالة، إلى المحتوى التربوي، إلى المنتج الذي يصل إلى الطفل وأسرته.',
+                  'General Manager and co-founder of Moslim Leader — a partner in its vision and in everything it makes: from the idea and the message, to the educational content, to the product that reaches the child and the family.',
+                )}
+              </p>
+              <p className="mt-4 text-[#D7DCE8] leading-loose">
+                {tx(
+                  'دكتورة صيدلانية وباحثة في الفكر الإسلامي، وتدير منصة كليم للصحة النفسية.',
+                  'A pharmacist and researcher in Islamic thought, she also directs the Kaleem mental well-being platform.',
                 )}
               </p>
             </div>
-          </div>
+          </article>
+
+          {/* Then Dr. Ibrahim */}
+          <article id="about-ibrahim" className="mt-6 bg-white border border-[#EFE7CE] rounded-[2rem] p-8 sm:p-10 scroll-mt-24">
+            <p className="text-sm font-bold text-[#22335C] mb-2">{tx('المؤسس', 'Founder')}</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-[#0C1428] leading-snug">{tx('د. إبراهيم حسن', 'Dr. Ibrahim Hassan')}</h2>
+            <p className="mt-2 text-[#5C6373] font-semibold">
+              {tx('مؤسس مسلم ليدر · أستاذ مشارك التصميم البصري والميديا الحديثة', 'Founder of Moslim Leader · Associate Professor of Visual Design and New Media')}
+            </p>
+            <blockquote className="mt-6 bg-[#FAF6E6] border-s-4 border-s-[#F5C518] rounded-e-2xl p-5 text-[#1C2430] leading-loose">
+              {tx(
+                '«أؤمن أن نهضة الفرد والمجتمع تبدأ من مدى شعور الفرد بالمسؤولية… فالإنسان ينتهي به الأمر إلى أن يقف بين يدي الله يُسأَل عن كل ما مكّنه الله فيه، ويشمل ذلك علمه وماله وعمله. لا أفصل بين الدنيا والآخرة.»',
+                '“I believe the renewal of a person and of a society begins with how responsible a person feels… for in the end we stand before Allah and are asked about everything He enabled us in — our knowledge, our wealth and our work. I do not separate this world from the next.”',
+              )}
+            </blockquote>
+            <p className="mt-5 text-[#3A4150] leading-relaxed">
+              {tx(
+                'يجمع بين التربية والتصميم والإعلام والعلوم الشرعية، ومن هذا الجمع وُلدت مسلم ليدر: محتوى يقوم على الشريعة، ويُصمَّم بلغة بصرية معاصرة، ويُختبر بالبحث.',
+                'He brings together education, design, media and Islamic scholarship — and Moslim Leader grew out of that combination: content rooted in the Sharia, designed in a contemporary visual language, and tested by research.',
+              )}
+            </p>
+            <a href="https://ibrahimhassan.net" target="_blank" rel="noopener" className="mt-6 inline-flex items-center gap-2 font-bold text-[#16223F] border-b-2 border-[#F5C518] pb-0.5 hover:text-[#22335C]">
+              ibrahimhassan.net <Icon name="external" size={16} />
+            </a>
+
+            <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {founderFacts.map(f => (
+                <div key={f.title} className="bg-[#FFFDF4] border border-[#EFE7CE] rounded-2xl p-5">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="w-10 h-10 rounded-xl bg-[#FAF6E6] text-[#22335C] flex items-center justify-center"><Icon name={f.icon} size={20} /></span>
+                    <h3 className="font-black text-[#16223F]">{f.title}</h3>
+                  </div>
+                  <p className="text-sm text-[#3A4150] leading-relaxed">{f.body}</p>
+                </div>
+              ))}
+            </div>
+          </article>
         </div>
       </section>
 

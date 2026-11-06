@@ -1,5 +1,5 @@
 'use client';
-import { formatDuration, type MediaKind } from '@/lib/free-media-shared';
+import { formatDuration, mediaThumbUrl, type MediaKind } from '@/lib/free-media-shared';
 import Icon from './Icon';
 
 /**
@@ -15,7 +15,9 @@ const TILE: Record<MediaKind, string> = {
   pdf:   'from-[#eef2f7] to-[#dbe3ee] text-[#52627a]',
 };
 
-export default function MediaThumb({ kind, coverUrl, title, durationSec, className = '', eager = false }: {
+export default function MediaThumb({ kind, coverUrl, title, durationSec, className = '', eager = false, width = 640 }: {
+  /** The size of the copy fetched — about twice the slot's CSS width (retina). */
+  width?: 160 | 320 | 640;
   kind: MediaKind;
   coverUrl: string | null;
   title: string;
@@ -29,7 +31,7 @@ export default function MediaThumb({ kind, coverUrl, title, durationSec, classNa
       {coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={coverUrl}
+          src={mediaThumbUrl(coverUrl, width) ?? coverUrl}
           alt={title}
           loading={eager ? 'eager' : 'lazy'}
           decoding="async"

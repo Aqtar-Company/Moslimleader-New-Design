@@ -1009,7 +1009,13 @@ Books are protected from download at two levels:
   array. **Every district lists what it offers four audiences — `who: { kids, men, women,
   family }`** (the owner's rule: a father leaves his son at a supervised activity and
   attends his own), shown by `WhoGrid` on the cards and in the map's side panel, and told
-  as a day in «يوم واحد، لكل فرد مساره». Styles are scoped under `.ld` in the page's own
+  as a day in «يوم واحد، لكل فرد مساره». The plan is organised like a great theme park (gate →
+  souq street → a central garden with a landmark, the observatory → a loop promenade
+  through the districts) but every district is themed on a REAL world (`world`:
+  Andalusia, the riads of Fez, the desert and oasis, Ibn Battuta's road, the House of
+  Wisdom) — the owner's rule is «بعيد عن عالم الخيالات». Every district has its own mosque
+  (marked on the map and on each card); the plaza is a large garden with separate family,
+  women-only and men's seating. Styles are scoped under `.ld` in the page's own
   CSS string; motion is CSS only (scroll-driven reveal where supported, none under
   reduced motion). Every picture carries «تصوّر مبدئي». A district with no picture shows its mark —
   add the image to its `img` when one is supplied (`public/land/`, ≤1600px WebP). No

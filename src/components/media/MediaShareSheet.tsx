@@ -143,7 +143,7 @@ export default function MediaShareSheet({ open, onClose, url, title, coverUrl, k
 
         {/* What is being shared */}
         <div className="flex items-center gap-3 rounded-2xl bg-[#FAF8F3] border border-gray-100 p-2.5 mb-5">
-          <MediaThumb kind={kind} coverUrl={coverUrl} title={title} className={`shrink-0 ${kind === 'reel' ? 'w-14 aspect-[9/16]' : 'w-24 aspect-video'}`} eager />
+          <MediaThumb kind={kind} coverUrl={coverUrl} title={title} className={`shrink-0 ${kind === 'reel' ? 'w-14 aspect-[9/16]' : 'w-24 aspect-video'}`} eager width={320} />
           <div className="min-w-0">
             <p className="font-bold text-sm text-[#1a1a2e] line-clamp-2">{title}</p>
             <p className="text-xs text-gray-400 truncate mt-0.5" dir="ltr">{url.replace(/^https?:\/\//, '')}</p>

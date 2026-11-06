@@ -30,12 +30,17 @@ export const R2_BUCKET = process.env.R2_BUCKET_NAME!;
 /** Public base, no trailing slash. */
 export const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL ?? '').replace(/\/+$/, '');
 
+export const R2_CACHE = 'public, max-age=31536000, immutable';
+
 export function r2PublicUrl(key: string): string {
   return `${R2_PUBLIC_URL}/${key}`;
 }
 
 export async function putToR2(key: string, body: Buffer, contentType: string): Promise<string> {
-  await r2.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, Body: body, ContentType: contentType }));
+  // Every key written here is unique (a uuid or a timestamp), so a changed file is always a
+  // new URL — which is what makes a year's immutable cache safe. Without it R2 sent no
+  // Cache-Control at all, and every visit fetched every picture again.
+  await r2.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, Body: body, ContentType: contentType, CacheControl: R2_CACHE }));
   return r2PublicUrl(key);
 }
 

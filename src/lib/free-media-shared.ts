@@ -36,6 +36,17 @@ export function formatDuration(sec: number | null | undefined): string | null {
   return h > 0 ? `${h}:${two(m)}:${two(r)}` : `${m}:${two(r)}`;
 }
 
+/**
+ * A small copy of a library picture, for the places that show it small (see
+ * src/app/api/media/thumb/route.ts). Anything that is not this library's own file is
+ * returned unchanged.
+ */
+export function mediaThumbUrl(url: string | null | undefined, w: 160 | 320 | 640): string | null {
+  if (!url) return null;
+  const ours = url.startsWith('/free-media/') || /\/free-media\//.test(url);
+  return ours ? `/api/media/thumb?w=${w}&u=${encodeURIComponent(url)}` : url;
+}
+
 /** The item's public page. */
 export const mediaPath = (id: number, kind?: MediaKind) => (kind === 'reel' ? `/media/reels/${id}` : `/media/${id}`);
 

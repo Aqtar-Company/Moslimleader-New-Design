@@ -54,3 +54,6 @@ public/membership-perks/
 # Next.js build
 .next/
 .claude/
+
+# media-library thumbnails, made on demand by /api/media/thumb
+/.cache/

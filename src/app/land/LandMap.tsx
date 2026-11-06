@@ -10,14 +10,14 @@ import { Art, Concept, Dot, WhoGrid } from './parts';
  *
  * An illustrated top-down plan (SVG, viewBox 1200 × 760) with HTML pins laid over it in
  * percentages, so labels stay crisp and reachable by keyboard. Everything on it can be
- * pressed: a district opens its card (picture, real-world theme, what it offers each
- * audience), a place (the gate, the souq, the observatory, the café, the elders' majlis…)
- * opens its own, and the map glides in to frame what was chosen. Above it, «من سيزور؟»
- * lights the districts that hold something for that audience, and the panel then lists
- * exactly what — across the whole Land when nothing is chosen. Layers switch the mosques
- * and the promenade on and off.
+ * pressed: a part of the Land opens its card (picture, what it offers children, men,
+ * women and the family together), a place (the gate, the store, the café, the elders'
+ * majlis, the events hall, the Giving Corner, each mosque) opens its own, and the map
+ * glides in to frame what was chosen. «من سيزور؟» lights the parts that hold something
+ * for that audience and lists it. A layer switches the mosques on and off.
  *
- * It is a «مخطط تصوّري»: no scale, no site, no figures — none were given.
+ * Only what the owner described or showed is named here — no counts, no invented
+ * landmarks. It is a «مخطط تصوّري»: no scale, no site.
  */
 
 const W = 1200;
@@ -37,27 +37,25 @@ type Poi = { id: string; x: number; y: number; icon: IconName | 'dome' | 'tower'
 
 const POIS: Poi[] = [
   { id: 'gate', x: 600, y: 726, icon: 'next', title: { ar: 'البوابة', en: 'The Gate' },
-    text: { ar: 'المدخل الرئيسي. من هنا يبدأ الطفل رحلته بجواز القائد، يُختم في كل منطقة يمرّ بها.', en: 'The main entrance. A child starts the journey here with a passport stamped in every district.' } },
-  { id: 'souq', x: 600, y: 632, icon: 'cart', title: { ar: 'شارع السوق', en: 'Souq Street' }, img: '/land/store.webp',
-    text: { ar: 'من البوابة إلى الحديقة: متجر مسلم ليدر «خذ الحكاية معك» بالكتب والألعاب والملابس، ومقهى العائلة.', en: 'From the gate to the garden: the Moslim Leader store («take the story home») and the family café.' } },
-  { id: 'cafe', x: 672, y: 590, icon: 'heart', title: { ar: 'مقهى العائلة', en: 'The Family Café' }, img: '/partnership/land-cafe.webp',
-    text: { ar: 'استراحة هادئة على شارع السوق، تلتقي فيها الأسرة بين نشاط وآخر — فاليوم هنا طويل.', en: 'A quiet pause on the souq street where the family meets between activities — the day here is long.' } },
-  { id: 'observatory', x: 600, y: 352, icon: 'tower', title: { ar: 'المرصد', en: 'The Observatory' }, district: 'plaza',
-    text: { ar: 'مَعلَم المكان، مستوحى من مراصد سمرقند وإسطنبول، يُرى من كل منطقة فلا يضيع أحد — ومنه يتعرّف الأطفال على علم الفلك في تراثنا.', en: 'The landmark, inspired by the observatories of Samarkand and Istanbul and seen from every district — and where children meet astronomy in our heritage.' } },
+    text: { ar: 'من هنا تبدأ الرحلة: يتسلّم الطفل «جواز القائد»، ويُختم في كل ركن يمرّ به.', en: 'The journey starts here: a child receives the «Leader’s Passport», stamped in every part of the Land.' } },
+  { id: 'store', x: 600, y: 632, icon: 'cart', title: { ar: 'متجر مسلم ليدر', en: 'The Moslim Leader Store' }, img: '/land/store.webp',
+    text: { ar: 'كتب مسلم ليدر وألعابها وملابسها وحقائبها في مكان واحد — «خذ الحكاية معك».', en: 'Moslim Leader’s books, games, clothes and bags in one place — «take the story with you».' } },
+  { id: 'cafe', x: 672, y: 590, icon: 'heart', title: { ar: 'مقهى العائلة', en: 'The Family Café' }, img: '/partnership/land-cafe.webp', district: 'plaza',
+    text: { ar: 'مجلس الأسرة بين نشاط وآخر.', en: 'Where the family sits together between one activity and the next.' } },
   { id: 'elders', x: 505, y: 420, icon: 'comment', title: { ar: 'مجلس كبار السن', en: 'The Elders’ Majlis' }, district: 'plaza',
-    text: { ar: 'في الحديقة، يحكي فيه الأجداد لأحفادهم حكايات زمان — فتأتي الأسرة بأجيالها الثلاثة. ومعه مجلس للجدّات.', en: 'In the garden, where grandparents tell their grandchildren the old stories — so the family comes in all three generations. With a grandmothers’ majlis beside it.' } },
+    text: { ar: 'في الحديقة الكبرى، يجتمع فيه الأجداد ويحكون لأحفادهم — فتأتي الأسرة بأجيالها الثلاثة.', en: 'In the Great Garden, where grandparents gather and tell their grandchildren the old stories — so the family comes in all three generations.' } },
   { id: 'events', x: 700, y: 430, icon: 'badge', title: { ar: 'قاعة المناسبات', en: 'The Events Hall' }, district: 'plaza',
-    text: { ar: 'على طرف الحديقة، لمناسبات الأسرة: العقيقة، وختم القرآن، وتخرّج حلقات التحفيظ.', en: 'At the garden’s edge, for family occasions: aqiqah, completing the Quran, graduating from memorisation circles.' } },
+    text: { ar: 'لمناسبات الأسرة: العقيقة، وختم القرآن، وتخرّج حلقات التحفيظ.', en: 'For the family’s occasions: aqiqah, completing the Quran, graduating from memorisation circles.' } },
   { id: 'giving', x: 82, y: 360, icon: 'heart', title: { ar: 'ركن العطاء', en: 'The Giving Corner' }, district: 'scouts',
-    text: { ar: 'يجهّز فيه الأولاد سلال الخير ويزرعون شجرة للحي، فيتعلّمون أن القائد يخدم الناس.', en: 'Where children pack food baskets and plant a tree for the neighbourhood, and learn that a leader serves people.' } },
+    text: { ar: 'يجهّز فيه الأبناء سلال الخير ويزرعون للحي، فيتعلّمون أن القائد يخدم الناس.', en: 'Where children pack food baskets and plant for the neighbourhood, and learn that a leader serves people.' } },
   // A mosque in every district.
   ...(['stories', 'games', 'scouts', 'girls', 'family'] as const).map(id => {
     const p = DPOS[id];
     const d = DISTRICTS.find(x => x.id === id)!;
     return {
       id: `mosque-${id}`, x: p.x + (p.x > 600 ? -p.w / 2 + 34 : p.w / 2 - 34), y: p.y - p.h / 2 + 34, icon: 'dome' as const, layer: 'mosque' as const, district: id,
-      title: { ar: `مسجد ${d.title.ar.split(':')[0]}`, en: `${d.title.en.split(':')[0]} mosque` },
-      text: { ar: 'في كل منطقة مسجد، فلا يبعد أحد عن الصلاة، وللسيدات مصلاهن.', en: 'Every district has its own mosque, so prayer is never far — with a prayer hall for women.' },
+      title: { ar: `مسجد ${d.title.ar}`, en: `Mosque — ${d.title.en}` },
+      text: { ar: 'في كل ركن من أرض القائد مسجد، فلا يبعد أحد عن الصلاة، وللنساء مصلاهن.', en: 'Every part of the Land has its own mosque, so prayer is never far — with a prayer hall for women.' },
     };
   }),
 ];
@@ -167,7 +165,7 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
   const tx = (ar: string, en: string) => (isEn ? en : ar);
   const [sel, setSel] = useState<Sel>(null);
   const [aud, setAud] = useState<Who | null>(null);
-  const [layers, setLayers] = useState({ mosques: true, promenade: true });
+  const [layers, setLayers] = useState({ mosques: true });
 
   const district = sel?.kind === 'district' ? DISTRICTS.find(d => d.id === sel.id) ?? null : null;
   const poi = sel?.kind === 'poi' ? POIS.find(p => p.id === sel.id) ?? null : null;
@@ -229,7 +227,7 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
             </button>
           ))}
           <span className="shrink-0 mx-1 h-5 w-px bg-white/15" aria-hidden />
-          {([['mosques', tx('المساجد', 'Mosques')], ['promenade', tx('الممشى', 'Promenade')]] as const).map(([k, label]) => (
+          {([['mosques', tx('المساجد', 'Mosques')]] as const).map(([k, label]) => (
             <button
               key={k}
               type="button"
@@ -258,15 +256,7 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
               <g stroke="#E3D2A6" strokeWidth="26" strokeLinecap="round" fill="none">
                 {Object.values(DPOS).map((p, i) => <line key={i} x1={C.x} y1={C.y} x2={p.x} y2={p.y} />)}
               </g>
-              {/* The promenade */}
-              {layers.promenade && (
-                <g fill="none">
-                  <ellipse cx={C.x} cy={C.y} rx="372" ry="262" stroke="#E3D2A6" strokeWidth="24" />
-                  <ellipse cx={C.x} cy={C.y} rx="372" ry="262" stroke="#C9A26B" strokeWidth="3" strokeDasharray="14 16" className="lm-walk" />
-                </g>
-              )}
-
-              {/* The souq street from the gate */}
+              {/* From the gate to the garden: the store and the café */}
               <rect x="562" y="530" width="76" height="200" rx="14" fill="#E8D7AE" />
               {[548, 578, 608, 638, 668].map((y, i) => (
                 <g key={y}>
@@ -283,7 +273,7 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
                 <g key={i}><circle cx={x} cy={y + 3} r={r} fill="#6E9460" opacity=".35" /><circle cx={x} cy={y} r={r} fill={i % 3 ? '#8DB57A' : '#7FA872'} /></g>
               ))}
 
-              {/* The garden and the observatory */}
+              {/* The Great Garden */}
               <g
                 className="cursor-pointer"
                 onClick={() => pick({ kind: 'district', id: 'plaza' })}
@@ -295,12 +285,11 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
                 {[[-150, -40], [-130, 60], [150, -40], [130, 60], [-60, -110], [60, -110]].map(([dx, dy], i) => (
                   <circle key={i} cx={C.x + dx} cy={C.y + dy} r="14" fill="#7FA872" />
                 ))}
-                {/* observatory */}
-                <g transform={`translate(${C.x} ${C.y - 40})`}>
-                  <ellipse cx="0" cy="58" rx="40" ry="10" fill="#2B3550" opacity=".18" />
-                  <path d="M-22 56 h44 l-8 -64 h-28z" fill="#FFF8E7" stroke="#2B3550" strokeOpacity=".55" strokeWidth="2.5" />
-                  <path d="M-20 -8 a20 20 0 0 1 40 0z" fill="#F5C518" stroke="#2B3550" strokeOpacity=".55" strokeWidth="2.5" />
-                  <line x1="0" y1="-28" x2="0" y2="-40" stroke="#2B3550" strokeWidth="3" strokeLinecap="round" />
+                {/* fountain */}
+                <g transform={`translate(${C.x} ${C.y - 30})`}>
+                  <ellipse cx="0" cy="20" rx="46" ry="16" fill="#9FD0DE" stroke="#7DB7C6" strokeWidth="2" />
+                  <ellipse cx="0" cy="12" rx="20" ry="8" fill="#FFF8E7" stroke="#2B3550" strokeOpacity=".4" />
+                  <path d="M0 12 v-22 M-8 -2 q8 -16 16 0" stroke="#7DB7C6" strokeWidth="3" fill="none" strokeLinecap="round" />
                 </g>
               </g>
 
@@ -338,8 +327,8 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
                   className={`absolute -translate-x-1/2 -translate-y-1/2 z-10 inline-flex items-center gap-1.5 rounded-full p-0.5 sm:ps-1 sm:pe-3 sm:py-1 text-[10px] sm:text-xs font-extrabold shadow-lg whitespace-nowrap transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${on ? 'bg-[#0A0F1E] text-white' : 'bg-white/95 text-[#18203A]'} ${dimmed(d) ? 'opacity-50' : ''}`}
                   style={pct(p.x, p.y)}
                 >
-                  <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full inline-flex items-center justify-center text-[10px] sm:text-[11px] font-black text-[#0A0F1E]" style={{ background: d.hue }}>{d.n}</span>
-                  <span className="disp hidden sm:inline">{L(d.title).split(':')[0]}</span>
+                  <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full inline-flex items-center justify-center text-[#0A0F1E]" style={{ background: d.hue }}><Icon name={d.icon} size={12} /></span>
+                  <span className="disp hidden sm:inline">{L(d.title)}</span>
                 </button>
               );
             })}
@@ -378,7 +367,7 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
           )}
           {!sel && (
             <span className="absolute top-3 end-3 z-30 rounded-full bg-[#0A0F1E]/80 backdrop-blur text-white px-3.5 py-2 text-[11px] sm:text-xs font-bold pointer-events-none">
-              {tx('اضغط على أي منطقة أو مكان', 'Tap any district or place')}
+              {tx('اضغط على أي ركن أو مكان', 'Tap any part or place')}
             </span>
           )}
         </div>
@@ -397,19 +386,18 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
                 </>
               ) : <Art d={district} />}
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F1E] to-transparent" aria-hidden />
-              <span className="absolute bottom-3 start-5 disp text-5xl font-black" style={{ color: district.hue }}>{district.n}</span>
+              <span className="absolute bottom-4 start-5 w-12 h-12 rounded-2xl inline-flex items-center justify-center text-[#0A0F1E]" style={{ background: district.hue }}><Icon name={district.icon} size={24} /></span>
             </div>
             <div className="p-5 sm:p-6">
               <div className="flex flex-wrap gap-1.5">
                 <span className="rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: `${district.hue}22`, color: district.hue }}>{L(district.tag)}</span>
-                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold bg-white/[0.06] text-[#F5C518]"><Dome size={12} /> {tx('فيها مسجد', 'Its own mosque')}</span>
+                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold bg-white/[0.06] text-[#F5C518]"><Dome size={12} /> {tx('فيه مسجد', 'Its own mosque')}</span>
               </div>
               <h3 className="disp mt-3 text-2xl font-extrabold leading-tight">{L(district.title)}</h3>
-              <p className="mt-1.5 text-sm"><span className="font-bold" style={{ color: district.hue }}>{L(district.world)}</span><span className="text-white/55"> — {L(district.worldNote)}</span></p>
               <p className="mt-3 text-white/70 leading-relaxed text-sm">{L(district.intro)}</p>
               <div className="mt-4"><WhoGrid d={district} isEn={isEn} focus={aud} /></div>
               <a href={`#d-${district.id}`} className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[#F5C518]">
-                {tx('انتقل إلى بطاقتها', 'Go to its card')} <Icon name="down" size={15} />
+                {tx('التفاصيل', 'Details')} <Icon name="down" size={15} />
               </a>
             </div>
           </>
@@ -433,8 +421,8 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
                 const d = DISTRICTS.find(x => x.id === poi.district)!;
                 return (
                   <button type="button" onClick={() => setSel({ kind: 'district', id: d.id })} className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/[0.07] hover:bg-white/[0.12] px-3.5 py-2 text-sm font-bold">
-                    <span className="w-5 h-5 rounded-full text-[10px] font-black text-[#0A0F1E] inline-flex items-center justify-center" style={{ background: d.hue }}>{d.n}</span>
-                    {tx('في منطقة: ', 'In: ')}{L(d.title).split(':')[0]}
+                    <span className="w-5 h-5 rounded-full text-[#0A0F1E] inline-flex items-center justify-center" style={{ background: d.hue }}><Icon name={d.icon} size={11} /></span>
+                    {tx('في: ', 'In: ')}{L(d.title)}
                   </button>
                 );
               })()}
@@ -444,22 +432,21 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
           // Nothing chosen: the Land at a glance — or, with an audience chosen, everything
           // the Land holds for it, district by district.
           <div className="p-5 sm:p-6">
-            <p className="text-xs font-bold text-[#E8C873]">{aud ? (isEn ? AUD[aud].en : AUD[aud].ar) : tx('نظرة على المكان', 'At a glance')}</p>
+            <p className="text-xs font-bold text-[#E8C873]">{aud ? (isEn ? AUD[aud].en : AUD[aud].ar) : tx('على الخريطة', 'On the map')}</p>
             <h3 className="disp mt-2 text-2xl font-extrabold leading-tight">
-              {aud ? tx('ما ينتظرهم في أرض القائد', 'What awaits them in the Land') : tx('ست مناطق، وحديقة في القلب', 'Six districts, a garden at the heart')}
+              {aud ? tx('ما ينتظرهم في أرض القائد', 'What awaits them in the Land') : tx('أركان أرض القائد', 'The parts of the Land')}
             </h3>
             <ul className="mt-4 grid gap-2">
               {[...DISTRICTS].sort((a, b) => a.n - b.n).map(d => (
                 <li key={d.id}>
                   <button type="button" onClick={() => pick({ kind: 'district', id: d.id })} className={`w-full text-start rounded-2xl bg-white/[0.05] hover:bg-white/[0.1] p-3 transition ${aud && !has(d, aud) ? 'opacity-45' : ''}`}>
                     <span className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full text-[11px] font-black text-[#0A0F1E] inline-flex items-center justify-center shrink-0" style={{ background: d.hue }}>{d.n}</span>
-                      <span className="font-bold">{L(d.title).split(':')[0]}</span>
-                      <span className="ms-auto text-[11px] text-white/50">{L(d.world)}</span>
+                      <span className="w-6 h-6 rounded-full text-[#0A0F1E] inline-flex items-center justify-center shrink-0" style={{ background: d.hue }}><Icon name={d.icon} size={13} /></span>
+                      <span className="font-bold">{L(d.title)}</span>
                     </span>
                     {aud && (
                       <span className="mt-1.5 block ps-8 text-[13px] text-white/75 leading-snug">
-                        {has(d, aud) ? d.who[aud].map(L).join(' · ') : (d.onlyFor ? tx('خاص بالنساء', 'Women only') : '—')}
+                        {has(d, aud) ? d.who[aud].map(L).join(' · ') : (d.onlyFor ? tx('خاص بالبنات والسيدات', 'For girls and women only') : '—')}
                       </span>
                     )}
                   </button>
@@ -468,7 +455,7 @@ export default function LandMap({ isEn }: { isEn: boolean }) {
             </ul>
             {!aud && (
               <p className="mt-4 text-sm text-white/60 leading-relaxed">
-                {tx('اختر من فوق الخريطة «من سيزور؟» لترى ما ينتظر الأطفال أو الرجال أو النساء أو الأسرة معاً في كل منطقة.', 'Choose «Who is visiting?» above the map to see what awaits children, men, women or the whole family in each district.')}
+                {tx('في كل ركن ما يخص الأطفال، وما يخص الرجال، وما يخص النساء، وما تعيشه الأسرة معاً. اختر «من سيزور؟» فوق الخريطة لترى ما ينتظر كلاً منهم.', 'Every part holds something for children, for men, for women, and for the family together. Choose «Who is visiting?» above the map to see what awaits each.')}
               </p>
             )}
           </div>

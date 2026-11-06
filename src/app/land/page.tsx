@@ -10,23 +10,23 @@ import LandMap from './LandMap';
 /**
  * «أرض القائد المسلم» — Moslim Leader Land, the future project as its own page.
  *
- * Design: cinematic and contemporary — a full-bleed hero, a moving strip of district
- * names, a manifesto in large type, the principles as a bento grid, «يوم واحد، لكل فرد
- * مساره» (four family members on four paths that meet again), an INTERACTIVE masterplan
- * (tap a district, its panel opens beside the map with what it offers each of the four
- * audiences), and the districts as big picture cards (a bento grid on a computer, a swipe
- * row on a phone). Motion is CSS only and never hides anything: the reveal uses
- * scroll-driven animations where supported and the page is complete without them;
- * everything stops under prefers-reduced-motion. All styles are scoped under `.ld`.
+ * The idea, in the owner's words: «روّحوا القلوبَ ساعةً بعد ساعة» (attributed to Imam Ali,
+ * so it is introduced with «يُروى عن»). The family comes in to rest and leaves more united —
+ * things that strengthen its bonds, its minds and its thinking; no triviality, no waste.
  *
- * The owner's rule for the programme: EVERY district holds something for children, for
- * men only, for women only, and for the family together — so a father can leave his son
- * at a supervised activity and attend something himself. `who` carries those four lists.
+ * Order: the interactive map first (LandMap.tsx), the moving strip, the founding idea, «لكل
+ * فرد مساره» (a day told as four paths that meet), the parts of the Land as cards, a gallery
+ * strip, and the call to partners.
  *
- * Content rules: every picture is a CONCEPT image labelled «تصوّر مبدئي»; the map is a
- * «مخطط تصوّري» with no scale and no site; no figures, dates or locations — none were
- * given. Pictures: public/land/ and public/partnership/land-*.webp. A district without a
- * picture gets drawn art; add its image to `img` when one is supplied.
+ * Writing rules the owner set — keep them:
+ *  - Refined Arabic, no borrowed Western words: no «ملاهي», no «سينما» («دار العرض», «دار
+ *    الألعاب» instead). No storybook tone («أبطال الحكايات» and the like).
+ *  - No counts («ست مناطق») and nothing invented: only what the owner described or showed.
+ *  - Every part holds something for children, men only, women only, and the family
+ *    together (`who` in data.ts); every part has a mosque.
+ *  - Every picture is a CONCEPT image labelled «تصوّر مبدئي»; the map is a «مخطط تصوّري».
+ *
+ * All styles are scoped under `.ld`; motion is CSS only and stops under reduced motion.
  */
 
 const GALLERY = [
@@ -83,18 +83,17 @@ function DistrictCard({ d, isEn }: { d: District; isEn: boolean }) {
           </>
         ) : <Art d={d} />}
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0F1630] to-transparent" aria-hidden />
-        <div className="absolute top-3 end-3 z-10 glass rounded-full w-11 h-11 flex items-center justify-center font-black tabular-nums disp">{d.n}</div>
+        <div className="absolute top-3 end-3 z-10 glass rounded-full w-11 h-11 flex items-center justify-center"><Icon name={d.icon} size={20} /></div>
       </div>
       <div className="flex-1 flex flex-col p-5 sm:p-6 -mt-6 relative">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: `${d.hue}22`, color: d.hue }}>{L(d.tag)}</span>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold bg-white/[0.06] text-[#F5C518]">
             <svg width="13" height="13" viewBox="0 0 26 26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 20h14v-5a7 7 0 0 0-14 0z M13 8V5" /></svg>
-            {isEn ? 'Its own mosque' : 'فيها مسجد'}
+            {isEn ? 'Its own mosque' : 'فيه مسجد'}
           </span>
         </div>
         <h3 className="disp mt-3 text-2xl sm:text-[26px] font-extrabold leading-tight">{L(d.title)}</h3>
-        <p className="mt-1.5 text-[13px] font-bold" style={{ color: d.hue }}>{isEn ? 'Themed on: ' : 'مستوحاة من: '}{L(d.world)}</p>
         {/* Four lines on the card; the whole text is in the plan's panel. */}
         <p className="mt-2 text-sm leading-relaxed text-white/70 line-clamp-4" title={L(d.intro)}>{L(d.intro)}</p>
         <div className="mt-auto pt-5"><WhoGrid d={d} isEn={isEn} /></div>
@@ -111,37 +110,36 @@ type Step = { place: L; what: L };
 const JOURNEYS: { w: Who; who: L; steps: Step[] }[] = [
   {
     w: 'men', who: { ar: 'الأب', en: 'The father' }, steps: [
-      { place: { ar: 'الكشافة', en: 'Scouts' }, what: { ar: 'يوصل ابنه إلى قادة الكشافة', en: 'Drops his son with the scout leaders' } },
-      { place: { ar: 'الوعي', en: 'Awareness' }, what: { ar: 'يحضر ندوة في ملتقى الآباء', en: 'Attends a talk at the fathers’ forum' } },
-      { place: { ar: 'الألعاب', en: 'Games' }, what: { ar: 'تحدٍّ مع الشباب', en: 'A challenge with the youth' } },
+      { place: { ar: 'الكشافة', en: 'The Scouts' }, what: { ar: 'يترك ابنه مع قادة الكشافة', en: 'Leaves his son with the scout leaders' } },
+      { place: { ar: 'الملتقى', en: 'The Forum' }, what: { ar: 'يحضر مجلساً في ملتقى الآباء', en: 'Attends a session at the fathers’ forum' } },
+      { place: { ar: 'المسجد', en: 'The mosque' }, what: { ar: 'يصلّي مع ابنه', en: 'Prays with his son' } },
     ],
   },
   {
     w: 'women', who: { ar: 'الأم', en: 'The mother' }, steps: [
-      { place: { ar: 'نادي السيدات', en: 'Women’s club' }, what: { ar: 'رياضة وعافية بخصوصية', en: 'Private sport and wellbeing' } },
-      { place: { ar: 'الوعي', en: 'Awareness' }, what: { ar: 'ملتقى الأمهات', en: 'The mothers’ forum' } },
-      { place: { ar: 'الحكايات', en: 'Stories' }, what: { ar: 'عرض خاص بالسيدات', en: 'A women-only screening' } },
+      { place: { ar: 'نادي السيدات', en: 'The Women’s Club' }, what: { ar: 'رياضة وعافية بخصوصية', en: 'Sport and wellbeing in privacy' } },
+      { place: { ar: 'الملتقى', en: 'The Forum' }, what: { ar: 'ملتقى الأمهات', en: 'The mothers’ forum' } },
+      { place: { ar: 'نادي البنات', en: 'The Girls’ Club' }, what: { ar: 'تلحق بابنتها', en: 'Joins her daughter' } },
     ],
   },
   {
     w: 'kids', who: { ar: 'الابن', en: 'The son' }, steps: [
-      { place: { ar: 'الكشافة', en: 'Scouts' }, what: { ar: 'جدار التسلّق والحبال', en: 'The climbing wall and ropes' } },
-      { place: { ar: 'الحكايات', en: 'Stories' }, what: { ar: 'قاعة مغامرات الحكاية', en: 'The story adventure hall' } },
-      { place: { ar: 'الألعاب', en: 'Games' }, what: { ar: 'لعبة بشخصيات مسلم ليدر', en: 'A Moslim Leader character game' } },
-    ],
-  },
-  {
-    w: 'men', who: { ar: 'الجد', en: 'The grandfather' }, steps: [
-      { place: { ar: 'الحديقة', en: 'The garden' }, what: { ar: 'مجلس كبار السن', en: 'The elders’ majlis' } },
-      { place: { ar: 'الحديقة', en: 'The garden' }, what: { ar: 'يحكي لأحفاده حكايات زمان', en: 'Tells his grandchildren the old stories' } },
-      { place: { ar: 'الكشافة', en: 'Scouts' }, what: { ar: 'يزرع مع حفيده شجرة في ركن العطاء', en: 'Plants a tree with his grandson at the Giving Corner' } },
+      { place: { ar: 'الكشافة', en: 'The Scouts' }, what: { ar: 'التسلّق والحبال', en: 'Climbing and ropes' } },
+      { place: { ar: 'الكشافة', en: 'The Scouts' }, what: { ar: 'ركن العطاء', en: 'The Giving Corner' } },
+      { place: { ar: 'دار الألعاب', en: 'The House of Games' }, what: { ar: 'لعبة «ذاكر»', en: 'The Zaker game' } },
     ],
   },
   {
     w: 'kids', who: { ar: 'الابنة', en: 'The daughter' }, steps: [
-      { place: { ar: 'نادي البنات', en: 'Girls’ club' }, what: { ar: 'ركن «حكاية تصنع أثراً»', en: 'The story corner' } },
-      { place: { ar: 'نادي البنات', en: 'Girls’ club' }, what: { ar: 'رسم وأشغال', en: 'Drawing and crafts' } },
-      { place: { ar: 'الألعاب', en: 'Games' }, what: { ar: 'صالة ألعاب البنات', en: 'The girls’ games hall' } },
+      { place: { ar: 'نادي البنات', en: 'The Girls’ Club' }, what: { ar: 'ركن «حكاية تصنع أثراً»', en: 'The «A story that leaves a mark» corner' } },
+      { place: { ar: 'نادي البنات', en: 'The Girls’ Club' }, what: { ar: 'رياضة البنات', en: 'Sport for girls' } },
+      { place: { ar: 'دار الألعاب', en: 'The House of Games' }, what: { ar: 'لعبة «رحيمة»', en: 'The Rahima game' } },
+    ],
+  },
+  {
+    w: 'men', who: { ar: 'الجد', en: 'The grandfather' }, steps: [
+      { place: { ar: 'الحديقة الكبرى', en: 'The Great Garden' }, what: { ar: 'مجلس كبار السن', en: 'The elders’ majlis' } },
+      { place: { ar: 'الحديقة الكبرى', en: 'The Great Garden' }, what: { ar: 'يحكي لأحفاده', en: 'Tells his grandchildren the old stories' } },
     ],
   },
 ];
@@ -154,10 +152,10 @@ function FamilyDay({ isEn }: { isEn: boolean }) {
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-10">
         <div>
           <p className="text-sm font-bold text-[#5C6478]">{tx('لكل الأعمار', 'For every age')}</p>
-          <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('يوم واحد، لكل فرد مساره', 'One day, a path for each')}</h2>
+          <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('لكل فرد مساره، وللأسرة لقاؤها', 'A path for each, a meeting for all')}</h2>
         </div>
         <p className="max-w-md text-[#5C6478] leading-relaxed">
-          {tx('في كل منطقة ما يناسب الأطفال، وما هو خاص بالرجال، وما هو خاص بالنساء، وما تعيشه الأسرة معاً — فيترك الأب ابنه في نشاط بإشراف، ويحضر هو ما يخصه، ويجد الأجداد مجلسهم، ثم تلتقي الأسرة بأجيالها الثلاثة.', 'Every district holds something for children, something for men only, something for women only, and something the family lives together — so a father leaves his son at a supervised activity and attends his own, the grandparents find their majlis, and the family meets again, all three generations.')}
+          {tx('في كل ركن ما يخص الأطفال، وما يخص الرجال، وما يخص النساء، وما تعيشه الأسرة مجتمعة. يترك الأب ابنه في نشاط بإشراف ويحضر ما يخصه، وتمضي الأم إلى ما يخصها، ويجد الأجداد مجلسهم — ثم تلتقي الأسرة.', 'Every part holds something for children, for men, for women, and for the family together. A father leaves his son at a supervised activity and attends his own, the mother goes to hers, the grandparents find their majlis — and then the family meets.')}
         </p>
       </div>
 
@@ -201,11 +199,10 @@ function FamilyDay({ isEn }: { isEn: boolean }) {
         </div>
         <ol className="relative flex flex-wrap gap-2 lg:ms-auto">
           {[
-            { ar: 'صلاة الجماعة في المسجد', en: 'Prayer together at the mosque' },
-            { ar: 'جلسة في حديقة الساحة', en: 'A seat in the plaza garden' },
+            { ar: 'صلاة الجماعة', en: 'Prayer together' },
+            { ar: 'جلسة في الحديقة الكبرى', en: 'A seat in the Great Garden' },
             { ar: 'مقهى العائلة', en: 'The family café' },
-            { ar: 'عرض سينمائي عائلي', en: 'A family screening' },
-            { ar: 'المتجر: خذ الحكاية معك', en: 'The store: take the story home' },
+            { ar: 'عرض في دار العرض', en: 'A screening together' },
           ].map((s, i) => (
             <li key={s.ar} className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 font-bold text-sm">
               <span className="w-5 h-5 rounded-full bg-[#9BCB8F] text-[#0A0F1E] text-[11px] font-black inline-flex items-center justify-center tabular-nums">{i + 1}</span>
@@ -224,14 +221,7 @@ export default function LandPage() {
   const tx = (ar: string, en: string) => (isEn ? en : ar);
   const L = (l: L) => (isEn ? l.en : l.ar);
 
-  const principles: { n: string; icon: IconName; t: L; s: L; span: string }[] = [
-    { n: '01', icon: 'badge', span: 'lg:col-span-2', t: { ar: 'الإحسان', en: 'Ihsan' }, s: { ar: 'إتقان في كل ما نصنع، وأحسن ما يكون في معاملة الناس. هو المعيار الذي تُقاس به كل لعبة وكل خدمة.', en: 'Excellence in everything we make, and our best in how we treat people — the measure of every game and every service.' } },
-    { n: '02', icon: 'check', span: '', t: { ar: 'الاقتصاد وعدم التبذير', en: 'Moderation, no waste' }, s: { ar: 'متعة لا تقوم على الإسراف، ولا تعلّم الطفل الاستهلاك.', en: 'Joy that does not rest on excess, nor teach a child to consume.' } },
-    { n: '03', icon: 'info', span: '', t: { ar: 'احترام العقل', en: 'Respect for the mind' }, s: { ar: 'نشاط يفتح باب السؤال والفهم، ولا يستخفّ بالطفل.', en: 'Activities that invite questions, never talking down.' } },
-    { n: '04', icon: 'heart', span: 'lg:col-span-2', t: { ar: 'روابط الأسرة', en: 'Family bonds' }, s: { ar: 'أنشطة تُعاش معاً، تقرّب الأب والأم من أبنائهما بدل أن ينعزل كلٌّ أمام شاشته.', en: 'Activities lived together, bringing parents closer to their children instead of each to a screen.' } },
-  ];
-
-  const names = DISTRICTS.map(d => L(d.title).split(':')[0]);
+  const names = [...DISTRICTS].sort((a, b) => a.n - b.n).map(d => L(d.title));
 
   return (
     <div className="ld" dir={isEn ? 'ltr' : 'rtl'}>
@@ -252,7 +242,7 @@ export default function LandPage() {
                 {tx('أرض القائد المسلم', 'The Land of the Muslim Leader')}
               </h1>
               <p className="mt-4 max-w-2xl text-white/75 leading-relaxed">
-                {tx('مكان كبير جداً للأسرة المسلمة: ست مناطق حول حديقة كبيرة، لكل فرد فيه مساره وللأسرة لقاؤها، وفي كل منطقة مسجد. تجوّل في الخريطة — اضغط على أي منطقة أو مكان لترى ما فيه.', 'A very large place for the Muslim family: six districts around a large garden, a path for each member and a meeting place for all, and a mosque in every district. Walk the map — tap any district or place to see what is there.')}
+                {tx('نبني أكبر وجهة ترويحية للأسرة المسلمة في العالم: أرضاً واسعة تدخلها الأسرة لتستريح، وتخرج منها أشدّ تماسكاً وأوسع فكراً. لا يكفيها يوم واحد، وتُبنى في أكثر من بلد. اضغط على أي ركن في الخريطة لترى ما فيه.', 'We are building the largest recreational destination for the Muslim family in the world: a wide land a family enters to rest and leaves closer and broader of mind. One day is not enough for it, and it will be built in more than one country. Tap any part of the map to see what it holds.')}
               </p>
             </div>
             <div className="flex flex-wrap gap-3 shrink-0">
@@ -260,29 +250,28 @@ export default function LandPage() {
                 {tx('شارك في بنائها', 'Help build it')}
               </Link>
               <a href="#districts" className="glass inline-flex items-center gap-2 text-white font-bold px-5 py-3 rounded-full hover:bg-white/20 transition">
-                {tx('المناطق بالتفصيل', 'The districts')} <Icon name="down" size={16} />
+                {tx('أركان المكان', 'The parts of the Land')} <Icon name="down" size={16} />
               </a>
             </div>
           </div>
 
           <LandMap isEn={isEn} />
 
-          {/* How the place is organised — the way the great theme parks are, with real worlds
-              instead of fantasy ones. */}
-          <ol className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* How the place is organised — the owner's own rules, nothing added. */}
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { n: '1', t: { ar: 'بوابة وشارع سوق', en: 'A gate and a souq street' }, s: { ar: 'يدخل الزائر من البوابة إلى شارع سوق فيه المتجر والمقهى، يقوده إلى قلب المكان.', en: 'Visitors enter through the gate onto a souq street — store and café — that leads to the heart of the place.' } },
-              { n: '2', t: { ar: 'حديقة ومَعلَم في المنتصف', en: 'A garden and a landmark' }, s: { ar: 'حديقة كبيرة يتوسطها المرصد، يُرى من كل منطقة فلا يضيع أحد.', en: 'A large garden around the observatory, seen from every district so no one gets lost.' } },
-              { n: '3', t: { ar: 'عوالم حقيقية لا خيالية', en: 'Real worlds, not fantasy' }, s: { ar: 'كل منطقة مستوحاة من عالم حقيقي من تاريخنا أو طبيعتنا: الأندلس، بيت الحكمة، الصحراء، رحلات ابن بطوطة.', en: 'Each district is themed on a real world from our history or nature: Andalusia, the House of Wisdom, the desert, Ibn Battuta’s journeys.' } },
-              { n: '4', t: { ar: 'ممشى يربط العوالم', en: 'A promenade that links them' }, s: { ar: 'ممشى دائري يمر بكل المناطق، وجواز الرحلة يُختم في كل محطة منه.', en: 'A loop promenade through every district, and a passport stamped at each stop.' } },
+              { icon: 'heart' as IconName, t: { ar: 'لكل أفراد الأسرة', en: 'For every member of the family' }, s: { ar: 'في كل ركن ما يخص الأطفال، وما يخص الرجال، وما يخص النساء، وما تعيشه الأسرة مجتمعة.', en: 'In every part: something for children, for men, for women, and for the family together.' } },
+              { icon: 'moon' as IconName, t: { ar: 'في كل ركن مسجد', en: 'A mosque in every part' }, s: { ar: 'فلا يبعد أحد عن الصلاة، وللنساء مصلاهن.', en: 'So prayer is never far — with a prayer hall for women.' } },
+              { icon: 'image' as IconName, t: { ar: 'حديقة كبرى في القلب', en: 'A great garden at the heart' }, s: { ar: 'بأماكن جلسات مختلفة، تلتقي عندها الأسرة بعد أن يمضي كلٌّ في مساره.', en: 'With many kinds of seating, where the family meets after each has gone their own way.' } },
+              { icon: 'zap' as IconName, t: { ar: 'من أصلنا لا من الخيال', en: 'From our roots, not from fantasy' }, s: { ar: 'تخطيط المدن الترفيهية الكبرى، بروحٍ من تاريخنا وطبيعتنا لا من عوالم الخيال.', en: 'Planned like the great recreational cities, in the spirit of our history and nature, not of fantasy worlds.' } },
             ].map(c => (
-              <li key={c.n} className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-5">
-                <span className="disp text-[#F5C518] text-3xl font-black tabular-nums">{c.n}</span>
-                <h3 className="disp mt-2 text-lg font-extrabold">{L(c.t)}</h3>
+              <li key={c.t.ar} className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-5">
+                <span className="w-10 h-10 rounded-xl bg-[#F5C518]/15 text-[#F5C518] inline-flex items-center justify-center"><Icon name={c.icon} size={20} /></span>
+                <h3 className="disp mt-3 text-lg font-extrabold">{L(c.t)}</h3>
                 <p className="mt-1 text-sm leading-relaxed text-white/65">{L(c.s)}</p>
               </li>
             ))}
-          </ol>
+          </ul>
         </div>
       </section>
 
@@ -297,56 +286,27 @@ export default function LandPage() {
         </div>
       </div>
 
-      {/* ── Manifesto ── */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-8 py-20 sm:py-28">
-        <p className="rise disp text-[28px] sm:text-5xl font-extrabold leading-[1.4] sm:leading-[1.35] text-[#18203A]" style={{ textWrap: 'balance' } as React.CSSProperties}>
-          {isEn ? (
-            <>A place where a child meets the <span className="text-[#C9A227]">heroes of the stories</span>, the family <span className="text-[#C9A227]">plays together</span>, and parents find <span className="text-[#C9A227]">support</span> — from a forum of ideas to fatwa and counselling.</>
-          ) : (
-            <>مكان يلتقي فيه الطفل <span className="text-[#C9A227]">أبطال الحكايات</span>، وتلعب فيه الأسرة <span className="text-[#C9A227]">معاً</span>، ويجد فيه الأب والأم <span className="text-[#C9A227]">ما يعينهما</span> — من الملتقى الفكري إلى الفتوى والإرشاد الأسري.</>
-          )}
-        </p>
-      </section>
-
-      {/* ── Principles ── */}
-      <section className="bg-[#DDE3EA]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-24">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-10">
-            <div>
-              <p className="text-sm font-bold text-[#5C6478]">{tx('البصائر', 'The principles')}</p>
-              <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('فلسفة واحدة في كل نشاط', 'One philosophy in every activity')}</h2>
-            </div>
-            <p className="max-w-md text-[#5C6478] leading-relaxed">{tx('من السينما إلى الملاهي ومن الكشافة إلى المقهى — كل ما في المكان يقوم على البصائر نفسها.', 'From the cinema to the rides, from the scouts to the café — everything rests on the same principles.')}</p>
-          </div>
-          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {principles.map(p => (
-              <div key={p.n} className={`rise glass-light rounded-[28px] p-6 sm:p-7 min-h-[220px] flex flex-col justify-between ${p.span}`}>
-                <div className="flex items-start justify-between">
-                  <span className="w-12 h-12 rounded-2xl bg-[#0A0F1E] text-[#F5C518] inline-flex items-center justify-center"><Icon name={p.icon} size={22} /></span>
-                  <span className="disp text-5xl font-black text-[#0A0F1E]/10 tabular-nums" dir="ltr">{p.n}</span>
-                </div>
-                <div>
-                  <h3 className="disp mt-6 text-2xl sm:text-[28px] font-extrabold">{L(p.t)}</h3>
-                  <p className="mt-2 text-[#5C6478] leading-relaxed">{L(p.s)}</p>
-                </div>
-              </div>
-            ))}
-            <div className="rise sm:col-span-2 lg:col-span-4 rounded-[28px] bg-[#0A0F1E] text-white p-6 sm:p-7 flex flex-col md:flex-row md:items-center gap-4">
-              <span className="disp shrink-0 text-xl font-extrabold text-[#F5C518]">{tx('لا مكان هنا لـ', 'No place here for')}</span>
-              <ul className="flex flex-wrap gap-2">
-                {[
-                  { ar: 'الفردية والأنانية', en: 'Individualism and selfishness' },
-                  { ar: 'الممارسات الإدمانية', en: 'Addictive practices' },
-                  { ar: 'بيت الرعب والخوف كمتعة', en: 'Horror houses, fear as fun' },
-                  { ar: 'ما يعرّض حياة أحد للخطر', en: 'Anything that risks a life' },
-                ].map(r => (
-                  <li key={r.ar} className="glass inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold">
-                    <Icon name="close" size={14} className="text-[#F5A5A5]" /> {L(r)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+      {/* ── The founding idea ── */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-8 py-20 sm:py-28">
+        <figure className="rise">
+          <blockquote className="disp text-[34px] sm:text-6xl font-black leading-[1.25] text-[#18203A]" style={{ textWrap: 'balance' } as React.CSSProperties}>
+            {isEn ? '“Refresh the hearts, hour after hour.”' : '«روّحوا القلوبَ ساعةً بعد ساعة»'}
+          </blockquote>
+          <figcaption className="mt-4 text-[#5C6478] font-bold">{tx('يُروى عن الإمام علي بن أبي طالب رضي الله عنه', 'Attributed to Imam Ali ibn Abi Talib')}</figcaption>
+        </figure>
+        <div className="rise mt-10 grid gap-6 md:grid-cols-2 text-lg leading-loose text-[#18203A]">
+          <p>
+            {tx(
+              'على هذا المعنى تقوم أرض القائد المسلم. الترويح عندنا ليس هروباً من الحياة ولا استهلاكاً لها، بل استراحةٌ تعيد للقلب صفاءه، وتعيد الأسرة إلى بعضها.',
+              'Moslim Leader Land is built on that meaning. Recreation, for us, is neither an escape from life nor a way of consuming it, but a rest that restores the heart and brings a family back to itself.',
+            )}
+          </p>
+          <p>
+            {tx(
+              'تدخلها الأسرة لتستريح، وتخرج منها أشدّ تماسكاً: كل ما فيها يقوّي روابطها، ويغذّي عقولها، ويوسّع فكرها. لا تفاهة فيها ولا إسراف، ولا ما يُدمن عليه الطفل أو يعزله عن أهله، ولا بيت رعب ولا ما يعرّض حياةً للخطر.',
+              'A family enters it to rest and leaves it more united: everything in it strengthens their bonds, feeds their minds and widens their thinking. No triviality, no waste, nothing that hooks a child or cuts them off from their family, no horror house and nothing that risks a life.',
+            )}
+          </p>
         </div>
       </section>
 
@@ -357,10 +317,10 @@ export default function LandPage() {
       <section id="districts" className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-24 scroll-mt-24">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-10">
           <div>
-            <p className="text-sm font-bold text-[#5C6478]">{tx('المناطق', 'The districts')}</p>
-            <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('أماكن تعيش فيها القيم', 'Places where values are lived')}</h2>
+            <p className="text-sm font-bold text-[#5C6478]">{tx('أركان المكان', 'The parts of the Land')}</p>
+            <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('في كل ركن ما يخص كل فرد', 'Something for everyone, in every part')}</h2>
           </div>
-          <p className="max-w-md text-[#5C6478] leading-relaxed lg:hidden">{tx('اسحب لترى كل المناطق.', 'Swipe to see every district.')}</p>
+          <p className="max-w-md text-[#5C6478] leading-relaxed lg:hidden">{tx('اسحب لترى بقية الأركان.', 'Swipe to see the other parts.')}</p>
         </div>
         {/* Phone: a swipe row. Computer: three equal columns. */}
         <div className="snap -mx-4 px-4 flex gap-3 overflow-x-auto pb-2 lg:mx-0 lg:px-0 lg:overflow-visible lg:grid lg:grid-cols-3 lg:gap-5">
@@ -393,9 +353,9 @@ export default function LandPage() {
           <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-l from-[#0A0F1E] via-[#0A0F1E]/85 to-[#0A0F1E]/40" aria-hidden />
           <div className="relative p-8 sm:p-14 max-w-2xl">
             <p className="serif text-xl text-[#E8C873]" dir="ltr" style={{ textAlign: isEn ? 'left' : 'right' }}>Build it with us</p>
-            <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('أرض القائد المسلم تُبنى مع شركاء', 'The Land is built with partners')}</h2>
+            <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('نبنيها مع من يؤمن بها', 'We build it with those who believe in it')}</h2>
             <p className="mt-4 text-white/75 leading-relaxed">
-              {tx('هذا مشروع مستقبلي وتصوّر مبدئي، يتطوّر مع الشركاء ودراسة كل موقع. إن كنت مستثمراً أو مشغّلاً أو جهة تؤمن بالفكرة، فمكانك معنا.', 'A future project and an early concept that grows with partners and the study of each site. If you are an investor, an operator or an organisation that believes in it, there is a place for you.')}
+              {tx('أرض القائد المسلم مشروع مستقبلي، وما في هذه الصفحة تصوّر مبدئي يكتمل مع الشركاء ودراسة كل موقع. إن كنت مستثمراً أو مشغّلاً أو جهة ترى في الأسرة المسلمة ما نراه، فمكانك معنا.', 'Moslim Leader Land is a future project, and this page is an early concept completed with partners and the study of each site. If you are an investor, an operator or an organisation that sees in the Muslim family what we see, there is a place for you.')}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/partnership#request" className="inline-flex items-center gap-2 bg-[#F5C518] text-[#0A0F1E] font-black px-7 py-3.5 rounded-full hover:bg-white transition">

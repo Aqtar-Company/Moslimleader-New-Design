@@ -94,16 +94,16 @@ const DISTRICTS: District[] = [
     title: { ar: 'الكشافة والمغامرة', en: 'Scouts & Adventure' },
     tag: { ar: 'شخصية قوية وغد أفضل', en: 'Strong character, brighter tomorrow' },
     intro: {
-      ar: 'حبال وعُقد، وجدار تسلّق، وجسور معلّقة، وتخييم بإشراف قادة — مغامرة تبني الشجاعة والانضباط وروح الفريق.',
-      en: 'Ropes and knots, a climbing wall, rope bridges and camping under trained leaders — adventure that builds courage, discipline and team spirit.',
+      ar: 'حبال وعُقد، وجدار تسلّق، وجسور معلّقة، وتخييم بإشراف قادة — مغامرة تبني الشجاعة والانضباط وروح الفريق. ومنها يخرج الأولاد إلى ركن العطاء: يجهّزون سلال الخير ويزرعون شجرة للحي، فيتعلّمون أن القائد يخدم الناس.',
+      en: 'Ropes and knots, a climbing wall, rope bridges and camping under trained leaders — adventure that builds courage, discipline and team spirit. From there the children go to the Giving Corner: they pack food baskets and plant a tree for the neighbourhood, and learn that a leader serves people.',
     },
     world: { ar: 'الصحراء والواحة', en: 'The desert and the oasis' },
     worldNote: { ar: 'خيام وصخور وكثبان، ونجوم سماء الصحراء التي اهتدى بها المسافرون', en: 'Tents, rocks and dunes, and the desert stars travellers steered by' },
     who: {
-      kids: [{ ar: 'الكشافة للأولاد بإشراف قادة', en: 'Supervised scouts for boys' }],
+      kids: [{ ar: 'الكشافة للأولاد بإشراف قادة', en: 'Supervised scouts for boys' }, { ar: 'ركن العطاء: سلال الخير وزراعة شجرة', en: 'The Giving Corner: food baskets, a tree to plant' }],
       men: [{ ar: 'تحديات الآباء والشباب', en: 'Challenges for fathers & youth' }, { ar: 'صالون الرجال', en: 'Men’s salon' }],
       women: [{ ar: 'رحلات طبيعة خاصة بالسيدات والبنات', en: 'Women-and-girls nature outings' }],
-      family: [{ ar: 'تخييم عائلي', en: 'Family camping' }],
+      family: [{ ar: 'تخييم عائلي', en: 'Family camping' }, { ar: 'يوم تطوّع عائلي', en: 'A family volunteering day' }],
     },
   },
   {
@@ -128,16 +128,16 @@ const DISTRICTS: District[] = [
     title: { ar: 'الوعي: الأسرة والفكر', en: 'Awareness: Family & Thought' },
     tag: { ar: 'نبني أسرة واعية', en: 'Building a mindful family' },
     intro: {
-      ar: 'ملتقى ثقافي وفكري عن الأسرة ودعمها، ومركز للفتوى والإرشاد يعين الزوجين على حل خلافاتهما — بينما يتعلّم الأبناء في ورش القيم بجوار آبائهم.',
-      en: 'A cultural and intellectual forum on the family, and a fatwa and counselling centre that helps couples resolve disputes — while the children learn in values workshops next door.',
+      ar: 'ملتقى ثقافي وفكري عن الأسرة ودعمها، ومركز للفتوى والإرشاد يعين الزوجين على حل خلافاتهما، ومركز أسرة متكامل: استشارات تربوية ونفسية بالتعاون مع منصة كليم للصحة النفسية، وتأهيل للمقبلين على الزواج — بينما يتعلّم الأبناء في ورش القيم بجوار آبائهم.',
+      en: 'A cultural and intellectual forum on the family, a fatwa and counselling centre that helps couples resolve disputes, and a complete family centre: parenting and psychological counselling with the Kaleem mental-health platform, and preparation for those about to marry — while the children learn in values workshops next door.',
     },
     world: { ar: 'بيت الحكمة', en: 'The House of Wisdom' },
     worldNote: { ar: 'مكتبة بغداد ومجالس علمائها: علم وحوار وأسرة', en: 'Baghdad’s library and its scholars’ circles: learning, dialogue, family' },
     who: {
       kids: [{ ar: 'ورش القيم: الإنصات والتعاون واللطف', en: 'Values workshops: listening, cooperation, kindness' }],
       men: [{ ar: 'ملتقى الآباء وندوات فكرية', en: 'Fathers’ forum & talks' }, { ar: 'مركز الفتوى', en: 'Fatwa centre' }],
-      women: [{ ar: 'ملتقى الأمهات', en: 'Mothers’ forum' }, { ar: 'الإرشاد الأسري', en: 'Family counselling' }],
-      family: [{ ar: 'ورش الآباء والأبناء معاً', en: 'Parent-and-child workshops' }, { ar: 'الإرشاد الزوجي', en: 'Marriage counselling' }],
+      women: [{ ar: 'ملتقى الأمهات', en: 'Mothers’ forum' }, { ar: 'استشارات تربوية ونفسية مع كليم', en: 'Parenting & psychological counselling with Kaleem' }],
+      family: [{ ar: 'ورش الآباء والأبناء معاً', en: 'Parent-and-child workshops' }, { ar: 'الإرشاد الزوجي', en: 'Marriage counselling' }, { ar: 'تأهيل المقبلين على الزواج', en: 'Preparation for marriage' }],
     },
   },
   {
@@ -145,16 +145,16 @@ const DISTRICTS: District[] = [
     title: { ar: 'الساحة: الحديقة والمرصد', en: 'The Plaza: Garden & Observatory' },
     tag: { ar: 'حديقة كبيرة تجمع الأسرة', en: 'A large garden that gathers the family' },
     intro: {
-      ar: 'قلب المكان حديقة كبيرة تلتقي عندها الطرق، بأماكن جلسات مختلفة: جلسات للعائلات، وجلسات خاصة بالسيدات، وجلسات للرجال، وظلال وماء، ومساحات لعب صغيرة للأطفال على مرأى من أهلهم. ويصلها الزائر من البوابة عبر شارع السوق — متجر مسلم ليدر ومقهى العائلة — ومن هناك يبدأ الطفل رحلته بجواز يُختم في كل منطقة.',
-      en: 'The heart of the place is a large garden where the paths meet, with many kinds of seating: family seating, women-only seating, seating for men, shade and water, and small play spaces for children within their parents’ sight. From the gate, visitors reach it through the souq street — the Moslim Leader store and the family café — and a child starts the journey with a passport stamped in every district.',
+      ar: 'قلب المكان حديقة كبيرة تلتقي عندها الطرق، بأماكن جلسات مختلفة: جلسات للعائلات، وجلسات خاصة بالسيدات، وجلسات للرجال، وظلال وماء، ومساحات لعب صغيرة للأطفال على مرأى من أهلهم. وفيها مجلس لكبار السن يحكي فيه الأجداد لأحفادهم حكايات زمان، فتأتي الأسرة بأجيالها الثلاثة، وعلى طرفها قاعة مناسبات عائلية: عقيقة، وختم القرآن، وتخرّج حلقات التحفيظ. ويصلها الزائر من البوابة عبر شارع السوق — متجر مسلم ليدر ومقهى العائلة — ومن هناك يبدأ الطفل رحلته بجواز يُختم في كل منطقة.',
+      en: 'The heart of the place is a large garden where the paths meet, with many kinds of seating: family seating, women-only seating, seating for men, shade and water, and small play spaces for children within their parents’ sight. It holds an elders’ majlis where grandparents tell their grandchildren the old stories, so the family comes in all three generations, and at its edge a family events hall: aqiqah, completing the Quran, graduation from memorisation circles. From the gate, visitors reach it through the souq street — the Moslim Leader store and the family café — and a child starts the journey with a passport stamped in every district.',
     },
     world: { ar: 'الحديقة والمرصد', en: 'The garden and the observatory' },
     worldNote: { ar: 'حديقة كبيرة يتوسطها مرصد مستوحى من مراصد سمرقند وإسطنبول، يُرى من كل منطقة', en: 'A large garden around an observatory inspired by those of Samarkand and Istanbul, visible from every district' },
     who: {
-      kids: [{ ar: 'مساحات لعب في الحديقة', en: 'Play spaces in the garden' }, { ar: 'جواز الرحلة', en: 'The journey passport' }],
-      men: [{ ar: 'جلسات الرجال', en: 'Seating for men' }],
-      women: [{ ar: 'جلسات خاصة بالسيدات', en: 'Women-only seating' }],
-      family: [{ ar: 'جلسات عائلية في الحديقة', en: 'Family seating in the garden' }, { ar: 'مقهى العائلة والمتجر', en: 'The family café and store' }],
+      kids: [{ ar: 'مساحات لعب في الحديقة', en: 'Play spaces in the garden' }, { ar: 'حكايات الأجداد', en: 'Grandparents’ stories' }],
+      men: [{ ar: 'جلسات الرجال', en: 'Seating for men' }, { ar: 'مجلس كبار السن', en: 'The elders’ majlis' }],
+      women: [{ ar: 'جلسات خاصة بالسيدات', en: 'Women-only seating' }, { ar: 'مجلس الجدّات', en: 'The grandmothers’ majlis' }],
+      family: [{ ar: 'جلسات عائلية في الحديقة', en: 'Family seating in the garden' }, { ar: 'قاعة المناسبات: عقيقة، ختم القرآن، تخرّج الحلقات', en: 'Events hall: aqiqah, Quran completion, graduations' }, { ar: 'مقهى العائلة والمتجر', en: 'The family café and store' }],
     },
   },
 ];
@@ -274,7 +274,8 @@ function DistrictCard({ d, isEn }: { d: District; isEn: boolean }) {
         </div>
         <h3 className="disp mt-3 text-2xl sm:text-[26px] font-extrabold leading-tight">{L(d.title)}</h3>
         <p className="mt-1.5 text-[13px] font-bold" style={{ color: d.hue }}>{isEn ? 'Themed on: ' : 'مستوحاة من: '}{L(d.world)}</p>
-        <p className="mt-2 text-sm leading-relaxed text-white/70">{L(d.intro)}</p>
+        {/* Four lines on the card; the whole text is in the plan's panel. */}
+        <p className="mt-2 text-sm leading-relaxed text-white/70 line-clamp-4" title={L(d.intro)}>{L(d.intro)}</p>
         <div className="mt-auto pt-5"><WhoGrid d={d} isEn={isEn} /></div>
       </div>
     </article>
@@ -409,6 +410,13 @@ const JOURNEYS: { w: Who; who: L; steps: Step[] }[] = [
     ],
   },
   {
+    w: 'men', who: { ar: 'الجد', en: 'The grandfather' }, steps: [
+      { place: { ar: 'الحديقة', en: 'The garden' }, what: { ar: 'مجلس كبار السن', en: 'The elders’ majlis' } },
+      { place: { ar: 'الحديقة', en: 'The garden' }, what: { ar: 'يحكي لأحفاده حكايات زمان', en: 'Tells his grandchildren the old stories' } },
+      { place: { ar: 'الكشافة', en: 'Scouts' }, what: { ar: 'يزرع مع حفيده شجرة في ركن العطاء', en: 'Plants a tree with his grandson at the Giving Corner' } },
+    ],
+  },
+  {
     w: 'kids', who: { ar: 'الابنة', en: 'The daughter' }, steps: [
       { place: { ar: 'نادي البنات', en: 'Girls’ club' }, what: { ar: 'ركن «حكاية تصنع أثراً»', en: 'The story corner' } },
       { place: { ar: 'نادي البنات', en: 'Girls’ club' }, what: { ar: 'رسم وأشغال', en: 'Drawing and crafts' } },
@@ -428,7 +436,7 @@ function FamilyDay({ isEn }: { isEn: boolean }) {
           <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('يوم واحد، لكل فرد مساره', 'One day, a path for each')}</h2>
         </div>
         <p className="max-w-md text-[#5C6478] leading-relaxed">
-          {tx('في كل منطقة ما يناسب الأطفال، وما هو خاص بالرجال، وما هو خاص بالنساء، وما تعيشه الأسرة معاً — فيترك الأب ابنه في نشاط بإشراف، ويحضر هو ما يخصه، ثم تلتقي الأسرة.', 'Every district holds something for children, something for men only, something for women only, and something the family lives together — so a father leaves his son at a supervised activity, attends his own, and the family meets again.')}
+          {tx('في كل منطقة ما يناسب الأطفال، وما هو خاص بالرجال، وما هو خاص بالنساء، وما تعيشه الأسرة معاً — فيترك الأب ابنه في نشاط بإشراف، ويحضر هو ما يخصه، ويجد الأجداد مجلسهم، ثم تلتقي الأسرة بأجيالها الثلاثة.', 'Every district holds something for children, something for men only, something for women only, and something the family lives together — so a father leaves his son at a supervised activity and attends his own, the grandparents find their majlis, and the family meets again, all three generations.')}
         </p>
       </div>
 
@@ -439,9 +447,9 @@ function FamilyDay({ isEn }: { isEn: boolean }) {
         ))}
       </ul>
 
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {JOURNEYS.map(j => (
-          <div key={j.who.ar} className="rise rounded-[28px] bg-white p-5 sm:p-6 border border-[#0A0F1E]/5 relative overflow-hidden">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {JOURNEYS.map((j, idx) => (
+          <div key={j.who.ar} className={`rise rounded-[28px] bg-white p-5 sm:p-6 border border-[#0A0F1E]/5 relative overflow-hidden ${idx === JOURNEYS.length - 1 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
             <div className="absolute top-0 inset-x-0 h-1.5" style={{ background: AUD[j.w].dot }} aria-hidden />
             <p className="disp text-2xl font-extrabold">{L(j.who)}</p>
             <ol className="mt-5 relative">
@@ -464,7 +472,7 @@ function FamilyDay({ isEn }: { isEn: boolean }) {
         <div className="absolute -end-20 -top-20 w-72 h-72 rounded-full bg-[#9BCB8F]/15 blur-3xl" aria-hidden />
         <div className="relative flex items-center gap-3 shrink-0">
           <span className="flex -space-x-2 rtl:space-x-reverse" aria-hidden>
-            {(['men', 'women', 'kids', 'kids'] as Who[]).map((w, i) => (
+            {(['men', 'women', 'men', 'kids', 'kids'] as Who[]).map((w, i) => (
               <span key={i} className="w-9 h-9 rounded-full ring-2 ring-[#0A0F1E]" style={{ background: AUD[w].dot }} />
             ))}
           </span>

@@ -1001,6 +1001,15 @@ Books are protected from download at two levels:
   variable is missing the request is accepted and `[partnership-requests] TURNSTILE_SECRET_KEY
   is not set` is logged — check for that line after deploying. No admin screen yet; `status`
   (new/contacted/trial/closed) is there for one.
+- **«أرض القائد المسلم» has its own page, `/land` (`src/app/land/`).** A future project laid
+  out as one: the idea, the principles («البصائر»: الإحسان، الاقتصاد وعدم التبذير، احترام
+  العقل، روابط الأسرة — and no individualism, addictive practices or fear-as-fun), an SVG
+  masterplan (six districts around a plaza, each block links to its section; labelled
+  «مخطط تصوّري — ليس بمقياس رسم»), then one section per district from the `DISTRICTS`
+  array. Every picture carries «تصوّر مبدئي». A district with no picture shows its mark —
+  add the image to its `img` when one is supplied (`public/land/`, ≤1600px WebP). No
+  figures, dates or sites anywhere: none were given. Linked from the About page, the
+  deck's Land section and the footer.
 - **A series is priced for what the buyer does NOT already own.** `seriesLangPrice(series,
   books, lang, ownedIds)` in `src/lib/series-lang.ts` charges the bundle price × (books not
   owned ÷ books in the full edition) — one ratio that also covers an edition still being

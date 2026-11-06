@@ -344,6 +344,27 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* ── Moslim Leader Land ── */}
+      <section className="max-w-5xl mx-auto px-6 pt-16">
+        <div className="relative overflow-hidden rounded-3xl bg-[#0C1428] text-white grid md:grid-cols-2">
+          <div className="relative min-h-[220px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/land/girls-stories.webp" alt={tx('تصوّر لركن الحكايات في أرض القائد المسلم', 'Concept: the story corner in Moslim Leader Land')} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+            <span className="absolute top-3 start-3 rounded-full bg-black/55 px-3 py-1 text-[11px] font-bold">{tx('تصوّر مبدئي', 'Concept visual')}</span>
+          </div>
+          <div className="p-7 sm:p-9" style={{ backgroundImage: STAR }}>
+            <p className="text-sm font-bold text-[#FBEEBB] mb-2">{tx('مشروعنا القادم', 'What we are building next')}</p>
+            <h2 className="text-2xl sm:text-3xl font-black leading-snug">{tx('أرض القائد المسلم', 'Moslim Leader Land')}</h2>
+            <p className="mt-3 text-[#D7DCE8] leading-relaxed text-sm sm:text-base">
+              {tx('مكان كبير للأسرة المسلمة تتحوّل فيه قصص مسلم ليدر وقيمها إلى أماكن تعيشها الأسرة — سينما وحكايات، وألعاب تحترم الهوية، وكشافة، وملتقى للأسرة.', 'A large place for the Muslim family where Moslim Leader’s stories and values become places to live in — cinema and stories, games that respect identity, scouts, and a family forum.')}
+            </p>
+            <Link href="/land" className="mt-6 inline-flex items-center gap-2 bg-[#F5C518] text-[#0C1428] px-6 py-3 rounded-full font-black hover:bg-yellow-300 transition">
+              {tx('تعرّف على أرض القائد المسلم', 'Discover Moslim Leader Land')}
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── Brand story ── */}
       <section className="max-w-3xl mx-auto px-6 py-16 text-center">
         <div className="mx-auto mb-6 w-12 h-12 bg-[#F5C518]" style={{ clipPath: STAR_CLIP }} aria-hidden />

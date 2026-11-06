@@ -1006,7 +1006,12 @@ Books are protected from download at two levels:
   العقل، روابط الأسرة — and no individualism, addictive practices or fear-as-fun), an SVG
   masterplan (six districts around a plaza, each block links to its section; labelled
   «مخطط تصوّري — ليس بمقياس رسم»), then one section per district from the `DISTRICTS`
-  array. Every picture carries «تصوّر مبدئي». A district with no picture shows its mark —
+  array. **Every district lists what it offers four audiences — `who: { kids, men, women,
+  family }`** (the owner's rule: a father leaves his son at a supervised activity and
+  attends his own), shown by `WhoGrid` on the cards and in the map's side panel, and told
+  as a day in «يوم واحد، لكل فرد مساره». Styles are scoped under `.ld` in the page's own
+  CSS string; motion is CSS only (scroll-driven reveal where supported, none under
+  reduced motion). Every picture carries «تصوّر مبدئي». A district with no picture shows its mark —
   add the image to its `img` when one is supplied (`public/land/`, ≤1600px WebP). No
   figures, dates or sites anywhere: none were given. Linked from the About page, the
   deck's Land section and the footer.

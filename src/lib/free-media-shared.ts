@@ -12,12 +12,13 @@ export const TYPE_TO_KIND: Record<string, MediaKind> = { reel: 'reel', video: 'v
 export const KIND_TO_TYPE: Record<MediaKind, string> = { reel: 'reel', video: 'video', audio: 'mp3', image: 'image', pdf: 'pdf' };
 
 /** Each kind's icon is the `<Icon>` of the same name (reel / video / audio / image / pdf). */
-export const KIND_LABEL: Record<MediaKind, { ar: string; en: string; one: string }> = {
-  reel:  { ar: 'ريلز', en: 'Reels', one: 'ريل' },
-  video: { ar: 'فيديوهات', en: 'Videos', one: 'فيديو' },
-  audio: { ar: 'صوتيات', en: 'Audio', one: 'صوتي' },
-  image: { ar: 'رسومات', en: 'Drawings', one: 'رسمة' },
-  pdf:   { ar: 'ملفات PDF', en: 'PDFs', one: 'PDF' },
+/** `short` is the tab label on a phone, where five tabs share one row. */
+export const KIND_LABEL: Record<MediaKind, { ar: string; en: string; one: string; short: string }> = {
+  reel:  { ar: 'ريلز', en: 'Reels', one: 'ريل', short: 'ريلز' },
+  video: { ar: 'فيديوهات', en: 'Videos', one: 'فيديو', short: 'فيديو' },
+  audio: { ar: 'صوتيات', en: 'Audio', one: 'صوتي', short: 'صوتيات' },
+  image: { ar: 'رسومات', en: 'Drawings', one: 'رسمة', short: 'رسومات' },
+  pdf:   { ar: 'ملفات PDF', en: 'PDFs', one: 'PDF', short: 'PDF' },
 };
 
 export function isMediaKind(v: unknown): v is MediaKind {

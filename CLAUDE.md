@@ -959,6 +959,11 @@ Books are protected from download at two levels:
   every card query already carries it. «تابع التصنيف» (`FreeMediaCategoryFollow`) sends a
   `media_new` notification (group `media`) once per item — `followersNotifiedAt` stops an
   unpublish/republish from notifying twice.
+- **The comment box sits ON the media box** (`MediaQuickComment`, a one-line «اكتب تعليقاً…»
+  under the reactions bar; for audio in AudioStage's `below` strip under the cover). The
+  «شاركنا رأيك» block below holds the LIST only (`MediaComments writer={false}`); a comment
+  written on the box reaches it through `NEW_COMMENT_EVENT`, which also moves the counters.
+  The reels sheet keeps its own writer.
 - **Sharing a media item.** `MediaShareSheet` (item page and reels): the item's thumbnail and
   title, WhatsApp / Facebook / Telegram / X / email, «نسخ الرابط» (with an `execCommand`
   fallback for in-app browsers), and the phone's own share menu when it exists. What the

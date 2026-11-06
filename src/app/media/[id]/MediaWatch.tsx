@@ -15,6 +15,7 @@ import { useMediaDownload } from '@/components/media/useMediaDownload';
 import type { Summary } from '@/components/media/MediaReactions';
 import MediaEngage from '@/components/media/MediaEngage';
 import MediaQuickBar from '@/components/media/MediaQuickBar';
+import MediaQuickComment from '@/components/media/MediaQuickComment';
 import MediaShareSheet from '@/components/media/MediaShareSheet';
 
 /**
@@ -226,7 +227,8 @@ export default function MediaWatch({ item, upNext, reactions, commentCount }: {
                   isEn={isEn}
                   onEnded={onEnded}
                   onPlay={() => setCountdown(null)}
-                  footer={quickBar}
+                  footer={<MediaQuickBar mediaId={item.id} isEn={isEn} initialReactions={reactions} commentCount={commentCount} writer={false} />}
+                  below={<MediaQuickComment mediaId={item.id} isEn={isEn} />}
                 />
               )}
               {item.kind === 'image' && (

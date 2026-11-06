@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import Icon from './Icon';
 import { useKeepAboveKeyboard } from './useKeyboard';
+import { NEW_COMMENT_EVENT, type NewCommentDetail } from './MediaQuickComment';
 
 /**
  * Comments on a media item: newest first, «تحميل المزيد», a box to write in, and delete for
@@ -22,7 +23,7 @@ function ago(iso: string, isEn: boolean): string {
   return isEn ? 'just now' : 'الآن';
 }
 
-export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, autoFocus = false, prominent = false, inSheet = false }: {
+export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, autoFocus = false, prominent = false, inSheet = false, writer = true }: {
   mediaId: number;
   isEn: boolean;
   tone?: 'light' | 'dark';
@@ -34,6 +35,8 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
   prominent?: boolean;
   /** Rendered inside a fixed sheet: the page must not be scrolled to show the writer. */
   inSheet?: boolean;
+  /** Off where the box to write in sits on the media itself (MediaQuickComment). */
+  writer?: boolean;
 }) {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -68,6 +71,20 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
   }, [mediaId]);
 
   useEffect(() => { setList([]); void load(); }, [load]);
+  // A comment written in the box on the media itself lands at the top of this list, and
+  // goes through onCount so every counter on the page moves with it.
+  const onCountRef = useRef(onCount);
+  onCountRef.current = onCount;
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<NewCommentDetail>).detail;
+      if (d?.id !== mediaId) return;
+      setList(prev => (prev.some(c => c.id === d.comment.id) ? prev : [d.comment, ...prev]));
+      onCountRef.current?.(1);
+    };
+    window.addEventListener(NEW_COMMENT_EVENT, on);
+    return () => window.removeEventListener(NEW_COMMENT_EVENT, on);
+  }, [mediaId]);
   useEffect(() => { if (autoFocus && user) inputRef.current?.focus(); }, [autoFocus, user]);
 
   const send = async () => {
@@ -104,7 +121,7 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
   return (
     <div className="flex flex-col min-h-0 h-full">
       {/* Writer */}
-      {user && prominent ? (
+      {!writer ? null : user && prominent ? (
         <div ref={inSheet ? undefined : pageWriter} className="pb-4 mb-1 border-b border-gray-100">
           <label htmlFor={`mc-${mediaId}`} className="block text-sm font-bold text-[#1a1a2e] mb-2">
             {t('ما رأيك؟ اكتب تعليقك هنا', 'What did you think? Write a comment')}
@@ -168,7 +185,26 @@ export default function MediaComments({ mediaId, isEn, tone = 'light', onCount, 
       {/* List */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         {list.length === 0 && !loading && !failed && (
-          <p className={`text-sm py-6 text-center ${muted}`}>{t('لا تعليقات بعد — كن أول من يعلّق', 'No comments yet — be the first')}</p>
+          writer ? (
+            <p className={`text-sm py-6 text-center ${muted}`}>{t('لا تعليقات بعد — كن أول من يعلّق', 'No comments yet — be the first')}</p>
+          ) : (
+            // The box is on the media; this takes you back to it (focused inside the tap, so
+            // a phone opens its keyboard).
+            <div className={`py-5 text-center text-sm ${muted}`}>
+              <p>{t('لا تعليقات بعد.', 'No comments yet.')}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  const box = document.getElementById(`mq-${mediaId}`) as HTMLInputElement | null;
+                  if (box) box.focus({ preventScroll: true });
+                  else router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+                }}
+                className={`mt-2 inline-flex items-center gap-1.5 font-bold underline underline-offset-4 ${strong}`}
+              >
+                <Icon name="comment" size={15} /> {t('اكتب أول تعليق', 'Write the first one')}
+              </button>
+            </div>
+          )
         )}
         <ul className="flex flex-col">
           {list.map(c => (

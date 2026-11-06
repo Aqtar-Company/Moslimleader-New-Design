@@ -51,10 +51,12 @@ export default function MediaEngage({ mediaId, isEn, initialReactions, initialCo
         <span className="text-xs text-gray-500">{t('اضغط «تفاعل» واختر ما يعبّر عنك', 'Tap «React» and pick what fits')}</span>
       </div>
 
+      {/* The box to write in is on the media box itself (MediaQuickComment); this is the
+          conversation it feeds. */}
       <MediaComments
         mediaId={mediaId}
         isEn={isEn}
-        prominent
+        writer={false}
         onCount={d => {
           setCount(c => Math.max(0, c + d));
           onCount?.(d);

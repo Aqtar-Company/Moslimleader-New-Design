@@ -1018,7 +1018,15 @@ Books are protected from download at two levels:
   (المدير العام · شريك مؤسس — the owner's wording), then Dr. Ibrahim Hassan; the text below
   follows the same order. Her picture is the drawn avatar, never a photograph.
 - **«أرض القائد المسلم» has its own page, `/land` (`src/app/land/`).** A future project laid
-  out as one: the idea, the principles («البصائر»: الإحسان، الاقتصاد وعدم التبذير، احترام
+  out as one. **The page OPENS ON THE MAP** (`LandMap.tsx`): an illustrated top-down plan
+  (SVG 1200×760) with HTML pins in percentages; every district and place opens a card
+  (picture, real-world theme, what it offers each audience), the map glides in to frame it
+  (clamped at the edges), «من سيزور؟» lights the districts with something for an audience
+  and lists it, and layers switch the mosques and the promenade. Content lives in
+  `data.ts` (districts, audiences) and the places in `POIS` inside the map; shared pieces
+  in `parts.tsx`. Floats printed into SVG attributes are ROUNDED (`cos`/`sin` helpers) — a
+  last-digit difference between server and browser is a hydration mismatch. Then the
+  principles («البصائر»: الإحسان، الاقتصاد وعدم التبذير، احترام
   العقل، روابط الأسرة — and no individualism, addictive practices or fear-as-fun), an SVG
   masterplan (six districts around a plaza, each block links to its section; labelled
   «مخطط تصوّري — ليس بمقياس رسم»), then one section per district from the `DISTRICTS`

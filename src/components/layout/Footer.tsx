@@ -104,6 +104,7 @@ export default function Footer() {
               { href: '/catalog', ar: '📖 كتالوج المنتجات', en: '📖 Product Catalog' },
               { href: '/nursery', ar: '🌱 ركن القيم للحضانات', en: '🌱 Values Corner' },
               { href: '/about', ar: 'من نحن', en: 'About' },
+              { href: '/land', ar: 'أرض القائد المسلم', en: 'Moslim Leader Land' },
               { href: '/contact', ar: 'تواصل معنا', en: 'Contact' },
               { href: '/policy', ar: 'سياسة الخصوصية', en: 'Privacy Policy' },
               { href: '/delete-data', ar: 'حذف البيانات', en: 'Delete My Data' },

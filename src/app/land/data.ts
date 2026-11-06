@@ -8,15 +8,13 @@ export type L = { ar: string; en: string };
 export type Who = 'kids' | 'men' | 'women' | 'family';
 export type District = {
   id: string;
+  /** Order on the page and in lists — never shown: the owner does not fix a count. */
   n: number;
   icon: IconName;
   hue: string;
   title: L;
   tag: L;
   intro: L;
-  /** The REAL world the district is themed on — history or nature, never fantasy. */
-  world: L;
-  worldNote: L;
   /** What it offers each audience. An empty list is shown as «خاص بـ…» by `onlyFor`. */
   who: Record<Who, L[]>;
   onlyFor?: Who;
@@ -34,105 +32,92 @@ export const WHO_ORDER: Who[] = ['kids', 'men', 'women', 'family'];
 export const DISTRICTS: District[] = [
   {
     id: 'stories', n: 1, icon: 'book', hue: '#E8C873', img: '/partnership/land-stories.webp',
-    title: { ar: 'عالم الحكايات والسينما', en: 'Stories & Cinema' },
-    tag: { ar: 'من الرواية إلى التجربة', en: 'From the novel to the experience' },
+    title: { ar: 'دار العرض', en: 'The Screening House' },
+    tag: { ar: 'أفلام مسلم ليدر ورواياتها', en: 'Moslim Leader’s films and novels' },
     intro: {
-      ar: 'تخرج قصص مسلم ليدر من الكتاب: أفلام من رواياتها على الشاشة الكبيرة، وقاعة مغامرات يدخل فيها الطفل إلى القصة، وشخصيات يلتقيها ويتصوّر معها.',
-      en: 'Moslim Leader’s stories leave the book: films from its novels on the big screen, an adventure hall that takes a child inside the story, and characters to meet.',
+      ar: 'دار عرض لأفلام مسلم ليدر ورواياتها، وقاعات تفاعلية، وشخصيات مسلم ليدر في المكان نفسه — بعروض للأسرة مجتمعة، وأخرى للرجال وللنساء.',
+      en: 'A screening house for Moslim Leader’s films and novels, interactive halls, and the Moslim Leader characters on site — with screenings for the whole family, and others for men and for women.',
     },
-    world: { ar: 'عالم الأندلس', en: 'The world of Andalusia' },
-    worldNote: { ar: 'عمارة قرطبة والحمراء، وحكايات أهلها وعلمائها', en: 'The architecture of Córdoba and the Alhambra, and the stories of its people and scholars' },
     who: {
-      kids: [{ ar: 'قاعة مغامرات الحكاية', en: 'Story Adventure Hall' }, { ar: 'لقاء الشخصيات', en: 'Meet the characters' }],
-      men: [{ ar: 'عروض وثائقية وفكرية', en: 'Documentary & ideas screenings' }],
-      women: [{ ar: 'عروض وجلسات خاصة بالسيدات', en: 'Women-only screenings' }],
-      family: [{ ar: 'عرض سينمائي عائلي من روايات مسلم ليدر', en: 'Family screenings of Moslim Leader novels' }],
-    },
-  },
-  {
-    id: 'girls', n: 4, icon: 'heart', hue: '#E7A9BD', img: '/land/girls-stories.webp', onlyFor: 'women',
-    title: { ar: 'نادي البنات والسيدات', en: 'Girls’ & Women’s Club' },
-    tag: { ar: 'خصوصية وعافية ومجتمع', en: 'Privacy, wellbeing, community' },
-    intro: {
-      ar: 'مساحة خاصة بالبنات والسيدات تحفظ خصوصيتهن: رياضة وعافية، وجلسات حكي، ورسم وأشغال، ولقاءات تجمع الأمهات.',
-      en: 'A space of the girls’ and women’s own, private by design: sport and wellbeing, storytelling, crafts, and gatherings for mothers.',
-    },
-    world: { ar: 'رياض فاس', en: 'The riads of Fez' },
-    worldNote: { ar: 'بيوت وحدائق مغربية مغلقة على ساحاتها، تحفظ الخصوصية', en: 'Moroccan houses and gardens closed around their courtyards — privacy by design' },
-    who: {
-      kids: [{ ar: 'ركن «حكاية تصنع أثراً» للبنات', en: 'The girls’ story corner' }, { ar: 'رياضة البنات', en: 'Girls’ sport' }],
-      men: [],
-      women: [{ ar: 'رياضة وعافية بخصوصية', en: 'Private sport & wellbeing' }, { ar: 'لقاءات الأمهات', en: 'Mothers’ gatherings' }],
-      family: [{ ar: 'أمسيات الأم وابنتها', en: 'Mother-and-daughter evenings' }],
-    },
-  },
-  {
-    id: 'scouts', n: 3, icon: 'badge', hue: '#B9C79A', img: '/land/scouts-climbing.webp',
-    title: { ar: 'الكشافة والمغامرة', en: 'Scouts & Adventure' },
-    tag: { ar: 'شخصية قوية وغد أفضل', en: 'Strong character, brighter tomorrow' },
-    intro: {
-      ar: 'حبال وعُقد، وجدار تسلّق، وجسور معلّقة، وتخييم بإشراف قادة — مغامرة تبني الشجاعة والانضباط وروح الفريق. ومنها يخرج الأولاد إلى ركن العطاء: يجهّزون سلال الخير ويزرعون شجرة للحي، فيتعلّمون أن القائد يخدم الناس.',
-      en: 'Ropes and knots, a climbing wall, rope bridges and camping under trained leaders — adventure that builds courage, discipline and team spirit. From there the children go to the Giving Corner: they pack food baskets and plant a tree for the neighbourhood, and learn that a leader serves people.',
-    },
-    world: { ar: 'الصحراء والواحة', en: 'The desert and the oasis' },
-    worldNote: { ar: 'خيام وصخور وكثبان، ونجوم سماء الصحراء التي اهتدى بها المسافرون', en: 'Tents, rocks and dunes, and the desert stars travellers steered by' },
-    who: {
-      kids: [{ ar: 'الكشافة للأولاد بإشراف قادة', en: 'Supervised scouts for boys' }, { ar: 'ركن العطاء: سلال الخير وزراعة شجرة', en: 'The Giving Corner: food baskets, a tree to plant' }],
-      men: [{ ar: 'تحديات الآباء والشباب', en: 'Challenges for fathers & youth' }, { ar: 'صالون الرجال', en: 'Men’s salon' }],
-      women: [{ ar: 'رحلات طبيعة خاصة بالسيدات والبنات', en: 'Women-and-girls nature outings' }],
-      family: [{ ar: 'تخييم عائلي', en: 'Family camping' }, { ar: 'يوم تطوّع عائلي', en: 'A family volunteering day' }],
+      kids: [{ ar: 'شخصيات مسلم ليدر', en: 'The Moslim Leader characters' }, { ar: 'القاعات التفاعلية', en: 'Interactive halls' }],
+      men: [{ ar: 'عروض خاصة بالرجال', en: 'Screenings for men' }],
+      women: [{ ar: 'عروض خاصة بالنساء', en: 'Screenings for women' }],
+      family: [{ ar: 'أفلام مسلم ليدر ورواياتها تشاهدها الأسرة معاً', en: 'Moslim Leader’s films and novels, watched together' }],
     },
   },
   {
     id: 'games', n: 2, icon: 'zap', hue: '#8FC3D1',
-    title: { ar: 'الألعاب والملاهي', en: 'Games & Rides' },
-    tag: { ar: 'ترفيه يحترم الهوية', en: 'Fun that respects identity' },
+    title: { ar: 'دار الألعاب', en: 'The House of Games' },
+    tag: { ar: 'ألعاب تحترم الهوية', en: 'Games that respect identity' },
     intro: {
-      ar: 'ملاهٍ وألعاب فيديو بمفهوم إسلامي، أبطالها شخصيات مسلم ليدر — يكسب فيها الطفل بالمساعدة والقراءة والعمل الطيب.',
-      en: 'Rides and video games on an Islamic concept, starring the Moslim Leader characters — where a child scores by helping, reading and doing good.',
+      ar: 'ألعاب رقمية وساحات لعب بمفهوم إسلامي، تقوم على الفكر الإسلامي وفلسفته وتحترم هوية الطفل وعقله، ومنها ألعاب «ذاكر» و«رحيمة». لا بيت رعب، ولا لعبة تعرّض حياةً للخطر، ولا ما يُدمن عليه الطفل أو يعزله عن أهله.',
+      en: 'Digital games and play grounds on an Islamic concept, built on Islamic thought and its outlook and respectful of a child’s identity and mind — among them the Zaker and Rahima games. No horror house, no ride that risks a life, nothing that hooks a child or cuts them off from their family.',
     },
-    world: { ar: 'طريق ابن بطوطة', en: 'The road of Ibn Battuta' },
-    worldNote: { ar: 'ألعاب وملاهٍ على رحلات حقيقية: القوافل والسفن والمدن', en: 'Games and rides built on real journeys: caravans, ships and cities' },
     who: {
-      kids: [{ ar: 'ألعاب بشخصيات مسلم ليدر', en: 'Character video games' }, { ar: 'أماكن لعب بإشراف', en: 'Supervised play areas' }],
-      men: [{ ar: 'مسابقات وتحديات للشباب والآباء', en: 'Contests for youth & fathers' }],
-      women: [{ ar: 'صالة ألعاب للبنات والسيدات', en: 'A games hall for girls & women' }],
-      family: [{ ar: 'ملاهٍ وألعاب جماعية للأسرة', en: 'Rides and team games for families' }],
+      kids: [{ ar: 'ألعاب «ذاكر» و«رحيمة»', en: 'The Zaker and Rahima games' }, { ar: 'ساحات اللعب', en: 'Play grounds' }],
+      men: [{ ar: 'ألعاب خاصة بالرجال', en: 'Games for men' }],
+      women: [{ ar: 'ألعاب خاصة بالنساء', en: 'Games for women' }],
+      family: [{ ar: 'ألعاب تجتمع عليها الأسرة', en: 'Games the family plays together' }],
+    },
+  },
+  {
+    id: 'scouts', n: 3, icon: 'badge', hue: '#B9C79A', img: '/land/scouts-climbing.webp',
+    title: { ar: 'الكشافة', en: 'The Scouts' },
+    tag: { ar: 'شخصية قوية، وغدٌ أفضل', en: 'Strong character, a brighter tomorrow' },
+    intro: {
+      ar: 'ميدان الأولاد: تسلّق وحبال وعُقد وتخييم بإشراف قادة، تُصنع فيه الشجاعة والانضباط وروح الفريق. وفيه ركن العطاء، يتعلّم فيه الولد أن القائد يخدم الناس.',
+      en: 'The boys’ field: climbing, ropes, knots and camping under trained leaders, where courage, discipline and team spirit are made. And the Giving Corner, where a boy learns that a leader serves people.',
+    },
+    who: {
+      kids: [{ ar: 'الكشافة للأولاد بإشراف قادة', en: 'Supervised scouts for boys' }, { ar: 'ركن العطاء', en: 'The Giving Corner' }],
+      men: [{ ar: 'الحلّاق', en: 'The barber' }],
+      women: [{ ar: 'أنشطة خاصة بالنساء', en: 'Activities for women' }],
+      family: [{ ar: 'أيام تطوّع تجمع الأسرة', en: 'Volunteering days for the family' }],
+    },
+  },
+  {
+    id: 'girls', n: 4, icon: 'heart', hue: '#E7A9BD', img: '/land/girls-stories.webp', onlyFor: 'women',
+    title: { ar: 'نادي البنات والسيدات', en: 'The Girls’ and Women’s Club' },
+    tag: { ar: 'صحة وخصوصية ومجتمع', en: 'Wellbeing, privacy, community' },
+    intro: {
+      ar: 'مساحة للبنات والسيدات تُصان فيها الخصوصية صوناً كاملاً: رياضة وعافية، وركن «حكاية تصنع أثراً» مع رحيمة، ولقاءات للتعلّم والدعم.',
+      en: 'A space for girls and women where privacy is kept in full: sport and wellbeing, the «A story that leaves a mark» corner with Rahima, and gatherings for learning and support.',
+    },
+    who: {
+      kids: [{ ar: 'ركن «حكاية تصنع أثراً»', en: 'The «A story that leaves a mark» corner' }, { ar: 'رياضة البنات', en: 'Sport for girls' }],
+      men: [],
+      women: [{ ar: 'رياضة وعافية بخصوصية', en: 'Sport and wellbeing in privacy' }, { ar: 'لقاءات التعلّم والدعم', en: 'Learning and support' }],
+      family: [{ ar: 'الأم وابنتها معاً', en: 'Mother and daughter together' }],
     },
   },
   {
     id: 'family', n: 5, icon: 'comment', hue: '#B7A9DA',
-    title: { ar: 'الوعي: الأسرة والفكر', en: 'Awareness: Family & Thought' },
+    title: { ar: 'الملتقى الثقافي والفكري', en: 'The Cultural and Intellectual Forum' },
     tag: { ar: 'نبني أسرة واعية', en: 'Building a mindful family' },
     intro: {
-      ar: 'ملتقى ثقافي وفكري عن الأسرة ودعمها، ومركز للفتوى والإرشاد يعين الزوجين على حل خلافاتهما، ومركز أسرة متكامل: استشارات تربوية ونفسية بالتعاون مع منصة كليم للصحة النفسية، وتأهيل للمقبلين على الزواج — بينما يتعلّم الأبناء في ورش القيم بجوار آبائهم.',
-      en: 'A cultural and intellectual forum on the family, a fatwa and counselling centre that helps couples resolve disputes, and a complete family centre: parenting and psychological counselling with the Kaleem mental-health platform, and preparation for those about to marry — while the children learn in values workshops next door.',
+      ar: 'ملتقى للأسرة ودعمها: محاضرات ومجالس فكرية، وورش يتعلّم فيها الآباء والأبناء معاً، ومركز للفتوى وللإصلاح في الخلافات الزوجية، ومركز أسرة متكامل للاستشارات التربوية والنفسية بالتعاون مع منصة كليم، وتأهيل للمقبلين على الزواج.',
+      en: 'A forum for the family and its support: lectures and circles of thought, workshops where parents and children learn together, a centre for fatwa and for reconciling marital disputes, a complete family centre for parenting and psychological counselling with the Kaleem platform, and preparation for those about to marry.',
     },
-    world: { ar: 'بيت الحكمة', en: 'The House of Wisdom' },
-    worldNote: { ar: 'مكتبة بغداد ومجالس علمائها: علم وحوار وأسرة', en: 'Baghdad’s library and its scholars’ circles: learning, dialogue, family' },
     who: {
-      kids: [{ ar: 'ورش القيم: الإنصات والتعاون واللطف', en: 'Values workshops: listening, cooperation, kindness' }],
-      men: [{ ar: 'ملتقى الآباء وندوات فكرية', en: 'Fathers’ forum & talks' }, { ar: 'مركز الفتوى', en: 'Fatwa centre' }],
-      women: [{ ar: 'ملتقى الأمهات', en: 'Mothers’ forum' }, { ar: 'استشارات تربوية ونفسية مع كليم', en: 'Parenting & psychological counselling with Kaleem' }],
-      family: [{ ar: 'ورش الآباء والأبناء معاً', en: 'Parent-and-child workshops' }, { ar: 'الإرشاد الزوجي', en: 'Marriage counselling' }, { ar: 'تأهيل المقبلين على الزواج', en: 'Preparation for marriage' }],
+      kids: [{ ar: 'ورش القيم للأبناء', en: 'Values workshops for children' }],
+      men: [{ ar: 'ملتقى الآباء', en: 'The fathers’ forum' }],
+      women: [{ ar: 'ملتقى الأمهات', en: 'The mothers’ forum' }],
+      family: [{ ar: 'ورش الآباء والأبناء', en: 'Parent-and-child workshops' }, { ar: 'الفتوى والإصلاح الأسري', en: 'Fatwa and family reconciliation' }, { ar: 'تأهيل المقبلين على الزواج', en: 'Preparation for marriage' }],
     },
   },
   {
     id: 'plaza', n: 6, icon: 'moon', hue: '#9BCB8F', img: '/partnership/land-cafe.webp',
-    title: { ar: 'الساحة: الحديقة والمرصد', en: 'The Plaza: Garden & Observatory' },
-    tag: { ar: 'حديقة كبيرة تجمع الأسرة', en: 'A large garden that gathers the family' },
+    title: { ar: 'الحديقة الكبرى', en: 'The Great Garden' },
+    tag: { ar: 'قلب المكان', en: 'The heart of the place' },
     intro: {
-      ar: 'قلب المكان حديقة كبيرة تلتقي عندها الطرق، بأماكن جلسات مختلفة: جلسات للعائلات، وجلسات خاصة بالسيدات، وجلسات للرجال، وظلال وماء، ومساحات لعب صغيرة للأطفال على مرأى من أهلهم. وفيها مجلس لكبار السن يحكي فيه الأجداد لأحفادهم حكايات زمان، فتأتي الأسرة بأجيالها الثلاثة، وعلى طرفها قاعة مناسبات عائلية: عقيقة، وختم القرآن، وتخرّج حلقات التحفيظ. ويصلها الزائر من البوابة عبر شارع السوق — متجر مسلم ليدر ومقهى العائلة — ومن هناك يبدأ الطفل رحلته بجواز يُختم في كل منطقة.',
-      en: 'The heart of the place is a large garden where the paths meet, with many kinds of seating: family seating, women-only seating, seating for men, shade and water, and small play spaces for children within their parents’ sight. It holds an elders’ majlis where grandparents tell their grandchildren the old stories, so the family comes in all three generations, and at its edge a family events hall: aqiqah, completing the Quran, graduation from memorisation circles. From the gate, visitors reach it through the souq street — the Moslim Leader store and the family café — and a child starts the journey with a passport stamped in every district.',
+      ar: 'حديقة واسعة في قلب المكان بأماكن جلسات مختلفة، للعائلات وللسيدات وللرجال، يلعب فيها الصغار على مرأى من أهلهم. وفيها مجلس لكبار السن يحكي فيه الأجداد لأحفادهم، وقاعة لمناسبات الأسرة: العقيقة، وختم القرآن، وتخرّج حلقات التحفيظ. ومن حولها مقهى العائلة ومتجر مسلم ليدر.',
+      en: 'A wide garden at the heart of the place with many kinds of seating — for families, for women, for men — where little ones play within their parents’ sight. It holds an elders’ majlis where grandparents tell their grandchildren the old stories, and a hall for the family’s occasions: aqiqah, completing the Quran, graduating from memorisation circles. Around it, the family café and the Moslim Leader store.',
     },
-    world: { ar: 'الحديقة والمرصد', en: 'The garden and the observatory' },
-    worldNote: { ar: 'حديقة كبيرة يتوسطها مرصد مستوحى من مراصد سمرقند وإسطنبول، يُرى من كل منطقة', en: 'A large garden around an observatory inspired by those of Samarkand and Istanbul, visible from every district' },
     who: {
-      kids: [{ ar: 'مساحات لعب في الحديقة', en: 'Play spaces in the garden' }, { ar: 'حكايات الأجداد', en: 'Grandparents’ stories' }],
+      kids: [{ ar: 'مساحات لعب في الحديقة', en: 'Play spaces in the garden' }],
       men: [{ ar: 'جلسات الرجال', en: 'Seating for men' }, { ar: 'مجلس كبار السن', en: 'The elders’ majlis' }],
-      women: [{ ar: 'جلسات خاصة بالسيدات', en: 'Women-only seating' }, { ar: 'مجلس الجدّات', en: 'The grandmothers’ majlis' }],
-      family: [{ ar: 'جلسات عائلية في الحديقة', en: 'Family seating in the garden' }, { ar: 'قاعة المناسبات: عقيقة، ختم القرآن، تخرّج الحلقات', en: 'Events hall: aqiqah, Quran completion, graduations' }, { ar: 'مقهى العائلة والمتجر', en: 'The family café and store' }],
+      women: [{ ar: 'جلسات خاصة بالسيدات', en: 'Seating for women' }],
+      family: [{ ar: 'جلسات عائلية', en: 'Family seating' }, { ar: 'قاعة المناسبات', en: 'The events hall' }, { ar: 'مقهى العائلة والمتجر', en: 'The family café and the store' }],
     },
   },
 ];
-

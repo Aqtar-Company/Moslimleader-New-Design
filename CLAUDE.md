@@ -1024,7 +1024,12 @@ Books are protected from download at two levels:
   (clamped at the edges), «من سيزور؟» lights the districts with something for an audience
   and lists it, and layers switch the mosques and the promenade. Content lives in
   `data.ts` (districts, audiences) and the places in `POIS` inside the map; shared pieces
-  in `parts.tsx`. Floats printed into SVG attributes are ROUNDED (`cos`/`sin` helpers) — a
+  in `parts.tsx`. **Writing rules the owner set (2026-11-07):** refined Arabic, no «ملاهي» or
+  «سينما» («دار الألعاب», «دار العرض»), no storybook tone, no counts («ست مناطق») and nothing
+  invented — only what the owner described or showed (the observatory, the promenade and the
+  named themes I had proposed were removed). The founding idea is «روّحوا القلوبَ ساعةً بعد
+  ساعة» (introduced with «يُروى عن الإمام علي»): the family enters to rest and leaves more
+  united, stronger in bonds, mind and thought; no triviality, no waste. Floats printed into SVG attributes are ROUNDED (`cos`/`sin` helpers) — a
   last-digit difference between server and browser is a hydration mismatch. Then the
   principles («البصائر»: الإحسان، الاقتصاد وعدم التبذير، احترام
   العقل، روابط الأسرة — and no individualism, addictive practices or fear-as-fun), an SVG

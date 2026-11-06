@@ -389,7 +389,7 @@ export default function AboutPage() {
             <p className="text-sm font-bold text-[#FBEEBB] mb-2">{tx('مشروعنا القادم', 'What we are building next')}</p>
             <h2 className="text-2xl sm:text-3xl font-black leading-snug">{tx('أرض القائد المسلم', 'Moslim Leader Land')}</h2>
             <p className="mt-3 text-[#D7DCE8] leading-relaxed text-sm sm:text-base">
-              {tx('مكان كبير للأسرة المسلمة تتحوّل فيه قصص مسلم ليدر وقيمها إلى أماكن تعيشها الأسرة — سينما وحكايات، وألعاب تحترم الهوية، وكشافة، وملتقى للأسرة.', 'A large place for the Muslim family where Moslim Leader’s stories and values become places to live in — cinema and stories, games that respect identity, scouts, and a family forum.')}
+              {tx('نبني أكبر وجهة ترويحية للأسرة المسلمة في العالم: تدخلها الأسرة لتستريح، وتخرج منها أشدّ تماسكاً، بكل ما يقوّي روابطها ويغذّي عقولها ويوسّع فكرها.', 'We are building the largest recreational destination for the Muslim family in the world: a family enters it to rest and leaves more united, with everything there strengthening its bonds, feeding its minds and widening its thinking.')}
             </p>
             <Link href="/land" className="mt-6 inline-flex items-center gap-2 bg-[#F5C518] text-[#0C1428] px-6 py-3 rounded-full font-black hover:bg-yellow-300 transition">
               {tx('تعرّف على أرض القائد المسلم', 'Discover Moslim Leader Land')}

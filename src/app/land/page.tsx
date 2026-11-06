@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import Icon, { type IconName } from '@/components/media/Icon';
+import { AUD, DISTRICTS, WHO_ORDER, type District, type L, type Who } from './data';
+import { Art, Concept, Dot, WhoGrid } from './parts';
+import LandMap from './LandMap';
 
 /**
  * «أرض القائد المسلم» — Moslim Leader Land, the future project as its own page.
@@ -26,138 +28,6 @@ import Icon, { type IconName } from '@/components/media/Icon';
  * given. Pictures: public/land/ and public/partnership/land-*.webp. A district without a
  * picture gets drawn art; add its image to `img` when one is supplied.
  */
-
-type L = { ar: string; en: string };
-type Who = 'kids' | 'men' | 'women' | 'family';
-type District = {
-  id: string;
-  n: number;
-  icon: IconName;
-  hue: string;
-  title: L;
-  tag: L;
-  intro: L;
-  /** The REAL world the district is themed on — history or nature, never fantasy. */
-  world: L;
-  worldNote: L;
-  /** What it offers each audience. An empty list is shown as «خاص بـ…» by `onlyFor`. */
-  who: Record<Who, L[]>;
-  onlyFor?: Who;
-  img?: string;
-};
-
-const AUD: Record<Who, { ar: string; en: string; dot: string }> = {
-  kids: { ar: 'للأطفال', en: 'Children', dot: '#F5C518' },
-  men: { ar: 'للرجال', en: 'Men', dot: '#7FB2E5' },
-  women: { ar: 'للنساء', en: 'Women', dot: '#E7A9BD' },
-  family: { ar: 'للأسرة معاً', en: 'The family together', dot: '#9BCB8F' },
-};
-const WHO_ORDER: Who[] = ['kids', 'men', 'women', 'family'];
-
-const DISTRICTS: District[] = [
-  {
-    id: 'stories', n: 1, icon: 'book', hue: '#E8C873', img: '/partnership/land-stories.webp',
-    title: { ar: 'عالم الحكايات والسينما', en: 'Stories & Cinema' },
-    tag: { ar: 'من الرواية إلى التجربة', en: 'From the novel to the experience' },
-    intro: {
-      ar: 'تخرج قصص مسلم ليدر من الكتاب: أفلام من رواياتها على الشاشة الكبيرة، وقاعة مغامرات يدخل فيها الطفل إلى القصة، وشخصيات يلتقيها ويتصوّر معها.',
-      en: 'Moslim Leader’s stories leave the book: films from its novels on the big screen, an adventure hall that takes a child inside the story, and characters to meet.',
-    },
-    world: { ar: 'عالم الأندلس', en: 'The world of Andalusia' },
-    worldNote: { ar: 'عمارة قرطبة والحمراء، وحكايات أهلها وعلمائها', en: 'The architecture of Córdoba and the Alhambra, and the stories of its people and scholars' },
-    who: {
-      kids: [{ ar: 'قاعة مغامرات الحكاية', en: 'Story Adventure Hall' }, { ar: 'لقاء الشخصيات', en: 'Meet the characters' }],
-      men: [{ ar: 'عروض وثائقية وفكرية', en: 'Documentary & ideas screenings' }],
-      women: [{ ar: 'عروض وجلسات خاصة بالسيدات', en: 'Women-only screenings' }],
-      family: [{ ar: 'عرض سينمائي عائلي من روايات مسلم ليدر', en: 'Family screenings of Moslim Leader novels' }],
-    },
-  },
-  {
-    id: 'girls', n: 4, icon: 'heart', hue: '#E7A9BD', img: '/land/girls-stories.webp', onlyFor: 'women',
-    title: { ar: 'نادي البنات والسيدات', en: 'Girls’ & Women’s Club' },
-    tag: { ar: 'خصوصية وعافية ومجتمع', en: 'Privacy, wellbeing, community' },
-    intro: {
-      ar: 'مساحة خاصة بالبنات والسيدات تحفظ خصوصيتهن: رياضة وعافية، وجلسات حكي، ورسم وأشغال، ولقاءات تجمع الأمهات.',
-      en: 'A space of the girls’ and women’s own, private by design: sport and wellbeing, storytelling, crafts, and gatherings for mothers.',
-    },
-    world: { ar: 'رياض فاس', en: 'The riads of Fez' },
-    worldNote: { ar: 'بيوت وحدائق مغربية مغلقة على ساحاتها، تحفظ الخصوصية', en: 'Moroccan houses and gardens closed around their courtyards — privacy by design' },
-    who: {
-      kids: [{ ar: 'ركن «حكاية تصنع أثراً» للبنات', en: 'The girls’ story corner' }, { ar: 'رياضة البنات', en: 'Girls’ sport' }],
-      men: [],
-      women: [{ ar: 'رياضة وعافية بخصوصية', en: 'Private sport & wellbeing' }, { ar: 'لقاءات الأمهات', en: 'Mothers’ gatherings' }],
-      family: [{ ar: 'أمسيات الأم وابنتها', en: 'Mother-and-daughter evenings' }],
-    },
-  },
-  {
-    id: 'scouts', n: 3, icon: 'badge', hue: '#B9C79A', img: '/land/scouts-climbing.webp',
-    title: { ar: 'الكشافة والمغامرة', en: 'Scouts & Adventure' },
-    tag: { ar: 'شخصية قوية وغد أفضل', en: 'Strong character, brighter tomorrow' },
-    intro: {
-      ar: 'حبال وعُقد، وجدار تسلّق، وجسور معلّقة، وتخييم بإشراف قادة — مغامرة تبني الشجاعة والانضباط وروح الفريق. ومنها يخرج الأولاد إلى ركن العطاء: يجهّزون سلال الخير ويزرعون شجرة للحي، فيتعلّمون أن القائد يخدم الناس.',
-      en: 'Ropes and knots, a climbing wall, rope bridges and camping under trained leaders — adventure that builds courage, discipline and team spirit. From there the children go to the Giving Corner: they pack food baskets and plant a tree for the neighbourhood, and learn that a leader serves people.',
-    },
-    world: { ar: 'الصحراء والواحة', en: 'The desert and the oasis' },
-    worldNote: { ar: 'خيام وصخور وكثبان، ونجوم سماء الصحراء التي اهتدى بها المسافرون', en: 'Tents, rocks and dunes, and the desert stars travellers steered by' },
-    who: {
-      kids: [{ ar: 'الكشافة للأولاد بإشراف قادة', en: 'Supervised scouts for boys' }, { ar: 'ركن العطاء: سلال الخير وزراعة شجرة', en: 'The Giving Corner: food baskets, a tree to plant' }],
-      men: [{ ar: 'تحديات الآباء والشباب', en: 'Challenges for fathers & youth' }, { ar: 'صالون الرجال', en: 'Men’s salon' }],
-      women: [{ ar: 'رحلات طبيعة خاصة بالسيدات والبنات', en: 'Women-and-girls nature outings' }],
-      family: [{ ar: 'تخييم عائلي', en: 'Family camping' }, { ar: 'يوم تطوّع عائلي', en: 'A family volunteering day' }],
-    },
-  },
-  {
-    id: 'games', n: 2, icon: 'zap', hue: '#8FC3D1',
-    title: { ar: 'الألعاب والملاهي', en: 'Games & Rides' },
-    tag: { ar: 'ترفيه يحترم الهوية', en: 'Fun that respects identity' },
-    intro: {
-      ar: 'ملاهٍ وألعاب فيديو بمفهوم إسلامي، أبطالها شخصيات مسلم ليدر — يكسب فيها الطفل بالمساعدة والقراءة والعمل الطيب.',
-      en: 'Rides and video games on an Islamic concept, starring the Moslim Leader characters — where a child scores by helping, reading and doing good.',
-    },
-    world: { ar: 'طريق ابن بطوطة', en: 'The road of Ibn Battuta' },
-    worldNote: { ar: 'ألعاب وملاهٍ على رحلات حقيقية: القوافل والسفن والمدن', en: 'Games and rides built on real journeys: caravans, ships and cities' },
-    who: {
-      kids: [{ ar: 'ألعاب بشخصيات مسلم ليدر', en: 'Character video games' }, { ar: 'أماكن لعب بإشراف', en: 'Supervised play areas' }],
-      men: [{ ar: 'مسابقات وتحديات للشباب والآباء', en: 'Contests for youth & fathers' }],
-      women: [{ ar: 'صالة ألعاب للبنات والسيدات', en: 'A games hall for girls & women' }],
-      family: [{ ar: 'ملاهٍ وألعاب جماعية للأسرة', en: 'Rides and team games for families' }],
-    },
-  },
-  {
-    id: 'family', n: 5, icon: 'comment', hue: '#B7A9DA',
-    title: { ar: 'الوعي: الأسرة والفكر', en: 'Awareness: Family & Thought' },
-    tag: { ar: 'نبني أسرة واعية', en: 'Building a mindful family' },
-    intro: {
-      ar: 'ملتقى ثقافي وفكري عن الأسرة ودعمها، ومركز للفتوى والإرشاد يعين الزوجين على حل خلافاتهما، ومركز أسرة متكامل: استشارات تربوية ونفسية بالتعاون مع منصة كليم للصحة النفسية، وتأهيل للمقبلين على الزواج — بينما يتعلّم الأبناء في ورش القيم بجوار آبائهم.',
-      en: 'A cultural and intellectual forum on the family, a fatwa and counselling centre that helps couples resolve disputes, and a complete family centre: parenting and psychological counselling with the Kaleem mental-health platform, and preparation for those about to marry — while the children learn in values workshops next door.',
-    },
-    world: { ar: 'بيت الحكمة', en: 'The House of Wisdom' },
-    worldNote: { ar: 'مكتبة بغداد ومجالس علمائها: علم وحوار وأسرة', en: 'Baghdad’s library and its scholars’ circles: learning, dialogue, family' },
-    who: {
-      kids: [{ ar: 'ورش القيم: الإنصات والتعاون واللطف', en: 'Values workshops: listening, cooperation, kindness' }],
-      men: [{ ar: 'ملتقى الآباء وندوات فكرية', en: 'Fathers’ forum & talks' }, { ar: 'مركز الفتوى', en: 'Fatwa centre' }],
-      women: [{ ar: 'ملتقى الأمهات', en: 'Mothers’ forum' }, { ar: 'استشارات تربوية ونفسية مع كليم', en: 'Parenting & psychological counselling with Kaleem' }],
-      family: [{ ar: 'ورش الآباء والأبناء معاً', en: 'Parent-and-child workshops' }, { ar: 'الإرشاد الزوجي', en: 'Marriage counselling' }, { ar: 'تأهيل المقبلين على الزواج', en: 'Preparation for marriage' }],
-    },
-  },
-  {
-    id: 'plaza', n: 6, icon: 'moon', hue: '#9BCB8F', img: '/partnership/land-cafe.webp',
-    title: { ar: 'الساحة: الحديقة والمرصد', en: 'The Plaza: Garden & Observatory' },
-    tag: { ar: 'حديقة كبيرة تجمع الأسرة', en: 'A large garden that gathers the family' },
-    intro: {
-      ar: 'قلب المكان حديقة كبيرة تلتقي عندها الطرق، بأماكن جلسات مختلفة: جلسات للعائلات، وجلسات خاصة بالسيدات، وجلسات للرجال، وظلال وماء، ومساحات لعب صغيرة للأطفال على مرأى من أهلهم. وفيها مجلس لكبار السن يحكي فيه الأجداد لأحفادهم حكايات زمان، فتأتي الأسرة بأجيالها الثلاثة، وعلى طرفها قاعة مناسبات عائلية: عقيقة، وختم القرآن، وتخرّج حلقات التحفيظ. ويصلها الزائر من البوابة عبر شارع السوق — متجر مسلم ليدر ومقهى العائلة — ومن هناك يبدأ الطفل رحلته بجواز يُختم في كل منطقة.',
-      en: 'The heart of the place is a large garden where the paths meet, with many kinds of seating: family seating, women-only seating, seating for men, shade and water, and small play spaces for children within their parents’ sight. It holds an elders’ majlis where grandparents tell their grandchildren the old stories, so the family comes in all three generations, and at its edge a family events hall: aqiqah, completing the Quran, graduation from memorisation circles. From the gate, visitors reach it through the souq street — the Moslim Leader store and the family café — and a child starts the journey with a passport stamped in every district.',
-    },
-    world: { ar: 'الحديقة والمرصد', en: 'The garden and the observatory' },
-    worldNote: { ar: 'حديقة كبيرة يتوسطها مرصد مستوحى من مراصد سمرقند وإسطنبول، يُرى من كل منطقة', en: 'A large garden around an observatory inspired by those of Samarkand and Istanbul, visible from every district' },
-    who: {
-      kids: [{ ar: 'مساحات لعب في الحديقة', en: 'Play spaces in the garden' }, { ar: 'حكايات الأجداد', en: 'Grandparents’ stories' }],
-      men: [{ ar: 'جلسات الرجال', en: 'Seating for men' }, { ar: 'مجلس كبار السن', en: 'The elders’ majlis' }],
-      women: [{ ar: 'جلسات خاصة بالسيدات', en: 'Women-only seating' }, { ar: 'مجلس الجدّات', en: 'The grandmothers’ majlis' }],
-      family: [{ ar: 'جلسات عائلية في الحديقة', en: 'Family seating in the garden' }, { ar: 'قاعة المناسبات: عقيقة، ختم القرآن، تخرّج الحلقات', en: 'Events hall: aqiqah, Quran completion, graduations' }, { ar: 'مقهى العائلة والمتجر', en: 'The family café and store' }],
-    },
-  },
-];
 
 const GALLERY = [
   '/land/store.webp', '/partnership/land-stories.webp', '/land/girls-stories.webp', '/land/scouts-climbing.webp',
@@ -189,63 +59,14 @@ const CSS = `
 .ld .snap{scroll-snap-type:x mandatory;scrollbar-width:none}
 .ld .snap::-webkit-scrollbar{display:none}
 .ld .snap>*{scroll-snap-align:start}
-@media (prefers-reduced-motion: reduce){.ld .kb,.ld .marq,.ld .marq-slow,.ld .rise,.ld .glow{animation:none!important}.ld .card-img{transition:none}}
+@keyframes lm-walk{to{stroke-dashoffset:-300}}
+.ld .lm-walk{animation:lm-walk 12s linear infinite}
+@keyframes lm-ping{0%{transform:scale(1);opacity:.7}80%,100%{transform:scale(2.2);opacity:0}}
+.ld .lm-ping{animation:lm-ping 2.4s cubic-bezier(0,0,.2,1) infinite}
+.ld .lm-block{transition:opacity .3s}
+.ld .lm-block:hover rect:nth-child(2){fill-opacity:.5}
+@media (prefers-reduced-motion: reduce){.ld .lm-walk,.ld .lm-ping{animation:none!important}.ld .kb,.ld .marq,.ld .marq-slow,.ld .rise,.ld .glow{animation:none!important}.ld .card-img{transition:none}}
 `;
-
-function Concept({ isEn }: { isEn: boolean }) {
-  return (
-    <span className="absolute top-3 start-3 z-10 rounded-full px-3 py-1 text-[11px] font-bold glass text-white">
-      {isEn ? 'Concept visual' : 'تصوّر مبدئي'}
-    </span>
-  );
-}
-
-function Dot({ w, size = 8 }: { w: Who; size?: number }) {
-  return <span className="shrink-0 rounded-full inline-block" style={{ width: size, height: size, background: AUD[w].dot }} aria-hidden />;
-}
-
-/** Drawn art for a district that has no picture yet: its mark, large, over its own hue. */
-function Art({ d }: { d: District }) {
-  return (
-    <div className="absolute inset-0 overflow-hidden" style={{ background: `radial-gradient(120% 90% at 80% 10%, ${d.hue}55 0%, transparent 55%), linear-gradient(160deg, #18224A 0%, #0A0F1E 100%)` }}>
-      <div className="absolute inset-0 grain opacity-60" aria-hidden />
-      <div className="absolute -bottom-10 -start-10 w-[70%] aspect-square rounded-full border" style={{ borderColor: `${d.hue}55` }} aria-hidden />
-      <div className="absolute -bottom-24 -start-24 w-[95%] aspect-square rounded-full border" style={{ borderColor: `${d.hue}30` }} aria-hidden />
-      <span className="absolute top-[16%] end-[12%] text-white/90" aria-hidden style={{ filter: `drop-shadow(0 0 30px ${d.hue})` }}>
-        <Icon name={d.icon} size={110} strokeWidth={1} />
-      </span>
-    </div>
-  );
-}
-
-/** What a district offers each audience — the four lanes, in one compact block. */
-function WhoGrid({ d, isEn, dark = true }: { d: District; isEn: boolean; dark?: boolean }) {
-  const L = (l: L) => (isEn ? l.en : l.ar);
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {WHO_ORDER.map(w => {
-        const items = d.who[w];
-        const empty = items.length === 0;
-        return (
-          <div key={w} className={`rounded-2xl p-3 ${dark ? 'bg-white/[0.06]' : 'bg-white'} ${empty ? 'opacity-60' : ''}`}>
-            <p className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color: AUD[w].dot }}>
-              <Dot w={w} /> {isEn ? AUD[w].en : AUD[w].ar}
-            </p>
-            {empty ? (
-              <p className={`mt-1 text-[13px] ${dark ? 'text-white/60' : 'text-[#5C6478]'}`}>
-                {d.onlyFor ? (isEn ? `${AUD[d.onlyFor].en} only` : `خاص ${AUD[d.onlyFor].ar.replace('لل', 'بال')}`) : '—'}
-              </p>
-            ) : (
-              <ul className="mt-1 space-y-0.5">
-                {items.map(it => <li key={it.ar} className="text-[13px] font-semibold leading-snug">{L(it)}</li>)}
-              </ul>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function DistrictCard({ d, isEn }: { d: District; isEn: boolean }) {
   const L = (l: L) => (isEn ? l.en : l.ar);
@@ -279,106 +100,6 @@ function DistrictCard({ d, isEn }: { d: District; isEn: boolean }) {
         <div className="mt-auto pt-5"><WhoGrid d={d} isEn={isEn} /></div>
       </div>
     </article>
-  );
-}
-
-/** The masterplan: six districts around the plaza, the gate below. Tap a block to open its panel. */
-function Masterplan({ isEn, active, onPick }: { isEn: boolean; active: string; onPick: (id: string) => void }) {
-  const by = Object.fromEntries(DISTRICTS.map(x => [x.id, x])) as Record<string, District>;
-  const label = (x: District) => (isEn ? x.title.en : x.title.ar).split(':')[isEn ? 0 : 0].trim();
-  const blocks: { id: string; x: number; y: number; w: number; h: number }[] = [
-    { id: 'stories', x: 470, y: 30, w: 300, h: 150 },
-    { id: 'games', x: 30, y: 30, w: 300, h: 150 },
-    { id: 'girls', x: 560, y: 225, w: 210, h: 170 },
-    { id: 'scouts', x: 30, y: 225, w: 210, h: 170 },
-    { id: 'family', x: 490, y: 422, w: 280, h: 146 },
-  ];
-  const P = { cx: 400, cy: 310, r: 106 };
-  const wrap = (s: string) => {
-    const w = s.split(' ');
-    if (w.length < 2 || s.length <= 12) return [s];
-    const m = Math.ceil(w.length / 2);
-    return [w.slice(0, m).join(' '), w.slice(m).join(' ')];
-  };
-  const pick = (id: string) => (e: React.SyntheticEvent) => { e.preventDefault(); onPick(id); };
-  const font = { fontFamily: "'Alexandria','Cairo',sans-serif" };
-  return (
-    <svg viewBox="0 0 800 620" className="w-full h-auto select-none" role="group" aria-label={isEn ? 'Concept masterplan' : 'مخطط تصوّري'}>
-      <defs>
-        <pattern id="ld-grid" width="26" height="26" patternUnits="userSpaceOnUse">
-          <path d="M26 0H0V26" fill="none" stroke="#FFFFFF" strokeOpacity="0.05" />
-        </pattern>
-        <filter id="ld-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18" /></filter>
-      </defs>
-      <rect width="800" height="620" rx="30" fill="#0D1430" />
-      <rect width="800" height="620" rx="30" fill="url(#ld-grid)" />
-
-      {/* The promenade: one loop that links every district (and the passport's stamps). */}
-      <ellipse cx="400" cy="300" rx="318" ry="226" fill="none" stroke="#F5C518" strokeOpacity="0.28" strokeWidth="3" strokeDasharray="10 10" />
-      <g fill="none" strokeLinecap="round">
-        {blocks.map(b => {
-          const on = active === b.id;
-          return (
-            <line key={b.id} x1={P.cx} y1={P.cy} x2={b.x + b.w / 2} y2={b.y + b.h / 2}
-              stroke={on ? by[b.id].hue : '#FFFFFF'} strokeOpacity={on ? 0.9 : 0.12} strokeWidth={on ? 6 : 10} strokeDasharray={on ? '2 12' : undefined} />
-          );
-        })}
-      </g>
-
-      {/* The souq street: from the gate to the garden, the store and the café on it. */}
-      <g aria-hidden>
-        <rect x="335" y="420" width="130" height="122" rx="18" fill="#F5C518" fillOpacity="0.12" stroke="#F5C518" strokeOpacity="0.45" strokeWidth="2" />
-        <text x="400" y="470" textAnchor="middle" fontSize="18" fontWeight="800" fill="#F5C518" style={font}>{isEn ? 'Souq street' : 'شارع السوق'}</text>
-        <text x="400" y="496" textAnchor="middle" fontSize="13" fill="#C9D0E0">{isEn ? 'Store · Café' : 'المتجر · المقهى'}</text>
-      </g>
-
-      {blocks.map(b => {
-        const x = by[b.id];
-        const on = active === b.id;
-        return (
-          <g key={b.id} role="button" tabIndex={0} aria-pressed={on} aria-label={label(x)}
-            onClick={pick(b.id)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') pick(b.id)(e); }}
-            className="cursor-pointer outline-none">
-            {on && <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="24" fill={x.hue} opacity="0.55" filter="url(#ld-blur)" className="glow" />}
-            <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="24" fill={on ? x.hue : '#FFFFFF'} fillOpacity={on ? 1 : 0.06}
-              stroke={x.hue} strokeOpacity={on ? 1 : 0.5} strokeWidth="2" />
-            {/* Every district has its own mosque. */}
-            <g transform={`translate(${b.x + b.w - 40} ${b.y + 14})`} aria-hidden>
-              <rect width="26" height="26" rx="8" fill={on ? '#0A0F1E' : '#FFFFFF'} fillOpacity={on ? 1 : 0.1} />
-              <path d="M6 20h14v-5a7 7 0 0 0-14 0z M13 8V5" fill="none" stroke={on ? x.hue : '#F5C518'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </g>
-            <circle cx={b.x + b.w / 2} cy={b.y + 32} r="17" fill={on ? '#0A0F1E' : x.hue} />
-            <text x={b.x + b.w / 2} y={b.y + 38} textAnchor="middle" fontSize="17" fontWeight="800" fill={on ? x.hue : '#0A0F1E'}>{x.n}</text>
-            {wrap(label(x)).map((ln, i, arr) => (
-              <text key={i} x={b.x + b.w / 2} y={b.y + (arr.length > 1 ? 74 : 88) + i * 26} textAnchor="middle" fontSize="20" fontWeight="800" fill={on ? '#0A0F1E' : '#FFFFFF'} style={font}>{ln}</text>
-            ))}
-            <text x={b.x + b.w / 2} y={b.y + b.h - 14} textAnchor="middle" fontSize="14" fontWeight="700" fill={on ? '#0A0F1E' : x.hue}>{isEn ? x.world.en : x.world.ar}</text>
-          </g>
-        );
-      })}
-
-      <g role="button" tabIndex={0} aria-pressed={active === 'plaza'} aria-label={label(by.plaza)}
-        onClick={pick('plaza')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') pick('plaza')(e); }} className="cursor-pointer outline-none">
-        <circle cx={P.cx} cy={P.cy} r={P.r + 22} fill="#F5C518" opacity={active === 'plaza' ? 0.45 : 0.12} filter="url(#ld-blur)" className="glow" />
-        <circle cx={P.cx} cy={P.cy} r={P.r} fill={active === 'plaza' ? '#F5C518' : '#0A0F1E'} stroke="#F5C518" strokeWidth="2" />
-        <circle cx={P.cx} cy={P.cy} r={P.r - 12} fill="none" stroke={active === 'plaza' ? '#0A0F1E' : '#F5C518'} strokeOpacity="0.4" strokeDasharray="3 7" />
-        {/* The landmark seen from everywhere: the observatory tower. */}
-        <g transform={`translate(${P.cx - 13} ${P.cy - 72})`} aria-hidden>
-          <path d="M4 34h18l-3-20H7z M13 14V6 M6 6a7 7 0 0 1 14 0" fill="none" stroke={active === 'plaza' ? '#0A0F1E' : '#F5C518'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        </g>
-        <text x={P.cx} y={P.cy + 8} textAnchor="middle" fontSize="28" fontWeight="800" fill={active === 'plaza' ? '#0A0F1E' : '#FFFFFF'} style={font}>{isEn ? 'The Garden' : 'الحديقة'}</text>
-        <text x={P.cx} y={P.cy + 38} textAnchor="middle" fontSize="16" fill={active === 'plaza' ? '#0A0F1E' : '#C9D0E0'}>{isEn ? 'Observatory · Seating' : 'المرصد · الجلسات'}</text>
-      </g>
-
-      <rect x="320" y="550" width="160" height="46" rx="23" fill="#F5C518" />
-      <text x="400" y="580" textAnchor="middle" fontSize="19" fontWeight="800" fill="#0A0F1E" style={font}>{isEn ? 'The Gate' : 'البوابة'}</text>
-
-      <g>
-        <rect x="30" y="470" width="236" height="66" rx="16" fill="#FFFFFF" fillOpacity="0.06" stroke="#FFFFFF" strokeOpacity="0.15" />
-        <text x="148" y="498" textAnchor="middle" fontSize="16" fontWeight="800" fill="#FFFFFF">{isEn ? 'Concept diagram' : 'مخطط تصوّري'}</text>
-        <text x="148" y="520" textAnchor="middle" fontSize="13" fill="#A9B2C8">{isEn ? 'Not to scale · no site chosen' : 'ليس بمقياس رسم · لا موقع محدد'}</text>
-      </g>
-    </svg>
   );
 }
 
@@ -502,8 +223,6 @@ export default function LandPage() {
   const isEn = lang === 'en';
   const tx = (ar: string, en: string) => (isEn ? en : ar);
   const L = (l: L) => (isEn ? l.en : l.ar);
-  const [active, setActive] = useState('plaza');
-  const cur = DISTRICTS.find(d => d.id === active)!;
 
   const principles: { n: string; icon: IconName; t: L; s: L; span: string }[] = [
     { n: '01', icon: 'badge', span: 'lg:col-span-2', t: { ar: 'الإحسان', en: 'Ihsan' }, s: { ar: 'إتقان في كل ما نصنع، وأحسن ما يكون في معاملة الناس. هو المعيار الذي تُقاس به كل لعبة وكل خدمة.', en: 'Excellence in everything we make, and our best in how we treat people — the measure of every game and every service.' } },
@@ -520,45 +239,52 @@ export default function LandPage() {
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,500&display=swap" />
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
-      {/* ── Hero ── */}
-      <header className="relative min-h-[640px] h-[88svh] max-h-[920px] overflow-hidden bg-[#0A0F1E] text-white">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/land/store.webp" alt="" fetchPriority="high" className="kb absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F1E] via-[#0A0F1E]/60 to-[#0A0F1E]/30" aria-hidden />
-        {/* Darker on the side the words sit on. */}
-        <div className={`absolute inset-0 ${isEn ? 'bg-gradient-to-r' : 'bg-gradient-to-l'} from-[#0A0F1E]/75 via-[#0A0F1E]/20 to-transparent`} aria-hidden />
-        <Concept isEn={isEn} />
-        <div className="relative h-full max-w-7xl mx-auto px-4 sm:px-8 flex flex-col justify-end pb-12 sm:pb-16">
-          <span className="self-start glass rounded-full px-4 py-1.5 text-xs sm:text-sm font-bold text-[#F5C518]">{tx('مشروع مستقبلي', 'A future project')}</span>
-          <p className="serif mt-5 mb-3 sm:mb-5 text-2xl sm:text-3xl text-[#E8C873]" dir="ltr" style={{ textAlign: isEn ? 'left' : 'right' }}>Moslim Leader Land</p>
-          <h1 className="disp font-black leading-[1.05] text-[52px] sm:text-[92px] lg:text-[116px]" style={{ textWrap: 'balance' } as React.CSSProperties}>
-            {tx('أرض القائد المسلم', 'The Land of the Muslim Leader')}
-          </h1>
-          <p className="mt-5 max-w-xl text-base sm:text-lg leading-relaxed text-white/80">
-            {tx('مكان كبير جداً للأسرة المسلمة، تتحوّل فيه قصص مسلم ليدر وقيمها إلى أماكن تُعاش — لكل فرد فيه مساره، وللأسرة لقاؤها. لا يكفي يوم واحد لتغطيته.', 'A very large place for the Muslim family, where Moslim Leader’s stories and values become places to live in — a path for each member, a meeting place for all. One day is not enough.')}
-          </p>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <a href="#plan" className="inline-flex items-center gap-2 bg-[#F5C518] text-[#0A0F1E] font-black px-6 py-3.5 rounded-full hover:bg-white transition">
-              {tx('استكشف المخطط', 'Explore the plan')} <Icon name="down" size={18} />
-            </a>
-            <Link href="/partnership#request" className="glass inline-flex items-center gap-2 text-white font-bold px-6 py-3.5 rounded-full hover:bg-white/20 transition">
-              {tx('شارك في بنائها', 'Help build it')}
-            </Link>
+      {/* ── The map, first: the Land is shown as a place to walk through ── */}
+      <section id="plan" className="relative bg-[#0A0F1E] text-white overflow-hidden scroll-mt-20">
+        <div className="absolute -top-40 end-[-10%] w-[60%] aspect-square rounded-full bg-[#F5C518]/10 blur-3xl" aria-hidden />
+        <div className="absolute inset-0 grain opacity-40" aria-hidden />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-8 pt-28 sm:pt-32 pb-16 sm:pb-20">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-8">
+            <div>
+              <span className="inline-flex glass rounded-full px-4 py-1.5 text-xs sm:text-sm font-bold text-[#F5C518]">{tx('مشروع مستقبلي · تصوّر مبدئي', 'A future project · Concept')}</span>
+              <p className="serif mt-4 text-xl sm:text-2xl text-[#E8C873]" dir="ltr" style={{ textAlign: isEn ? 'left' : 'right' }}>Moslim Leader Land</p>
+              <h1 className="disp mt-1 font-black leading-[1.05] text-[44px] sm:text-7xl" style={{ textWrap: 'balance' } as React.CSSProperties}>
+                {tx('أرض القائد المسلم', 'The Land of the Muslim Leader')}
+              </h1>
+              <p className="mt-4 max-w-2xl text-white/75 leading-relaxed">
+                {tx('مكان كبير جداً للأسرة المسلمة: ست مناطق حول حديقة كبيرة، لكل فرد فيه مساره وللأسرة لقاؤها، وفي كل منطقة مسجد. تجوّل في الخريطة — اضغط على أي منطقة أو مكان لترى ما فيه.', 'A very large place for the Muslim family: six districts around a large garden, a path for each member and a meeting place for all, and a mosque in every district. Walk the map — tap any district or place to see what is there.')}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 shrink-0">
+              <Link href="/partnership#request" className="inline-flex items-center gap-2 bg-[#F5C518] text-[#0A0F1E] font-black px-6 py-3 rounded-full hover:bg-white transition">
+                {tx('شارك في بنائها', 'Help build it')}
+              </Link>
+              <a href="#districts" className="glass inline-flex items-center gap-2 text-white font-bold px-5 py-3 rounded-full hover:bg-white/20 transition">
+                {tx('المناطق بالتفصيل', 'The districts')} <Icon name="down" size={16} />
+              </a>
+            </div>
           </div>
-          <dl className="mt-10 grid grid-cols-3 gap-2 sm:gap-3 max-w-2xl">
+
+          <LandMap isEn={isEn} />
+
+          {/* How the place is organised — the way the great theme parks are, with real worlds
+              instead of fantasy ones. */}
+          <ol className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { k: tx('للأسرة', 'For'), v: tx('كلها', 'every family') },
-              { k: tx('حول', 'Around'), v: tx('العالم', 'the world') },
-              { k: tx('ست', 'Six'), v: tx('مناطق', 'districts') },
-            ].map(s => (
-              <div key={s.v} className="glass rounded-2xl px-3 sm:px-4 py-3">
-                <dt className="text-[11px] sm:text-xs text-white/60">{s.k}</dt>
-                <dd className="disp text-lg sm:text-2xl font-extrabold">{s.v}</dd>
-              </div>
+              { n: '1', t: { ar: 'بوابة وشارع سوق', en: 'A gate and a souq street' }, s: { ar: 'يدخل الزائر من البوابة إلى شارع سوق فيه المتجر والمقهى، يقوده إلى قلب المكان.', en: 'Visitors enter through the gate onto a souq street — store and café — that leads to the heart of the place.' } },
+              { n: '2', t: { ar: 'حديقة ومَعلَم في المنتصف', en: 'A garden and a landmark' }, s: { ar: 'حديقة كبيرة يتوسطها المرصد، يُرى من كل منطقة فلا يضيع أحد.', en: 'A large garden around the observatory, seen from every district so no one gets lost.' } },
+              { n: '3', t: { ar: 'عوالم حقيقية لا خيالية', en: 'Real worlds, not fantasy' }, s: { ar: 'كل منطقة مستوحاة من عالم حقيقي من تاريخنا أو طبيعتنا: الأندلس، بيت الحكمة، الصحراء، رحلات ابن بطوطة.', en: 'Each district is themed on a real world from our history or nature: Andalusia, the House of Wisdom, the desert, Ibn Battuta’s journeys.' } },
+              { n: '4', t: { ar: 'ممشى يربط العوالم', en: 'A promenade that links them' }, s: { ar: 'ممشى دائري يمر بكل المناطق، وجواز الرحلة يُختم في كل محطة منه.', en: 'A loop promenade through every district, and a passport stamped at each stop.' } },
+            ].map(c => (
+              <li key={c.n} className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-5">
+                <span className="disp text-[#F5C518] text-3xl font-black tabular-nums">{c.n}</span>
+                <h3 className="disp mt-2 text-lg font-extrabold">{L(c.t)}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-white/65">{L(c.s)}</p>
+              </li>
             ))}
-          </dl>
+          </ol>
         </div>
-      </header>
+      </section>
 
       {/* ── Moving strip ── */}
       <div className="marq-wrap bg-[#F5C518] text-[#0A0F1E] overflow-hidden py-3.5" dir="ltr" aria-hidden>
@@ -627,80 +353,8 @@ export default function LandPage() {
       {/* ── One day, a path for each ── */}
       <FamilyDay isEn={isEn} />
 
-      {/* ── Interactive masterplan ── */}
-      <section id="plan" className="relative bg-[#0A0F1E] text-white scroll-mt-20 overflow-hidden">
-        <div className="absolute -top-40 end-[-10%] w-[60%] aspect-square rounded-full bg-[#F5C518]/10 blur-3xl" aria-hidden />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-24">
-          <p className="text-sm font-bold text-[#E8C873]">{tx('المخطط', 'The plan')}</p>
-          <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('ست مناطق حول ساحة واحدة', 'Six districts around one plaza')}</h2>
-          <p className="mt-3 max-w-xl text-white/65">{tx('ادخل من البوابة إلى الساحة، ثم اضغط أي منطقة لترى ما فيها لكل فرد من الأسرة.', 'Enter through the gate into the plaza, then tap any district to see what it holds for each member of the family.')}</p>
-          <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#F5C518]/10 border border-[#F5C518]/30 px-4 py-2 text-sm font-bold text-[#F5C518]">
-            <svg width="18" height="18" viewBox="0 0 26 26" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 20h14v-5a7 7 0 0 0-14 0z M13 8V5" /></svg>
-            {tx('في كل منطقة مسجد — فلا يبعد أحد عن الصلاة', 'A mosque in every district — prayer is never far')}
-          </p>
-
-          {/* How the place is organised — the way the great theme parks are, with real worlds
-              instead of fantasy ones. */}
-          <ol className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { n: '1', t: { ar: 'بوابة وشارع سوق', en: 'A gate and a souq street' }, s: { ar: 'يدخل الزائر من البوابة إلى شارع سوق فيه المتجر والمقهى، يقوده إلى قلب المكان.', en: 'Visitors enter through the gate onto a souq street — store and café — that leads to the heart of the place.' } },
-              { n: '2', t: { ar: 'حديقة ومَعلَم في المنتصف', en: 'A garden and a landmark' }, s: { ar: 'حديقة كبيرة يتوسطها المرصد، يُرى من كل منطقة فلا يضيع أحد.', en: 'A large garden around the observatory, seen from every district so no one gets lost.' } },
-              { n: '3', t: { ar: 'عوالم حقيقية لا خيالية', en: 'Real worlds, not fantasy' }, s: { ar: 'كل منطقة مستوحاة من عالم حقيقي من تاريخنا أو طبيعتنا: الأندلس، بيت الحكمة، الصحراء، رحلات ابن بطوطة.', en: 'Each district is themed on a real world from our history or nature: Andalusia, the House of Wisdom, the desert, Ibn Battuta’s journeys.' } },
-              { n: '4', t: { ar: 'ممشى يربط العوالم', en: 'A promenade that links them' }, s: { ar: 'ممشى دائري يمر بكل المناطق، وجواز الرحلة يُختم في كل محطة منه.', en: 'A loop promenade through every district, and a passport stamped at each stop.' } },
-            ].map(c => (
-              <li key={c.n} className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-5">
-                <span className="disp text-[#F5C518] text-3xl font-black tabular-nums">{c.n}</span>
-                <h3 className="disp mt-2 text-lg font-extrabold">{L(c.t)}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-white/65">{L(c.s)}</p>
-              </li>
-            ))}
-          </ol>
-
-          <div className="mt-6 grid gap-6 lg:grid-cols-12 items-stretch">
-            <div className="lg:col-span-7 rounded-[30px] ring-1 ring-white/10 overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.45)] self-start">
-              <Masterplan isEn={isEn} active={active} onPick={setActive} />
-            </div>
-            <aside className="lg:col-span-5 rounded-[30px] overflow-hidden bg-white/[0.04] ring-1 ring-white/10 flex flex-col" aria-live="polite">
-              <div className="relative aspect-[16/9]">
-                {cur.img ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img key={cur.img} src={cur.img} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                    <Concept isEn={isEn} />
-                  </>
-                ) : <Art d={cur} />}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F1E] to-transparent" aria-hidden />
-                <span className="absolute bottom-3 start-5 disp text-6xl font-black" style={{ color: cur.hue }}>{cur.n}</span>
-              </div>
-              <div className="p-6 flex-1 flex flex-col">
-                <span className="self-start rounded-full px-3 py-1 text-xs font-bold" style={{ background: `${cur.hue}22`, color: cur.hue }}>{L(cur.tag)}</span>
-                <h3 className="disp mt-3 text-2xl sm:text-3xl font-extrabold leading-tight">{L(cur.title)}</h3>
-                <p className="mt-2 text-sm"><span className="font-bold" style={{ color: cur.hue }}>{L(cur.world)}</span><span className="text-white/55"> — {L(cur.worldNote)}</span></p>
-                <p className="mt-3 text-white/70 leading-relaxed text-sm">{L(cur.intro)}</p>
-                <div className="mt-5"><WhoGrid d={cur} isEn={isEn} /></div>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {DISTRICTS.map(d => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => setActive(d.id)}
-                      aria-pressed={active === d.id}
-                      aria-label={L(d.title)}
-                      className={`w-10 h-10 rounded-full font-black tabular-nums transition ${active === d.id ? 'text-[#0A0F1E]' : 'bg-white/[0.06] text-white/70 hover:text-white'}`}
-                      style={active === d.id ? { background: d.hue } : undefined}
-                    >
-                      {d.n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </aside>
-          </div>
-        </div>
-      </section>
-
       {/* ── The districts ── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-24">
+      <section id="districts" className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-24 scroll-mt-24">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-10">
           <div>
             <p className="text-sm font-bold text-[#5C6478]">{tx('المناطق', 'The districts')}</p>

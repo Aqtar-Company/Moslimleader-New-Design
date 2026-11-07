@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
-import Icon, { type IconName } from '@/components/media/Icon';
+import Icon from '@/components/media/Icon';
 import { AUD, DISTRICTS, WHO_ORDER, type District, type L, type Who } from './data';
 import { Art, Concept, Dot, WhoGrid } from './parts';
 import LandMap from './LandMap';
+import Characters from './Characters';
+import { ui } from './land-data';
 
 /**
  * «أرض القائد المسلم» — Moslim Leader Land, the future project as its own page.
@@ -14,7 +16,8 @@ import LandMap from './LandMap';
  * so it is introduced with «يُروى عن»). The family comes in to rest and leaves more united —
  * things that strengthen its bonds, its minds and its thinking; no triviality, no waste.
  *
- * Order: the interactive map first (LandMap.tsx), the moving strip, the founding idea, «لكل
+ * Order: the interactive map first (LandMap.tsx, designed in Lovable) with the characters
+ * under it (Characters.tsx), the moving strip, the founding idea, «لكل
  * فرد مساره» (a day told as four paths that meet), the parts of the Land as cards, a gallery
  * strip, and the call to partners.
  *
@@ -226,52 +229,34 @@ export default function LandPage() {
   return (
     <div className="ld" dir={isEn ? 'ltr' : 'rtl'}>
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,500&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,500&display=swap" />
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
-      {/* ── The map, first: the Land is shown as a place to walk through ── */}
-      <section id="plan" className="relative bg-[#0A0F1E] text-white overflow-hidden scroll-mt-20">
-        <div className="absolute -top-40 end-[-10%] w-[60%] aspect-square rounded-full bg-[#F5C518]/10 blur-3xl" aria-hidden />
-        <div className="absolute inset-0 grain opacity-40" aria-hidden />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-8 pt-28 sm:pt-32 pb-16 sm:pb-20">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-8">
-            <div>
-              <span className="inline-flex glass rounded-full px-4 py-1.5 text-xs sm:text-sm font-bold text-[#F5C518]">{tx('مشروع مستقبلي · تصوّر مبدئي', 'A future project · Concept')}</span>
-              <p className="serif mt-4 text-xl sm:text-2xl text-[#E8C873]" dir="ltr" style={{ textAlign: isEn ? 'left' : 'right' }}>Moslim Leader Land</p>
-              <h1 className="disp mt-1 font-black leading-[1.05] text-[44px] sm:text-7xl" style={{ textWrap: 'balance' } as React.CSSProperties}>
-                {tx('أرض القائد المسلم', 'The Land of the Muslim Leader')}
-              </h1>
-              <p className="mt-4 max-w-2xl text-white/75 leading-relaxed">
-                {tx('نبني أكبر وجهة ترويحية للأسرة المسلمة في العالم: أرضاً واسعة تدخلها الأسرة لتستريح، وتخرج منها أشدّ تماسكاً وأوسع فكراً. لا يكفيها يوم واحد، وتُبنى في أكثر من بلد. اضغط على أي ركن في الخريطة لترى ما فيه.', 'We are building the largest recreational destination for the Muslim family in the world: a wide land a family enters to rest and leaves closer and broader of mind. One day is not enough for it, and it will be built in more than one country. Tap any part of the map to see what it holds.')}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3 shrink-0">
-              <Link href="/partnership#request" className="inline-flex items-center gap-2 bg-[#F5C518] text-[#0A0F1E] font-black px-6 py-3 rounded-full hover:bg-white transition">
+      {/* ── The map, first — the header, map and characters are the owner's Lovable design
+          (LandMap.tsx, Characters.tsx); the sections after it are this page's own. ── */}
+      <section id="plan" className="relative bg-[#0A0F1E] text-[#F6F2E9] overflow-hidden scroll-mt-20" style={{ fontFamily: "'Alexandria', 'Noto Kufi Arabic', sans-serif" }}>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-8 pt-28 sm:pt-32 pb-16 sm:pb-20 min-w-0">
+          <header className="mb-8 text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/land/map/logo-wide.webp" alt={tx('شعار مسلم ليدر', 'Moslim Leader logo')} width={1200} height={283} className="mx-auto hidden w-full max-w-2xl sm:block" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/land/map/logo-tall.webp" alt={tx('شعار مسلم ليدر', 'Moslim Leader logo')} width={420} height={507} className="mx-auto h-28 w-auto sm:hidden" />
+            <p className="mt-5 text-sm text-[#E8C873]">{L(ui.saying)}</p>
+            <h1 className="mt-3 text-3xl font-bold text-[#F5C518] sm:text-5xl">{L(ui.heading)}</h1>
+            <p lang={isEn ? 'ar' : 'en'} className="mt-2 text-sm text-[#E8C873]/80" style={isEn ? undefined : { fontFamily: "'Manrope', sans-serif" }}>{isEn ? ui.heading.ar : ui.heading.en}</p>
+            <p className="mt-3 text-lg text-[#BDB5A3]">{L(ui.subheading)}</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link href="/partnership#request" className="inline-flex items-center gap-2 bg-[#F5C518] text-[#0A0F1E] font-bold px-6 py-2.5 rounded-full hover:bg-white transition">
                 {tx('شارك في بنائها', 'Help build it')}
               </Link>
-              <a href="#districts" className="glass inline-flex items-center gap-2 text-white font-bold px-5 py-3 rounded-full hover:bg-white/20 transition">
+              <a href="#districts" className="inline-flex items-center gap-2 border border-white/15 text-[#F6F2E9] font-bold px-5 py-2.5 rounded-full hover:bg-white/10 transition">
                 {tx('أركان المكان', 'The parts of the Land')} <Icon name="down" size={16} />
               </a>
             </div>
-          </div>
+          </header>
 
-          <LandMap isEn={isEn} />
-
-          {/* How the place is organised — the owner's own rules, nothing added. */}
-          <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { icon: 'heart' as IconName, t: { ar: 'لكل أفراد الأسرة', en: 'For every member of the family' }, s: { ar: 'في كل ركن ما يخص الأطفال، وما يخص الرجال، وما يخص النساء، وما تعيشه الأسرة مجتمعة.', en: 'In every part: something for children, for men, for women, and for the family together.' } },
-              { icon: 'moon' as IconName, t: { ar: 'في كل ركن مسجد', en: 'A mosque in every part' }, s: { ar: 'فلا يبعد أحد عن الصلاة، وللنساء مصلاهن.', en: 'So prayer is never far — with a prayer hall for women.' } },
-              { icon: 'image' as IconName, t: { ar: 'حديقة كبرى في القلب', en: 'A great garden at the heart' }, s: { ar: 'بأماكن جلسات مختلفة، تلتقي عندها الأسرة بعد أن يمضي كلٌّ في مساره.', en: 'With many kinds of seating, where the family meets after each has gone their own way.' } },
-              { icon: 'zap' as IconName, t: { ar: 'من أصلنا لا من الخيال', en: 'From our roots, not from fantasy' }, s: { ar: 'تخطيط المدن الترفيهية الكبرى، بروحٍ من تاريخنا وطبيعتنا لا من عوالم الخيال.', en: 'Planned like the great recreational cities, in the spirit of our history and nature, not of fantasy worlds.' } },
-            ].map(c => (
-              <li key={c.t.ar} className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-5">
-                <span className="w-10 h-10 rounded-xl bg-[#F5C518]/15 text-[#F5C518] inline-flex items-center justify-center"><Icon name={c.icon} size={20} /></span>
-                <h3 className="disp mt-3 text-lg font-extrabold">{L(c.t)}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-white/65">{L(c.s)}</p>
-              </li>
-            ))}
-          </ul>
+          <LandMap lang={isEn ? 'en' : 'ar'} />
+          <Characters lang={isEn ? 'en' : 'ar'} />
         </div>
       </section>
 

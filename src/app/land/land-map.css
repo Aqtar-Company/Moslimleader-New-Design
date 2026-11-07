@@ -1,0 +1,115 @@
+/*
+ * The Land map and the characters, as designed in Lovable (src/styles.css there). Every
+ * rule is scoped under `.lv` so neither the site nor the rest of /land restyles it.
+ * Lovable's tokens are oklch; they are written here as the hex they resolve to.
+ */
+.lv {
+  --bg: #0A0F1E; --card: #111933; --muted: #1A2238; --muted-fg: #BDB5A3; --fg: #F6F2E9;
+  --gold: #F5C518; --champagne: #E8C873; --ivory: #F6F2E9; --navy-deep: #111933;
+  --border: rgba(255, 255, 255, .10);
+  --glass: rgba(28, 36, 64, .62); --glass-border: rgba(255, 255, 255, .12);
+  color: var(--fg); font-family: 'Alexandria', 'Noto Kufi Arabic', sans-serif;
+}
+.lv [lang="en"], .lv[lang="en"] { font-family: 'Manrope', 'Alexandria', sans-serif; }
+.lv .lv-display { font-family: 'Alexandria', 'Noto Kufi Arabic', sans-serif; }
+.lv[lang="en"] .lv-display { font-family: 'Manrope', 'Alexandria', sans-serif; }
+
+.lv .glass { background: var(--glass); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); border: 1px solid var(--glass-border); }
+.lv .lv-ring:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--gold); }
+.lv .no-scrollbar { scrollbar-width: none; }
+.lv .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Chips and pills */
+.lv .chip { display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap; border-radius: 999px; border: 1px solid var(--border); background: rgba(17, 25, 51, .6); padding: .375rem 1rem; font-size: .875rem; color: var(--fg); transition: border-color .2s, background-color .2s, color .2s; }
+.lv .chip:hover { border-color: rgba(245, 197, 24, .5); }
+.lv .chip[aria-pressed="true"].chip-solid { border-color: var(--gold); background: var(--gold); color: var(--bg); }
+.lv .chip-mosque[aria-pressed="true"] { border-color: rgba(232, 200, 115, .6); background: rgba(232, 200, 115, .15); color: var(--champagne); }
+.lv .chip-mosque[aria-pressed="false"] { color: var(--muted-fg); }
+.lv .chip-tour { border-color: rgba(245, 197, 24, .5); color: var(--gold); background: transparent; }
+.lv .chip-tour:hover { background: rgba(245, 197, 24, .1); }
+.lv .chip-tour[aria-pressed="true"] { border-color: var(--gold); background: var(--gold); color: var(--bg); }
+
+/* List rows in the panel */
+.lv .row { display: flex; width: 100%; align-items: center; gap: .75rem; border-radius: .75rem; border: 1px solid var(--border); background: rgba(17, 25, 51, .6); padding: .75rem 1rem; text-align: start; transition: border-color .2s, background-color .2s; }
+.lv .row:hover { border-color: rgba(245, 197, 24, .5); background: var(--card); }
+
+/* Map motion */
+@keyframes lv-pulse { 0% { transform: scale(.8); opacity: .7; } 100% { transform: scale(2.2); opacity: 0; } }
+.lv .land-pulse { animation: lv-pulse 2.2s ease-out infinite; }
+@keyframes lv-flow { to { stroke-dashoffset: -36; } }
+.lv .land-flow { animation: lv-flow 1.6s linear infinite; }
+@keyframes lv-scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+
+/* Hologram labels */
+.lv .holo { --holo: var(--gold); display: flex; flex-direction: column; align-items: center; color: var(--ivory); background: none; border: 0; padding: 0; }
+.lv .holo-card { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 14px; border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--holo) 28%, transparent), color-mix(in oklab, var(--holo) 8%, transparent));
+  border: 1px solid color-mix(in oklab, var(--holo) 70%, transparent);
+  box-shadow: 0 0 18px color-mix(in oklab, var(--holo) 45%, transparent), inset 0 0 14px color-mix(in oklab, var(--holo) 30%, transparent);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); text-shadow: 0 0 8px color-mix(in oklab, var(--holo) 80%, transparent);
+  white-space: nowrap; font-size: 15px; transition: transform .3s, box-shadow .3s; animation: lv-flicker 5s infinite; }
+.lv .holo-card::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 2px, color-mix(in oklab, var(--holo) 18%, transparent) 2px 3px); pointer-events: none; }
+.lv .holo-tag { font-size: 11px; opacity: .8; }
+.lv .holo-scan { position: absolute; inset-inline: 0; height: 40%; top: 0; background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--holo) 45%, transparent), transparent); animation: lv-scan 3s linear infinite; pointer-events: none; }
+.lv .holo-beam { width: 2px; height: 26px; background: linear-gradient(180deg, var(--holo), transparent); box-shadow: 0 0 8px var(--holo); }
+.lv .holo-beam::after { content: ""; display: block; width: 14px; height: 6px; margin: 24px 0 0 -6px; border-radius: 50%; background: var(--holo); filter: blur(3px); }
+.lv .holo:hover .holo-card, .lv .holo-active .holo-card { transform: translateY(-4px) scale(1.06); box-shadow: 0 0 32px var(--holo), inset 0 0 20px color-mix(in oklab, var(--holo) 50%, transparent); }
+@keyframes lv-flicker { 0%, 92%, 100% { opacity: 1; } 93% { opacity: .6; } 95% { opacity: 1; } 96% { opacity: .75; } }
+@media (max-width: 1023px) { .lv .holo-card { padding: 3px 8px; font-size: 11px; } .lv .holo-beam { height: 12px; } .lv .holo-beam::after { margin-top: 10px; } }
+
+/* Pins */
+.lv .pin { position: absolute; z-index: 20; display: flex; align-items: center; justify-content: center; border-radius: 999px; transform: translate(-50%, -50%); }
+.lv .pin-place { background: var(--navy-deep); color: var(--gold); box-shadow: 0 6px 16px rgba(0,0,0,.45), 0 0 0 2px rgba(246, 242, 233, .8); }
+.lv .pin-place[aria-pressed="true"] { background: var(--gold); color: var(--bg); }
+.lv .pin-mosque { background: transparent; }
+
+/* Panel / sheet / cinematic entrances (CSS stands in for framer-motion) */
+@keyframes lv-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lv-slide-in { from { opacity: 0; transform: translateX(var(--lv-dx, 20px)); } to { opacity: 1; transform: none; } }
+@keyframes lv-sheet { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes lv-cine-img { from { transform: scale(1.25); } to { transform: scale(1.05); } }
+@keyframes lv-cine-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes lv-cine-tag { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes lv-cine-title { from { opacity: 0; transform: translateY(18px); letter-spacing: .3em; } to { opacity: 1; transform: none; letter-spacing: 0; } }
+@keyframes lv-cine-out { to { opacity: 0; transform: scale(1.04); } }
+.lv .fade-in { animation: lv-fade .35s ease both; }
+.lv .panel-in { animation: lv-slide-in .3s ease both; }
+.lv[dir="rtl"] .panel-in { --lv-dx: -20px; }
+.lv .sheet { animation: lv-sheet .42s cubic-bezier(.2, .9, .25, 1) both; }
+.lv .cine { animation: lv-fade .5s ease both, lv-cine-out .5s ease 2.3s forwards; }
+.lv .cine-img { animation: lv-cine-img 3.2s ease-out both; }
+.lv .cine-bar { animation: lv-cine-bar 2.6s linear both; transform-origin: left; }
+.lv .cine-tag { animation: lv-cine-tag .5s ease .35s both; }
+.lv .cine-title { animation: lv-cine-title .9s ease .5s both; }
+
+/* Characters — «royal» cards */
+.lv .royal-card { position: relative; padding: 12px 12px 18px; border-radius: 18px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--gold) 16%, transparent), transparent 55%), var(--card);
+  border: 1px solid color-mix(in oklab, var(--gold) 55%, transparent);
+  box-shadow: 0 20px 40px -20px rgba(245, 197, 24, .35), inset 0 0 0 4px var(--card), inset 0 0 0 5px color-mix(in oklab, var(--gold) 35%, transparent);
+  transition: transform .5s ease, box-shadow .5s ease; }
+.lv .royal-card:hover { transform: translateY(-6px); box-shadow: 0 28px 50px -20px rgba(245, 197, 24, .5), inset 0 0 0 4px var(--card), inset 0 0 0 5px color-mix(in oklab, var(--gold) 55%, transparent); }
+.lv .royal-card::before, .lv .royal-card::after { content: ""; position: absolute; top: -5px; width: 10px; height: 10px; transform: rotate(45deg);
+  background: linear-gradient(135deg, #FBEFC0, var(--gold)); box-shadow: 0 0 10px rgba(245, 197, 24, .6); }
+.lv .royal-card::before { inset-inline-start: 14px; }
+.lv .royal-card::after { inset-inline-end: 14px; }
+.lv .royal-frame { position: relative; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 12px;
+  background: radial-gradient(circle at 50% 40%, var(--ivory), var(--champagne));
+  border: 1px solid color-mix(in oklab, var(--gold) 70%, transparent);
+  box-shadow: inset 0 0 0 3px var(--card), inset 0 0 0 4px color-mix(in oklab, var(--gold) 45%, transparent); }
+.lv .royal-frame::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgba(255,255,255,.28), transparent 35%); }
+.lv .royal-frame img { transition: transform .7s ease; }
+.lv .royal-card:hover .royal-frame img { transform: scale(1.05); }
+.lv .royal-title { color: var(--champagne); font-size: 12px; font-weight: 500; }
+.lv .royal-name { font-family: 'Alexandria', sans-serif; font-size: 2rem; font-weight: 600; line-height: 1.6;
+  background: linear-gradient(180deg, #FBEFC0, var(--gold) 55%, #B98A1E); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 6px rgba(245, 197, 24, .35)); }
+.lv[lang="en"] .royal-name { font-family: 'Manrope', sans-serif; }
+.lv .royal-rule { width: 180px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+.lv .royal-secondary { color: var(--muted-fg); font-size: 12px; line-height: 1.7; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lv .land-pulse { animation: none; opacity: 0; }
+  .lv .land-flow, .lv .holo-card, .lv .holo-scan, .lv .cine-img, .lv .cine-title, .lv .cine-tag, .lv .panel-in, .lv .sheet, .lv .fade-in { animation: none; }
+  .lv .royal-card, .lv .royal-frame img { transition: none; }
+}

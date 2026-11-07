@@ -112,9 +112,11 @@ export default function Footer() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm text-gray-400 hover:text-[#F5C518] transition flex items-center gap-1.5 group"
+                // A pressed state a finger can see: on a phone there is no hover, and the
+                // page answers only after the server does (NavProgress shows that wait).
+                className="text-sm text-gray-400 hover:text-[#F5C518] active:text-[#F5C518] active:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition flex items-center gap-1.5 group"
               >
-                <span className="w-1 h-1 rounded-full bg-[#F5C518]/40 group-hover:bg-[#F5C518] transition" />
+                <span className="w-1 h-1 rounded-full bg-[#F5C518]/40 group-hover:bg-[#F5C518] group-active:bg-[#F5C518] transition" />
                 {isRtl ? link.ar : link.en}
               </Link>
             ))}

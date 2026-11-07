@@ -211,3 +211,6 @@ html[dir="ltr"],
 
 /* Media library icons: arrows mirror in right-to-left text (src/components/media/Icon.tsx). */
 [dir="rtl"] .icon-dir-flip { transform: scaleX(-1); }
+
+/* NavProgress (src/components/NavProgress.tsx): the bar under a pressed link. */
+@keyframes nav-progress { from { width: 0; } to { width: 85%; } }

@@ -14,6 +14,7 @@
  * so after that there is one place to read — no union, no double counting.
  */
 import { prisma } from '@/lib/prisma';
+import { mediaPostCategory } from '@/lib/media-story-category.mjs';
 import { computeHotScore } from '@/lib/tareeq-rank';
 import { notifyTareeq } from '@/lib/tareeq-notify';
 import { mediaPath, TYPE_TO_KIND } from '@/lib/free-media-shared';
@@ -52,7 +53,10 @@ export async function ensureDiscussionPost(
 ): Promise<{ postId: string; created: boolean } | null> {
   const item = await prisma.freeMedia.findUnique({
     where: { id: mediaId },
-    select: { id: true, title: true, description: true, isPublished: true, createdAt: true, discussionPostId: true },
+    select: {
+      id: true, title: true, description: true, isPublished: true, createdAt: true, discussionPostId: true,
+      category: { select: { name: true, nameEn: true } },
+    },
   });
   if (!item || !item.isPublished) return null;
   if (item.discussionPostId) return { postId: item.discussionPostId, created: false };
@@ -83,6 +87,8 @@ export async function ensureDiscussionPost(
         data: {
           content,
           title: item.title.slice(0, 190),
+          // A story from the library sits under the «قصة» chip like any member's story.
+          category: mediaPostCategory(item),
           mediaId,
           userId: author.id,
           authorName: author.name,

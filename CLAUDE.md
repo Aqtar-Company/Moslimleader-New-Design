@@ -974,6 +974,16 @@ Books are protected from download at two levels:
   (the player prints it on the cover). «تابع التصنيف» (`FreeMediaCategoryFollow`) sends a
   `media_new` notification (group `media`) once per item — `followersNotifiedAt` stops an
   unpublish/republish from notifying twice.
+- **A library STORY's طريق post is filed under «قصة» automatically.** The rule is in
+  `src/lib/media-story-category.mjs` (plain JS, shared with `ops/backfill-media-post-category.mjs`):
+  the item's library category is named «قصة/قصص…» (or "Stories"), or its title says «قصة».
+  An audio item is NOT a story just for being audio. Moving the item between categories
+  moves the post's category too, unless the post's category was changed by hand.
+- **Every link press shows a gold bar at the top** (`src/components/NavProgress.tsx`, in the
+  root layout). Pages are force-dynamic, so a client navigation waits on the server with
+  nothing changing on screen — a footer link pressed on a phone looked dead. The bar starts
+  on the click (document capture listener, so no link needs changing) and ends when the URL
+  becomes the link's; it gives up after 15s.
 - **The comment box sits ON the media box** (`MediaQuickComment`, a one-line «اكتب تعليقاً…»
   under the reactions bar; for audio in AudioStage's `below` strip under the cover). The
   «شاركنا رأيك» block below holds the LIST only (`MediaComments writer={false}`); a comment

@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client';
 import { parseMediaItem, parseWaveform } from '@/lib/free-media-input';
 import { removeStoredMedia, isAllowedMediaRef } from '@/lib/free-media';
 import { publishSideEffects, notifyCategoryFollowers } from '@/lib/media-tareeq';
+import { mediaPostCategory } from '@/lib/media-story-category.mjs';
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const guard = await requirePerm(['free-media.write', 'books.write']);
@@ -29,6 +30,24 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         where: { id: item.discussionPostId, title: existing.title.slice(0, 190) },
         data: { title: updated.title.slice(0, 190) },
       }).catch(() => {});
+    }
+
+    // Moving the item to (or out of) a story category, or renaming it, moves its post's
+    // طريق category with it — unless the post was given another category by hand.
+    if (item.discussionPostId && (existing.categoryId !== updated.categoryId || existing.title !== updated.title)) {
+      const cats = await prisma.freeMediaCategory.findMany({
+        where: { id: { in: [existing.categoryId, updated.categoryId].filter((x): x is number => x != null) } },
+        select: { id: true, name: true, nameEn: true },
+      }).catch(() => []);
+      const cat = (cid: number | null) => cats.find(c => c.id === cid) ?? null;
+      const before = mediaPostCategory({ title: existing.title, category: cat(existing.categoryId) });
+      const after = mediaPostCategory({ title: updated.title, category: cat(updated.categoryId) });
+      if (before !== after) {
+        await prisma.tareeqPost.updateMany({
+          where: { id: item.discussionPostId, category: before },
+          data: { category: after },
+        }).catch(() => {});
+      }
     }
 
     // Only AFTER the row points elsewhere: deleting first and then failing the update would

@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { rescoreSoon } from '@/lib/tareeq-rescore';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       await tx.tareeqPost.update({ where: { id: postId }, data: { likeCount: { increment: 1 } } });
     }
   });
+  rescoreSoon(postId);
   const s = (await reactionSummaries([id], user.userId)).get(id);
   return NextResponse.json(s);
 }

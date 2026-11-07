@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { rescoreSoon } from '@/lib/tareeq-rescore';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
@@ -133,6 +134,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // Only increment commentCount for top-level comments
     ...(!parentId ? [prisma.tareeqPost.update({ where: { id: params.id }, data: { commentCount: { increment: 1 } } })] : []),
   ]);
+  if (!parentId) rescoreSoon(params.id);
 
   const commenterName = comment.user?.name ?? 'شخص ما';
 

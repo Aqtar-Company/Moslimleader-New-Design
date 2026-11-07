@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { rescoreSoon } from '@/lib/tareeq-rescore';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
@@ -36,12 +37,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       prisma.tareeqLike.delete({ where: { id: existing.id } }),
       prisma.tareeqPost.update({ where: { id: params.id }, data: { likeCount: { decrement: 1 } } }),
     ]);
+    rescoreSoon(params.id);
     return NextResponse.json({ liked: false });
   } else {
     await prisma.$transaction([
       prisma.tareeqLike.create({ data: { postId: params.id, userId: user.userId } }),
       prisma.tareeqPost.update({ where: { id: params.id }, data: { likeCount: { increment: 1 } } }),
     ]);
+    rescoreSoon(params.id);
     // Notify post author. notifyTareeq owns the self-notify guard, the recipient's
     // per-type preference and the mute check — non-blocking, never fails the like.
     if (post.userId) {

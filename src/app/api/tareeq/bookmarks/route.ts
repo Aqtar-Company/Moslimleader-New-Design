@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
+import { rescoreSoon } from '@/lib/tareeq-rescore';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { SHARED_FROM_INCLUDE, normalizeSharedFrom } from '@/lib/tareeq-post-select';
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
 
   if (!existing) {
     await prisma.tareeqPost.update({ where: { id: postId }, data: { savedCount: { increment: 1 } } }).catch(() => {});
+    rescoreSoon(postId);
   }
 
   return NextResponse.json({ bookmark });
@@ -96,6 +98,7 @@ export async function DELETE(req: NextRequest) {
 
   if (deleted.count > 0) {
     await prisma.tareeqPost.updateMany({ where: { id: postId, savedCount: { gt: 0 } }, data: { savedCount: { decrement: 1 } } }).catch(() => {});
+    rescoreSoon(postId);
   }
 
   return NextResponse.json({ ok: true });

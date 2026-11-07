@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest } from 'next/server';
+import { rescoreSoon } from '@/lib/tareeq-rescore';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin, logAudit } from '@/lib/tareeq-admin-auth';
 import { TareeqAdminRole } from '@prisma/client';
@@ -49,6 +50,7 @@ export async function PATCH(
           })]
         : []),
     ]);
+    if (!existing.parentId) rescoreSoon(existing.postId);
     await logAudit(admin.id, 'comment.delete', {
       targetType: 'comment',
       targetId: params.id,

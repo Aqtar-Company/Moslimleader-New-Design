@@ -1018,13 +1018,23 @@ Books are protected from download at two levels:
   (المدير العام · شريك مؤسس — the owner's wording), then Dr. Ibrahim Hassan; the text below
   follows the same order. Her picture is the drawn avatar, never a photograph.
 - **«أرض القائد المسلم» has its own page, `/land` (`src/app/land/`).** A future project laid
-  out as one. **The page OPENS ON THE MAP** (`LandMap.tsx`): an illustrated top-down plan
-  (SVG 1200×760) with HTML pins in percentages; every district and place opens a card
-  (picture, real-world theme, what it offers each audience), the map glides in to frame it
-  (clamped at the edges), «من سيزور؟» lights the districts with something for an audience
-  and lists it, and layers switch the mosques and the promenade. Content lives in
-  `data.ts` (districts, audiences) and the places in `POIS` inside the map; shared pieces
-  in `parts.tsx`. **Writing rules the owner set (2026-11-07):** refined Arabic, no «ملاهي» or
+  out as one. **The page OPENS ON THE MAP, and the map is DESIGNED BY THE OWNER IN LOVABLE**
+  — repo `Aqtar-Company/pixel-perfect-replay-42559` (Lovable syncs it). Its header, map and
+  «شخصيات مسلم ليدر» are ported to `LandMap.tsx`, `land-data.ts`, `Characters.tsx`,
+  `land-icons.tsx`, `land-sound.ts`, `land-map.css` (every rule under `.lv`). **To carry a
+  Lovable change over, diff its `src/components/land/*` and `src/components/characters/*`
+  against these files** — the shape and the strings are kept identical on purpose. Three
+  deliberate differences: no framer-motion / react-zoom-pan-pinch / lucide-react (the camera
+  is one CSS transform with the same clamp arithmetic, pan + pinch are pointer events, the
+  icons are inlined lucide paths); the map keeps its 1200×760 ratio (Lovable's `max-h` cropped
+  the picture and moved the pins); Lovable's character "guides" and flying Sokar are defined
+  in its data but never drawn, so they are not ported. Its images are `.asset.json` pointers
+  to Lovable's own host — fetch them from
+  `https://03e87a55-46eb-4b73-869b-25dc3c476a0f.lovableproject.com<url>` and convert to WebP
+  into `public/land/map/` (≤1400px; the masterplan 1920 + 1200) and `public/land/characters/`
+  (600px). On phones the open part's panel is a bottom sheet and it sets `html[data-sheet]`,
+  which hides the Ameen/WhatsApp launchers (globals.css). The page's later sections
+  (`data.ts` districts, `parts.tsx`) are the site's own and use the same pictures. **Writing rules the owner set (2026-11-07):** refined Arabic, no «ملاهي» or
   «سينما» («دار الألعاب», «دار العرض»), no storybook tone, no counts («ست مناطق») and nothing
   invented — only what the owner described or showed (the observatory, the promenade and the
   named themes I had proposed were removed). The founding idea is «روّحوا القلوبَ ساعةً بعد

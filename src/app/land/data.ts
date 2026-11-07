@@ -31,7 +31,7 @@ export const WHO_ORDER: Who[] = ['kids', 'men', 'women', 'family'];
 
 export const DISTRICTS: District[] = [
   {
-    id: 'stories', n: 1, icon: 'book', hue: '#E8C873', img: '/partnership/land-stories.webp',
+    id: 'stories', n: 1, icon: 'book', hue: '#E8C873', img: '/land/map/screening.webp',
     title: { ar: 'دار العرض', en: 'The Screening House' },
     tag: { ar: 'أفلام مسلم ليدر ورواياتها', en: 'Moslim Leader’s films and novels' },
     intro: {
@@ -46,7 +46,7 @@ export const DISTRICTS: District[] = [
     },
   },
   {
-    id: 'games', n: 2, icon: 'zap', hue: '#8FC3D1',
+    id: 'games', n: 2, icon: 'zap', hue: '#8FC3D1', img: '/land/map/stories-experiences.webp',
     title: { ar: 'دار الألعاب', en: 'The House of Games' },
     tag: { ar: 'ألعاب تحترم الهوية', en: 'Games that respect identity' },
     intro: {
@@ -61,7 +61,7 @@ export const DISTRICTS: District[] = [
     },
   },
   {
-    id: 'scouts', n: 3, icon: 'badge', hue: '#B9C79A', img: '/land/scouts-climbing.webp',
+    id: 'scouts', n: 3, icon: 'badge', hue: '#B9C79A', img: '/land/map/scouts.webp',
     title: { ar: 'الكشافة', en: 'The Scouts' },
     tag: { ar: 'شخصية قوية، وغدٌ أفضل', en: 'Strong character, a brighter tomorrow' },
     intro: {
@@ -76,7 +76,7 @@ export const DISTRICTS: District[] = [
     },
   },
   {
-    id: 'girls', n: 4, icon: 'heart', hue: '#E7A9BD', img: '/land/girls-stories.webp', onlyFor: 'women',
+    id: 'girls', n: 4, icon: 'heart', hue: '#E7A9BD', img: '/land/map/club-wellbeing.webp', onlyFor: 'women',
     title: { ar: 'نادي البنات والسيدات', en: 'The Girls’ and Women’s Club' },
     tag: { ar: 'صحة وخصوصية ومجتمع', en: 'Wellbeing, privacy, community' },
     intro: {
@@ -91,7 +91,7 @@ export const DISTRICTS: District[] = [
     },
   },
   {
-    id: 'family', n: 5, icon: 'comment', hue: '#B7A9DA',
+    id: 'family', n: 5, icon: 'comment', hue: '#B7A9DA', img: '/land/map/forum-campus.webp',
     title: { ar: 'الملتقى الثقافي والفكري', en: 'The Cultural and Intellectual Forum' },
     tag: { ar: 'نبني أسرة واعية', en: 'Building a mindful family' },
     intro: {
@@ -106,7 +106,7 @@ export const DISTRICTS: District[] = [
     },
   },
   {
-    id: 'plaza', n: 6, icon: 'moon', hue: '#9BCB8F', img: '/partnership/land-cafe.webp',
+    id: 'plaza', n: 6, icon: 'moon', hue: '#9BCB8F', img: '/land/map/garden-golden-hour.webp',
     title: { ar: 'الحديقة الكبرى', en: 'The Great Garden' },
     tag: { ar: 'قلب المكان', en: 'The heart of the place' },
     intro: {

@@ -199,7 +199,10 @@ html[dir="ltr"],
 .wa-float, .ameen-launcher { transition: opacity .18s ease, transform .18s ease, background-color .2s; }
 @media (pointer: coarse) {
   html[data-typing] .wa-float,
-  html[data-typing] body:not([data-ameen-open]) .ameen-launcher {
+  html[data-typing] body:not([data-ameen-open]) .ameen-launcher,
+  /* the /land map's bottom sheet (src/app/land/LandMap.tsx) sits where they are */
+  html[data-sheet] .wa-float,
+  html[data-sheet] body:not([data-ameen-open]) .ameen-launcher {
     opacity: 0 !important;
     transform: translateY(18px) scale(.85) !important;
     pointer-events: none !important;

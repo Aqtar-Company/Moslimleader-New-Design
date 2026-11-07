@@ -10,6 +10,7 @@ import DeployReloadGuard from '@/components/DeployReloadGuard';
 import Footer from '@/components/layout/Footer';
 import AmeenChat from '@/components/AmeenChat';
 import TypingFlag from '@/components/TypingFlag';
+import NavProgress from '@/components/NavProgress';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
@@ -94,6 +95,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       <AmeenChat />
                       <WhatsAppButton />
                       <TypingFlag />
+                      <NavProgress />
                     </ConfirmProvider>
                   </ToastProvider>
                 </WishlistProvider>

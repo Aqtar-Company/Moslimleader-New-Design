@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { rescoreSoon } from '@/lib/tareeq-rescore';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit } from '@/lib/tareeq-guard';
@@ -113,6 +114,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
         })]
       : []),
   ]);
+  if (!comment.parentId) rescoreSoon(comment.postId);
 
   return NextResponse.json({ ok: true, deletedBy: isAuthor ? 'author' : 'post-owner' });
 }

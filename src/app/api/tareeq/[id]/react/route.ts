@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { rescoreSoon } from '@/lib/tareeq-rescore';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       await tx.$executeRaw`UPDATE \`TareeqPost\` SET likeCount = GREATEST(0, likeCount - ${-delta}) WHERE id = ${params.id}`;
     }
   });
+  if (delta !== 0) rescoreSoon(params.id);
 
   // Notify the post author on a genuinely new reaction only (skip self, skip type switches
   // and toggles-off).

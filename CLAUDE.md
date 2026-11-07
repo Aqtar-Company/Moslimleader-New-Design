@@ -889,6 +889,17 @@ Books are protected from download at two levels:
   reader+snapshot in `tareeq-store` (30 min; signed-out readers share one per 5 min) and
   pages slice it; re-ranking per page let every hide/mute/reaction shift the order and SKIP
   posts. Hidden/muted posts are dropped from the page being served, never from the list.
+  **«الأنفع» (`sort=useful`) is the stored `hotScore` column** (`src/lib/tareeq-rank.ts`:
+  log10 engagement + publication time / 3 days), inside a 30-day window. Its time term is
+  the publication instant, so the ORDER never changes with time alone — only engagement
+  moves a post. Until 2026-11-07 nothing rescored a post when it was reacted to, commented
+  on, saved or shared (only creation and the nightly cleanup cron wrote it), so «الأنفع» was
+  «جديد» in disguise. Every counter write now calls `rescoreSoon()` (`src/lib/tareeq-rescore.ts`)
+  — a NEW route that changes a counter must call it too. Changing `AGE_DIVISOR` changes the
+  scale of every stored score: rescore once with `/api/cron/tareeq-cleanup`. Publishing a
+  draft now sets `createdAt` as well (it used to leave the drafting date, so the post landed
+  deep in «جديد»). `ops/check-tareeq-feed.mjs` (read-only) checks categories, stale scores and
+  misdated drafts on the live data.
 - **`fetch(dataUrl)` is blocked on this site** — the CSP's `connect-src` has no `data:`. Use
   `dataUrlToBlob()` (`src/lib/data-url.ts`). The composer's video covers were failing on it.
 - **One unbroken run of characters in a comment used to widen the whole page.** `break-word`

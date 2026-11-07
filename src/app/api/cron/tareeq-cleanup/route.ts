@@ -19,9 +19,11 @@ import { computeHotScore } from '@/lib/tareeq-rank';
  * the header have different names on purpose; getting them the wrong way round is what
  * left both of those answering 403 for a while.
  *
- * It also recomputes the «الأنفع» ranking score. That score has a recency term, so every
- * post's standing changes simply by time passing — a nightly pass is what keeps the feed
- * from freezing around whatever was popular the day each post was written.
+ * It also recomputes the «الأنفع» ranking score for the last 60 days. The routes that change
+ * a post's counters rescore it on the spot (src/lib/tareeq-rescore.ts) — the time term is
+ * the publication instant, so the ORDER does not change with time passing alone; this pass
+ * is the safety net for a missed rescore, and the one-off needed after AGE_DIVISOR in
+ * tareeq-rank.ts changes (every stored score must be on the same scale).
  *
  * Install with:
  *   0 4 * * * curl -s -H "x-cron-key: $CRON_SECRET" https://moslimleader.com/api/cron/tareeq-cleanup

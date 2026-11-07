@@ -8,10 +8,10 @@ import { computeHotScore } from '@/lib/tareeq-rank';
 /**
  * Publish a draft (POST) or discard it (DELETE).
  *
- * Publishing sets `publishedAt` rather than touching `createdAt`: a post drafted last week
- * and published today must sit at the top of the feed, not a week deep in it. The feed
- * still orders by `createdAt` today — `publishedAt` is recorded now so that ordering can
- * move to it without a backfill.
+ * Publishing sets `publishedAt` AND `createdAt` to now: a post drafted last week and
+ * published today must sit at the top of the feed, not a week deep in it — and every feed
+ * but «لك» orders by `createdAt`. (It used to set only `publishedAt`, which left exactly
+ * that bug in «جديد»; `ops/fix-published-draft-dates.mjs` repairs the rows it left.)
  */
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const me = await getAuthUser().catch(() => null);
@@ -35,7 +35,11 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     where: { id: params.id, userId: me.userId, isDraft: true },
     // The score is seeded from the publication moment, not from when the draft was
     // written — otherwise a post drafted a month ago would arrive already buried.
-    data: { isDraft: false, publishedAt, hotScore: computeHotScore({ at: publishedAt }) },
+    // createdAt moves too. «جديد», «أتابع», the «الأنفع» window, the chronological tail of
+    // «لك» and every «منذ…» label read createdAt — leaving it at the drafting date put a post
+    // published today a week deep in «جديد», outside «الأنفع» entirely after 30 days of
+    // drafting, and labelled «منذ أسبوع» on the day it went out.
+    data: { isDraft: false, publishedAt, createdAt: publishedAt, hotScore: computeHotScore({ at: publishedAt }) },
   });
 
   if (res.count === 0) {

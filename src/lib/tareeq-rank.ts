@@ -24,8 +24,21 @@
  * column shared by every reader, and Tareeq already has a separate «من أتابع» feed for it.
  */
 
-/** One point of score per this many seconds of age. 45,000s ≈ 12.5 hours. */
-const AGE_DIVISOR = 45_000;
+/**
+ * One point of score per this many seconds of age — 3 days.
+ *
+ * It was 45,000s (12.5 hours), the Reddit constant. With log10 engagement that made one
+ * point of score — TEN times the engagement — worth only half a day, so on «الأنفع» a post
+ * published half an hour ago with nothing on it outranked yesterday's post with 30
+ * reactions, 8 comments and 4 saves. «الأنفع» was «جديد» by another name. At 3 days, ten
+ * times the engagement buys three days: a well-received post holds the top for days and
+ * then gives way, and a new post still rises as soon as people engage with it.
+ *
+ * Changing this changes the SCALE of every stored score, so after a change every recent
+ * post must be rescored once (GET /api/cron/tareeq-cleanup does it) — otherwise old and
+ * new scores are compared on two different scales.
+ */
+const AGE_DIVISOR = 3 * 86_400;
 
 export type RankInputs = {
   savedCount?: number | null;

@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { rescoreSoon } from '@/lib/tareeq-rescore';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     prisma.tareeqComment.create({ data: { postId: thread.postId, userId: user.userId, content } }),
     prisma.tareeqPost.update({ where: { id: thread.postId }, data: { commentCount: { increment: 1 } } }),
   ]);
+  rescoreSoon(thread.postId);
   const me = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true } });
   return NextResponse.json({
     comment: {

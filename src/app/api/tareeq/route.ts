@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { rescoreSoon } from '@/lib/tareeq-rescore';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isBlockedEitherWay } from '@/lib/tareeq-guard';
@@ -396,7 +397,7 @@ export async function POST(req: NextRequest) {
     prisma.tareeqPost.update({
       where: { id: sharedFromId },
       data: { shareCount: { increment: 1 } },
-    }).catch(() => {});
+    }).then(() => rescoreSoon(sharedFromId)).catch(() => {});
 
     // Tell the author someone shared their mark — the whole point of attribution is that
     // it reaches them. Skip self-shares and anything auto-hidden (nothing to see yet).

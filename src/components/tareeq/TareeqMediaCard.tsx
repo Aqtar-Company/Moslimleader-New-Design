@@ -1,6 +1,7 @@
 'use client';
 import { useRef } from 'react';
 import TareeqVideo from './TareeqVideo';
+import AudioStage from '@/components/media/AudioStage';
 import type { PostMedia } from '@/lib/post-media';
 import { TYPE_TO_KIND, KIND_LABEL, formatDuration, mediaPath, mediaThumbUrl } from '@/lib/free-media-shared';
 
@@ -18,6 +19,7 @@ export default function TareeqMediaCard({ media, isRtl, compact = false }: {
   compact?: boolean;
 }) {
   const counted = useRef(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   if (!media || !media.isPublished) return null;
 
   const kind = TYPE_TO_KIND[media.type] ?? 'video';
@@ -37,6 +39,11 @@ export default function TareeqMediaCard({ media, isRtl, compact = false }: {
     if (counted.current) return;
     counted.current = true;
     void fetch(`/api/media/${media.id}/view`, { method: 'POST' }).catch(() => {});
+  };
+  // A feed holds several stories; starting one stops the one already playing.
+  const onPlayAudio = (el: HTMLAudioElement | null) => {
+    document.querySelectorAll('audio').forEach(a => { if (a !== el && !a.paused) a.pause(); });
+    onPlay();
   };
 
   const label = isRtl ? KIND_LABEL[kind].one : kind === 'audio' ? 'Audio' : kind === 'image' ? 'Drawing' : kind === 'pdf' ? 'PDF' : kind === 'reel' ? 'Reel' : 'Video';
@@ -60,19 +67,38 @@ export default function TareeqMediaCard({ media, isRtl, compact = false }: {
       />
     );
   } else if (kind === 'audio') {
-    body = (
-      <div className="flex items-center gap-3 p-3" style={{ background: 'var(--tr-raised)' }}>
-        {media.coverUrl ? (
-          <img src={mediaThumbUrl(media.coverUrl, 320) ?? media.coverUrl} alt="" loading="lazy" className={`${compact ? 'w-14 h-14' : 'w-20 h-20'} shrink-0 rounded-xl object-cover`} />
-        ) : (
-          <span className={`${compact ? 'w-14 h-14' : 'w-20 h-20'} shrink-0 rounded-xl flex items-center justify-center`} style={{ background: '#1a1a2e', color: '#F5C518' }} aria-hidden>
-            <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-[13.5px] font-bold leading-snug line-clamp-2" style={{ color: 'var(--tr-text-primary)' }}>{title}</p>
-          <audio src={media.url} controls preload="none" onPlay={onPlay} className="w-full mt-2" style={{ height: 36 }} />
-        </div>
+    // The library's own player (cover large, waveform as the seek bar, big play button):
+    // a story in the feed must look like something to LISTEN to, not a file with a control
+    // strip. The library strip is attached under it, inside the same dark box.
+    const wave = Array.isArray(media.waveform) && media.waveform.every(n => typeof n === 'number') ? media.waveform as number[] : null;
+    const cat = media.category ? (!isRtl && media.category.nameEn ? media.category.nameEn : media.category.name) : null;
+    return (
+      <div className={compact ? 'mt-0' : 'mt-3'} onClick={stop}>
+        <AudioStage
+          ref={audioRef}
+          src={media.url}
+          coverUrl={media.coverUrl}
+          title={title}
+          label={cat ?? label}
+          waveform={wave}
+          durationSec={media.durationSec}
+          isEn={!isRtl}
+          onPlay={() => onPlayAudio(audioRef.current)}
+          onEnded={() => {}}
+          below={
+            <div className="flex items-center gap-2 text-[11.5px] text-white/65">
+              <span className="font-bold shrink-0 text-[#F5C518]">{isRtl ? 'مكتبة الوسائط' : 'Media library'}</span>
+              {duration && <><span aria-hidden>·</span><span dir="ltr" className="tabular-nums">{duration}</span></>}
+              <span
+                {...linkProps}
+                className="ms-auto shrink-0 inline-flex items-center gap-1 font-bold rounded-full px-3 py-1.5 cursor-pointer bg-white/10 hover:bg-white/20 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]"
+              >
+                {isRtl ? 'افتح في المكتبة' : 'Open in library'}
+                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" style={{ transform: isRtl ? 'scaleX(-1)' : undefined }} aria-hidden><path d="M7 17 17 7M8 7h9v9" /></svg>
+              </span>
+            </div>
+          }
+        />
       </div>
     );
   } else if (kind === 'image') {
@@ -103,8 +129,8 @@ export default function TareeqMediaCard({ media, isRtl, compact = false }: {
         <span className="font-bold shrink-0" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'مكتبة الوسائط' : 'Media library'}</span>
         <span aria-hidden>·</span>
         <span className="truncate">
-          {/* Audio and PDF carry their title in the body; a picture or a video does not. */}
-          {kind === 'audio' || kind === 'pdf' ? label : title}
+          {/* A PDF carries its title in the body; a picture or a video does not. (Audio has its own player and strip above.) */}
+          {kind === 'pdf' ? label : title}
           {duration && <> · <span dir="ltr" className="tabular-nums">{duration}</span></>}
         </span>
         <span

@@ -1586,6 +1586,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   /* ── TEXT CARD ──────────────────────────────────────────────────── */
   const isLong = post.content.length > SNIPPET_LEN || post.content.split('\n').length > 4;
   const hasLibraryMedia = !!post.media?.isPublished;
+  const titleIsMediaTitle = hasLibraryMedia && !post.videoUrl && !hasImage && !!post.title
+    && [post.media?.title, post.media?.titleEn].some(t => !!t && t.trim() === post.title!.trim());
   const isTextOnly = !post.imageUrl && !post.videoUrl && !hasLibraryMedia;
 
   return (
@@ -1651,7 +1653,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
         {/* Post content — separate link so no nested anchors */}
         <Link href={`/tareeq/${post.id}`} className="block px-4 pb-3.5" onClick={handlePostLinkClick}>
-          {post.title && (
+          {/* A library item's post is titled with the item, and the player below prints that
+              title on its cover — once is enough. */}
+          {post.title && !titleIsMediaTitle && (
             <h3 className="font-extrabold text-[15px] leading-snug mb-2" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>
           )}
 

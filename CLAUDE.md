@@ -956,7 +956,11 @@ Books are protected from download at two levels:
   every `<a>` near it must stay OUTSIDE the text card's post `<Link>` — an `<a>` inside an
   `<a>` is re-parented by the browser and the page fails to hydrate (this is also why the
   shared original now sits outside it). The media select lives in `SHARED_FROM_INCLUDE`, so
-  every card query already carries it. «تابع التصنيف» (`FreeMediaCategoryFollow`) sends a
+  every card query already carries it. An AUDIO item plays in the card through the library's own
+  `AudioStage` (cover large, waveform seek bar — `waveform` and `category` are in
+  `POST_MEDIA_SELECT`), with the library strip in its `below`; starting one pauses any other
+  `<audio>` on the page, and the text card hides the post's title when it equals the item's
+  (the player prints it on the cover). «تابع التصنيف» (`FreeMediaCategoryFollow`) sends a
   `media_new` notification (group `media`) once per item — `followersNotifiedAt` stops an
   unpublish/republish from notifying twice.
 - **The comment box sits ON the media box** (`MediaQuickComment`, a one-line «اكتب تعليقاً…»

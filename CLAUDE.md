@@ -890,7 +890,9 @@ Books are protected from download at two levels:
   pages slice it; re-ranking per page let every hide/mute/reaction shift the order and SKIP
   posts. Hidden/muted posts are dropped from the page being served, never from the list.
   **«الأنفع» (`sort=useful`) is the stored `hotScore` column** (`src/lib/tareeq-rank.ts`:
-  log10 engagement + publication time / 3 days), inside a 30-day window. Its time term is
+  log10 engagement + publication time / 3 days), inside a 30-day window. A post with NO
+  engagement scores −1000 + age, so it sorts after every post with at least one reaction
+  (newest first among themselves) — a fresh empty post is not «الأنفع». Its time term is
   the publication instant, so the ORDER never changes with time alone — only engagement
   moves a post. Until 2026-11-07 nothing rescored a post when it was reacted to, commented
   on, saved or shared (only creation and the nightly cleanup cron wrote it), so «الأنفع» was

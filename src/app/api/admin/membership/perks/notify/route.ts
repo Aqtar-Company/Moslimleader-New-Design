@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { computeHotScore } from '@/lib/tareeq-rank';
 import { requirePerm } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
@@ -56,6 +57,10 @@ export async function POST(req: NextRequest) {
           content,
           title: perk.title,
           category: 'عروض',
+          // Dated and scored like any other post, or «الأنفع» reads hotScore 0 and the
+          // «لك» window falls back to createdAt.
+          publishedAt: new Date(),
+          hotScore: computeHotScore({ at: new Date() }),
           imageUrl: perk.imageUrl ?? null,
         },
       });

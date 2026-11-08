@@ -17,17 +17,19 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const KEYS = ['experience', 'story', 'idea', 'question', 'project', 'reflection'];
+// Not a chip on purpose: membership-perk announcements (api/admin/membership/perks).
+const KNOWN_OTHER = ['عروض'];
 const AGE_DIVISOR = 3 * 86_400; // must match src/lib/tareeq-rank.ts
 const hot = p => {
   const e = (p.savedCount ?? 0) * 4 + (p.shareCount ?? 0) * 5 + (p.commentCount ?? 0) * 2 + (p.likeCount ?? 0);
-  return Math.round((Math.log10(Math.max(e, 1)) + (p.publishedAt ?? p.createdAt).getTime() / 1000 / AGE_DIVISOR) * 1e6) / 1e6;
+  return Math.round(((e > 0 ? Math.log10(e) : -1000) + (p.publishedAt ?? p.createdAt).getTime() / 1000 / AGE_DIVISOR) * 1e6) / 1e6;
 };
 const live = { isHidden: false, isDraft: false };
 
 console.log('── 1. Categories (published, visible posts)');
 const cats = await prisma.tareeqPost.groupBy({ by: ['category'], where: live, _count: { _all: true } });
 for (const c of cats.sort((a, b) => b._count._all - a._count._all)) {
-  const ok = c.category === null || KEYS.includes(c.category);
+  const ok = c.category === null || KEYS.includes(c.category) || KNOWN_OTHER.includes(c.category);
   console.log(`   ${ok ? 'ok ' : 'BAD'}  ${String(c.category ?? '(none)').padEnd(12)} ${c._count._all}`);
 }
 

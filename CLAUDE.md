@@ -1059,7 +1059,11 @@ Books are protected from download at two levels:
   to Lovable's own host — fetch them from
   `https://03e87a55-46eb-4b73-869b-25dc3c476a0f.lovableproject.com<url>` and convert to WebP
   into `public/land/map/` (≤1400px; the masterplan 1920 + 1200) and `public/land/characters/`
-  (600px). On phones the open part's panel is a bottom sheet and it sets `html[data-sheet]`,
+  (600px; a portrait is the WHOLE figure padded onto a white 600×800 canvas, bottom-aligned —
+  the card multiplies it over its gradient, so white vanishes; a painted checkerboard
+  «transparency» must be whitened first or it shows). Two characters were added on the site
+  itself, not in Lovable: ذاكر and «عمو عوض» (الفانوس) — keep them if Lovable's list is
+  re-ported. On phones the open part's panel is a bottom sheet and it sets `html[data-sheet]`,
   which hides the Ameen/WhatsApp launchers (globals.css). The page's later sections
   (`data.ts` districts, `parts.tsx`) are the site's own and use the same pictures. **Writing rules the owner set (2026-11-07):** refined Arabic, no «ملاهي» or
   «سينما» («دار الألعاب», «دار العرض»), no storybook tone, no counts («ست مناطق») and nothing

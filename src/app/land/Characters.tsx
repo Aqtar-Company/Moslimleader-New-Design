@@ -5,7 +5,8 @@ import type { Lang } from './land-data';
  * (src/components/characters/). Portraits are in public/land/characters/ (WebP, 600px).
  * Styles: `.royal-*` in land-map.css, scoped under `.lv`.
  */
-type Character = { id: string; name: string; title: string; nameEn: string; titleEn: string };
+/** `title` is optional: a character the owner named without a role is shown by name alone. */
+type Character = { id: string; name: string; title?: string; nameEn: string; titleEn?: string };
 
 const characters: Character[] = [
   { id: 'hamza', name: 'حمزة', title: 'الإمام', nameEn: 'Hamza', titleEn: 'The Imam' },
@@ -14,6 +15,8 @@ const characters: Character[] = [
   { id: 'tariq', name: 'طارق', title: 'الفتى', nameEn: 'Tariq', titleEn: 'The Boy' },
   { id: 'habiba', name: 'حبيبة', title: 'الفتاة', nameEn: 'Habiba', titleEn: 'The Girl' },
   { id: 'rahima', name: 'رحيمة', title: 'الراوية', nameEn: 'Raheema', titleEn: 'The Storyteller' },
+  { id: 'zaker', name: 'ذاكر', nameEn: 'Zaker' },
+  { id: 'awad', name: 'عمو عوض', title: 'الفانوس', nameEn: 'Uncle Awad', titleEn: 'The Lantern' },
 ];
 
 function Card({ c, lang }: { c: Character; lang: Lang }) {
@@ -24,14 +27,17 @@ function Card({ c, lang }: { c: Character; lang: Lang }) {
     <article className="royal-card">
       <div className="royal-frame">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`/land/characters/${c.id}.webp`} alt={`${title} ${name}`} loading="lazy" width={600} height={800}
+        <img src={`/land/characters/${c.id}.webp`} alt={title ? `${title} ${name}` : name} loading="lazy" width={600} height={800}
           className="h-full w-full object-cover object-bottom mix-blend-multiply" />
       </div>
       <div className="mt-4 text-center">
-        <p className="royal-title">✦ {title} ✦</p>
+        {/* Without a role the line keeps its place, so every card's name sits on one baseline. */}
+        {title ? <p className="royal-title">✦ {title} ✦</p> : <p className="royal-title" aria-hidden>✦</p>}
         <h3 className="royal-name">{name}</h3>
         <p lang={other} dir={other === 'ar' ? 'rtl' : 'ltr'} className="royal-secondary mt-1">
-          {lang === 'ar' ? `${c.titleEn} · ${c.nameEn}` : `${c.title} ${c.name}`}
+          {lang === 'ar'
+            ? [c.titleEn, c.nameEn].filter(Boolean).join(' · ')
+            : [c.title, c.name].filter(Boolean).join(' ')}
         </p>
       </div>
     </article>
@@ -47,7 +53,7 @@ export default function Characters({ lang }: { lang: Lang }) {
         <p lang={lang === 'ar' ? 'en' : 'ar'} className="royal-secondary mt-2">{lang === 'ar' ? 'Moslim Leader Characters' : 'شخصيات مسلم ليدر'}</p>
         <div className="royal-rule mx-auto mt-4" />
       </div>
-      <div className="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-4">
         {characters.map(c => <Card key={c.id} c={c} lang={lang} />)}
       </div>
     </section>

@@ -40,6 +40,9 @@
  */
 const AGE_DIVISOR = 3 * 86_400;
 
+/** Larger than any span of the age term inside the 30-day window (≈10 points). */
+const NO_ENGAGEMENT_PENALTY = 1000;
+
 export type RankInputs = {
   savedCount?: number | null;
   likeCount?: number | null;
@@ -56,9 +59,13 @@ export function computeHotScore(p: RankInputs): number {
     (p.commentCount ?? 0) * 2 +
     (p.likeCount ?? 0);
 
-  // max(engagement, 1) keeps log10 defined and makes a brand-new post with nothing yet
-  // score purely on its age, which is what puts it in front of anyone at all.
-  const quality = Math.log10(Math.max(engagement, 1));
+  // A post nobody has engaged with yet is not «الأنفع» — nothing says it was useful. It
+  // used to score on its age alone, which put every brand-new empty post above last week's
+  // well-received ones (seen on the live feed: a bare link with no reaction at #3). Such a
+  // post now sorts BELOW every post with at least one reaction, newest first among
+  // themselves; its first reaction lifts it into the ranking. A new post reaches people
+  // through «جديد» and «لك», which is what those tabs are for.
+  const quality = engagement > 0 ? Math.log10(engagement) : -NO_ENGAGEMENT_PENALTY;
   const age = p.at.getTime() / 1000 / AGE_DIVISOR;
 
   // Rounded: the float is written to MySQL and compared across rows, and trailing noise in

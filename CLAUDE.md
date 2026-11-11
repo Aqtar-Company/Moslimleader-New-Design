@@ -1078,8 +1078,9 @@ Books are protected from download at two levels:
   «مخطط تصوّري — ليس بمقياس رسم»), then one section per district from the `DISTRICTS`
   array. **Every district lists what it offers four audiences — `who: { kids, men, women,
   family }`** (the owner's rule: a father leaves his son at a supervised activity and
-  attends his own), shown by `WhoGrid` on the cards and in the map's side panel, and told
-  as a day in «يوم واحد، لكل فرد مساره». The plan is organised like a great theme park (gate →
+  attends his own), shown by `WhoGrid` on the cards and in the map's side panel. The yellow
+  moving strip, the «روّحوا القلوب» quote section and «لكل فرد مساره» were REMOVED from the
+  page at the owner's request (2026-11-11). The plan is organised like a great theme park (gate →
   souq street → a central garden with a landmark, the observatory → a loop promenade
   through the districts) but every district is themed on a REAL world (`world`:
   Andalusia, the riads of Fez, the desert and oasis, Ibn Battuta's road, the House of

@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import Icon from '@/components/media/Icon';
-import { AUD, DISTRICTS, WHO_ORDER, type District, type L, type Who } from './data';
-import { Art, Concept, Dot, WhoGrid } from './parts';
+import { DISTRICTS, type District, type L } from './data';
+import { Art, Concept, WhoGrid } from './parts';
 import LandMap from './LandMap';
 import Characters from './Characters';
 import { ui } from './land-data';
@@ -17,9 +17,9 @@ import { ui } from './land-data';
  * things that strengthen its bonds, its minds and its thinking; no triviality, no waste.
  *
  * Order: the interactive map first (LandMap.tsx, designed in Lovable) with the characters
- * under it (Characters.tsx), the moving strip, the founding idea, «لكل
- * فرد مساره» (a day told as four paths that meet), the parts of the Land as cards, a gallery
- * strip, and the call to partners.
+ * under it (Characters.tsx), the parts of the Land as cards, a gallery strip, and the call
+ * to partners. (The yellow moving strip, the «روّحوا القلوب» quote section and «لكل فرد مساره»
+ * were removed at the owner's request, 2026-11-11 — do not bring them back.)
  *
  * Writing rules the owner set — keep them:
  *  - Refined Arabic, no borrowed Western words: no «ملاهي», no «سينما» («دار العرض», «دار
@@ -105,126 +105,11 @@ function DistrictCard({ d, isEn }: { d: District; isEn: boolean }) {
   );
 }
 
-/**
- * «يوم واحد، لكل فرد مساره» — the owner's idea told as a day: four members of one family on
- * four paths through the place, which meet again at the end. Illustrative, not a timetable.
- */
-type Step = { place: L; what: L };
-const JOURNEYS: { w: Who; who: L; steps: Step[] }[] = [
-  {
-    w: 'men', who: { ar: 'الأب', en: 'The father' }, steps: [
-      { place: { ar: 'الكشافة', en: 'The Scouts' }, what: { ar: 'يترك ابنه مع قادة الكشافة', en: 'Leaves his son with the scout leaders' } },
-      { place: { ar: 'الملتقى', en: 'The Forum' }, what: { ar: 'يحضر مجلساً في ملتقى الآباء', en: 'Attends a session at the fathers’ forum' } },
-      { place: { ar: 'المسجد', en: 'The mosque' }, what: { ar: 'يصلّي مع ابنه', en: 'Prays with his son' } },
-    ],
-  },
-  {
-    w: 'women', who: { ar: 'الأم', en: 'The mother' }, steps: [
-      { place: { ar: 'نادي السيدات', en: 'The Women’s Club' }, what: { ar: 'رياضة وعافية بخصوصية', en: 'Sport and wellbeing in privacy' } },
-      { place: { ar: 'الملتقى', en: 'The Forum' }, what: { ar: 'ملتقى الأمهات', en: 'The mothers’ forum' } },
-      { place: { ar: 'نادي البنات', en: 'The Girls’ Club' }, what: { ar: 'تلحق بابنتها', en: 'Joins her daughter' } },
-    ],
-  },
-  {
-    w: 'kids', who: { ar: 'الابن', en: 'The son' }, steps: [
-      { place: { ar: 'الكشافة', en: 'The Scouts' }, what: { ar: 'التسلّق والحبال', en: 'Climbing and ropes' } },
-      { place: { ar: 'الكشافة', en: 'The Scouts' }, what: { ar: 'ركن العطاء', en: 'The Giving Corner' } },
-      { place: { ar: 'دار الألعاب', en: 'The House of Games' }, what: { ar: 'لعبة «ذاكر»', en: 'The Zaker game' } },
-    ],
-  },
-  {
-    w: 'kids', who: { ar: 'الابنة', en: 'The daughter' }, steps: [
-      { place: { ar: 'نادي البنات', en: 'The Girls’ Club' }, what: { ar: 'ركن «حكاية تصنع أثراً»', en: 'The «A story that leaves a mark» corner' } },
-      { place: { ar: 'نادي البنات', en: 'The Girls’ Club' }, what: { ar: 'رياضة البنات', en: 'Sport for girls' } },
-      { place: { ar: 'دار الألعاب', en: 'The House of Games' }, what: { ar: 'لعبة «رحيمة»', en: 'The Rahima game' } },
-    ],
-  },
-  {
-    w: 'men', who: { ar: 'الجد', en: 'The grandfather' }, steps: [
-      { place: { ar: 'الحديقة الكبرى', en: 'The Great Garden' }, what: { ar: 'مجلس كبار السن', en: 'The elders’ majlis' } },
-      { place: { ar: 'الحديقة الكبرى', en: 'The Great Garden' }, what: { ar: 'يحكي لأحفاده', en: 'Tells his grandchildren the old stories' } },
-    ],
-  },
-];
-
-function FamilyDay({ isEn }: { isEn: boolean }) {
-  const L = (l: L) => (isEn ? l.en : l.ar);
-  const tx = (ar: string, en: string) => (isEn ? en : ar);
-  return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-24">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-10">
-        <div>
-          <p className="text-sm font-bold text-[#5C6478]">{tx('لكل الأعمار', 'For every age')}</p>
-          <h2 className="disp mt-2 text-4xl sm:text-5xl font-extrabold leading-tight" style={{ textWrap: 'balance' } as React.CSSProperties}>{tx('لكل فرد مساره، وللأسرة لقاؤها', 'A path for each, a meeting for all')}</h2>
-        </div>
-        <p className="max-w-md text-[#5C6478] leading-relaxed">
-          {tx('في كل ركن ما يخص الأطفال، وما يخص الرجال، وما يخص النساء، وما تعيشه الأسرة مجتمعة. يترك الأب ابنه في نشاط بإشراف ويحضر ما يخصه، وتمضي الأم إلى ما يخصها، ويجد الأجداد مجلسهم — ثم تلتقي الأسرة.', 'Every part holds something for children, for men, for women, and for the family together. A father leaves his son at a supervised activity and attends his own, the mother goes to hers, the grandparents find their majlis — and then the family meets.')}
-        </p>
-      </div>
-
-      {/* Legend */}
-      <ul className="flex flex-wrap gap-2 mb-6">
-        {WHO_ORDER.map(w => (
-          <li key={w} className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-sm font-bold border border-[#0A0F1E]/5"><Dot w={w} size={10} />{isEn ? AUD[w].en : AUD[w].ar}</li>
-        ))}
-      </ul>
-
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {JOURNEYS.map((j, idx) => (
-          <div key={j.who.ar} className={`rise rounded-[28px] bg-white p-5 sm:p-6 border border-[#0A0F1E]/5 relative overflow-hidden ${idx === JOURNEYS.length - 1 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
-            <div className="absolute top-0 inset-x-0 h-1.5" style={{ background: AUD[j.w].dot }} aria-hidden />
-            <p className="disp text-2xl font-extrabold">{L(j.who)}</p>
-            <ol className="mt-5 relative">
-              {/* The path */}
-              <span className="absolute top-2 bottom-2 start-[7px] w-0.5 rounded-full" style={{ background: `${AUD[j.w].dot}66` }} aria-hidden />
-              {j.steps.map((s, i) => (
-                <li key={i} className="relative ps-7 pb-5 last:pb-0">
-                  <span className="absolute start-0 top-1 w-4 h-4 rounded-full border-[3px] bg-white" style={{ borderColor: AUD[j.w].dot }} aria-hidden />
-                  <p className="text-[11px] font-bold text-[#5C6478]">{L(s.place)}</p>
-                  <p className="font-bold leading-snug">{L(s.what)}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        ))}
-      </div>
-
-      {/* Where the paths meet */}
-      <div className="rise mt-4 rounded-[28px] bg-[#0A0F1E] text-white p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center gap-5 relative overflow-hidden">
-        <div className="absolute -end-20 -top-20 w-72 h-72 rounded-full bg-[#9BCB8F]/15 blur-3xl" aria-hidden />
-        <div className="relative flex items-center gap-3 shrink-0">
-          <span className="flex -space-x-2 rtl:space-x-reverse" aria-hidden>
-            {(['men', 'women', 'men', 'kids', 'kids'] as Who[]).map((w, i) => (
-              <span key={i} className="w-9 h-9 rounded-full ring-2 ring-[#0A0F1E]" style={{ background: AUD[w].dot }} />
-            ))}
-          </span>
-          <p className="disp text-2xl font-extrabold">{tx('ثم تلتقي الأسرة', 'Then the family meets')}</p>
-        </div>
-        <ol className="relative flex flex-wrap gap-2 lg:ms-auto">
-          {[
-            { ar: 'صلاة الجماعة', en: 'Prayer together' },
-            { ar: 'جلسة في الحديقة الكبرى', en: 'A seat in the Great Garden' },
-            { ar: 'مقهى العائلة', en: 'The family café' },
-            { ar: 'عرض في دار العرض', en: 'A screening together' },
-          ].map((s, i) => (
-            <li key={s.ar} className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 font-bold text-sm">
-              <span className="w-5 h-5 rounded-full bg-[#9BCB8F] text-[#0A0F1E] text-[11px] font-black inline-flex items-center justify-center tabular-nums">{i + 1}</span>
-              {L(s)}
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
-  );
-}
-
 export default function LandPage() {
   const { lang } = useLang();
   const isEn = lang === 'en';
   const tx = (ar: string, en: string) => (isEn ? en : ar);
   const L = (l: L) => (isEn ? l.en : l.ar);
-
-  const names = [...DISTRICTS].sort((a, b) => a.n - b.n).map(d => L(d.title));
 
   return (
     <div className="ld" dir={isEn ? 'ltr' : 'rtl'}>
@@ -259,44 +144,6 @@ export default function LandPage() {
           <Characters lang={isEn ? 'en' : 'ar'} />
         </div>
       </section>
-
-      {/* ── Moving strip ── */}
-      <div className="marq-wrap bg-[#F5C518] text-[#0A0F1E] overflow-hidden py-3.5" dir="ltr" aria-hidden>
-        <div className="marq flex w-max gap-8 whitespace-nowrap">
-          {[...names, ...names, ...names, ...names].map((n, i) => (
-            <span key={i} className="disp inline-flex items-center gap-8 text-lg sm:text-xl font-extrabold" dir={isEn ? 'ltr' : 'rtl'}>
-              {n}<span className="text-[#0A0F1E]/40">✦</span>
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* ── The founding idea ── */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-8 py-20 sm:py-28">
-        <figure className="rise">
-          <blockquote className="disp text-[34px] sm:text-6xl font-black leading-[1.25] text-[#18203A]" style={{ textWrap: 'balance' } as React.CSSProperties}>
-            {isEn ? '“Refresh the hearts, hour after hour.”' : '«روّحوا القلوبَ ساعةً بعد ساعة»'}
-          </blockquote>
-          <figcaption className="mt-4 text-[#5C6478] font-bold">{tx('يُروى عن الإمام علي بن أبي طالب رضي الله عنه', 'Attributed to Imam Ali ibn Abi Talib')}</figcaption>
-        </figure>
-        <div className="rise mt-10 grid gap-6 md:grid-cols-2 text-lg leading-loose text-[#18203A]">
-          <p>
-            {tx(
-              'على هذا المعنى تقوم أرض القائد المسلم. الترويح عندنا ليس هروباً من الحياة ولا استهلاكاً لها، بل استراحةٌ تعيد للقلب صفاءه، وتعيد الأسرة إلى بعضها.',
-              'Moslim Leader Land is built on that meaning. Recreation, for us, is neither an escape from life nor a way of consuming it, but a rest that restores the heart and brings a family back to itself.',
-            )}
-          </p>
-          <p>
-            {tx(
-              'تدخلها الأسرة لتستريح، وتخرج منها أشدّ تماسكاً: كل ما فيها يقوّي روابطها، ويغذّي عقولها، ويوسّع فكرها. لا تفاهة فيها ولا إسراف، ولا ما يُدمن عليه الطفل أو يعزله عن أهله، ولا بيت رعب ولا ما يعرّض حياةً للخطر.',
-              'A family enters it to rest and leaves it more united: everything in it strengthens their bonds, feeds their minds and widens their thinking. No triviality, no waste, nothing that hooks a child or cuts them off from their family, no horror house and nothing that risks a life.',
-            )}
-          </p>
-        </div>
-      </section>
-
-      {/* ── One day, a path for each ── */}
-      <FamilyDay isEn={isEn} />
 
       {/* ── The districts ── */}
       <section id="districts" className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-24 scroll-mt-24">

@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { linkedVideoThumb, withoutUrls } from '@/lib/tareeq-link-thumb';
+import { shareImageUrl } from '@/lib/share-image';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { isBlockedEitherWay } from '@/lib/tareeq-guard';
@@ -58,7 +59,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const linkedThumb = linkedVideoThumb(post.content);
   const libraryImage = post.media?.isPublished ? (post.media.previewUrl ?? post.media.coverUrl) : null;
   const mediaImage = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null) ?? libraryImage ?? linkedThumb;
-  const ogImage = mediaImage ? new URL(mediaImage, siteUrl).toString() : null;
+  // Same URL as the crawler preview route: an R2 picture is served from our own domain.
+  const ogImage = mediaImage ? shareImageUrl(new URL(mediaImage, siteUrl).toString()) : null;
   const isVideo = !!post.videoUrl || (!!libraryImage && (post.media?.type === 'video' || post.media?.type === 'reel')) || (!post.imageUrl && !libraryImage && !!linkedThumb);
 
   return {

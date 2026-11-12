@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { shareImageSize, shareImageUrl } from '@/lib/share-image';
 import { prisma } from '@/lib/prisma';
 import { SITE_URL, ORG_OG_IMAGE } from '@/lib/seo';
 import { absoluteMediaUrl } from '@/lib/free-media-query';
@@ -49,7 +50,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const description = cut(item.description || `${KIND_LABEL[kind].one} مجاني من مسلم ليدر${item.category ? ` — ${item.category.name}` : ''}`, 160);
   // The cover is a JPEG by construction (compressCover / drawingThumb), which every scraper
   // accepts. Without one, the site's logo rather than nothing.
-  const image = absoluteMediaUrl(item.coverUrl, SITE_URL) ?? ORG_OG_IMAGE;
+  const cover = absoluteMediaUrl(item.coverUrl, SITE_URL);
+  // An R2 cover is served from our own domain with its size stated (src/lib/share-image.ts).
+  const image = cover ? shareImageUrl(cover) : ORG_OG_IMAGE;
+  const size = cover ? await shareImageSize(cover) : null;
   const ogType = kind === 'video' || kind === 'reel' ? 'video.other' : kind === 'audio' ? 'music.song' : 'website';
 
   const html = `<!doctype html>
@@ -66,6 +70,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:image" content="${esc(image)}">
 <meta property="og:image:secure_url" content="${esc(image)}">
+${size ? `<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="${size.width}">
+<meta property="og:image:height" content="${size.height}">` : ''}
 <meta property="og:image:alt" content="${esc(title)}">
 <meta property="og:locale" content="ar_AR">
 <meta name="twitter:card" content="summary_large_image">

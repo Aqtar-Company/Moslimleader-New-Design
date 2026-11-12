@@ -563,6 +563,17 @@ Books are protected from download at two levels:
   - The preview is cached 5 min (`max-age=300`); the tags must stay in step with
     `generateMetadata` in `src/app/tareeq/[id]/page.tsx` (title rule, media choice, guards).
     WhatsApp also caches a preview per URL on the device — test with a fresh link or `?v=2`.
+- **og:image is served from OUR domain, not r2.dev** (`src/lib/share-image.ts`,
+  `/api/share-image?u=<R2 url>`). A طريق image post shared to Facebook showed only
+  «moslimleader.com» in a grey box although the preview route's tags were complete: the
+  picture sat on `pub-….r2.dev`, Cloudflare's rate-limited development host, with no stated
+  size. Now every R2 picture used as a share image is fetched once, resized to ≤1200px JPEG,
+  cached in `.cache/share-images/`, served with a year's cache, and its real size goes into
+  `og:image:width/height` (Facebook renders the FIRST share without an image when those are
+  missing). Used by the طريق preview route, `generateMetadata` on the post page and the media
+  preview route; POST /api/tareeq warms it on publish. Only R2 URLs are accepted — not an
+  open proxy. After a fix, the URL must be re-scraped in Facebook's Sharing Debugger; a link
+  Facebook already cached keeps its old (empty) card until then.
 - **Profile avatars and covers live on R2 (`src/lib/r2.ts`), never in `public/`.** The old
   routes wrote to `public/uploads/avatars/` and stored `/uploads/avatars/<file>`; production
   Next.js serves only files present in `public/` at BUILD time, so every photo uploaded after

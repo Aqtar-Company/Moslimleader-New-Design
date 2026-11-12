@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { linkedVideoThumb, withoutUrls } from '@/lib/tareeq-link-thumb';
+import { shareImageSize, shareImageUrl } from '@/lib/share-image';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -119,7 +120,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const media = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null) ?? libraryImage ?? linkedThumb;
   // og:image must be absolute or crawlers drop it. Falls back to the generated card route
   // for a text-only post — that one is slow, but it is the same fallback the page uses.
-  const image = media ? new URL(media, SITE).toString() : `${SITE}/tareeq/${id}/opengraph-image`;
+  const mediaAbs = media ? new URL(media, SITE).toString() : null;
+  // An uploaded picture is served from our own domain with its real size stated
+  // (src/lib/share-image.ts) — Facebook failed on the r2.dev address and showed only the domain.
+  const image = mediaAbs ? shareImageUrl(mediaAbs) : `${SITE}/tareeq/${id}/opengraph-image`;
+  const size = mediaAbs ? await shareImageSize(mediaAbs) : null;
   const isVideo = !!post.videoUrl || (!!libraryImage && (post.media?.type === 'video' || post.media?.type === 'reel')) || (!post.imageUrl && !libraryImage && !!linkedThumb);
 
   const html = `<!doctype html>
@@ -136,7 +141,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:image" content="${esc(image)}">
 <meta property="og:image:secure_url" content="${esc(image)}">
-${media ? '' : `<meta property="og:image:type" content="image/png">
+${media ? (size ? `<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="${size.width}">
+<meta property="og:image:height" content="${size.height}">` : '') : `<meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">`}
 <meta property="og:image:alt" content="${esc(title)}">

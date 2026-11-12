@@ -11,6 +11,7 @@ import { postSearchWhere } from '@/lib/tareeq-search';
 import { notifyTareeq } from '@/lib/tareeq-notify';
 import { computeHotScore } from '@/lib/tareeq-rank';
 import { forYouPage, loadFeedExclusions } from '@/lib/tareeq-feed';
+import { warmShareImage } from '@/lib/share-image';
 
 // GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=foryou|newest|liked|following|useful
 export async function GET(req: NextRequest) {
@@ -392,6 +393,10 @@ export async function POST(req: NextRequest) {
   // `!isDraft`: a draft share must not bump the original's shareCount or tell its author
   // anything. Nothing has been shared yet — and a draft that is later discarded would have
   // left a permanent +1 and a notification about a post that never existed.
+  // Prepare the picture a share of this post will carry, so the first Facebook/WhatsApp
+  // scrape finds it ready, with its size (src/lib/share-image.ts).
+  if (!isDraft) warmShareImage(imageUrl ?? (videoUrl ? thumbnailUrl : null) ?? imageUrls?.[0] ?? null);
+
   if (sharedFromId && !isDraft) {
     // Best-effort: the share itself is already saved, so neither of these may fail it.
     prisma.tareeqPost.update({

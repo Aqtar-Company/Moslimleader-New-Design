@@ -1005,7 +1005,8 @@ Books are protected from download at two levels:
   on mid-grey) over it with `mix-blend-mode: hard-light` — or on a plain background, in ten
   shirt colours plus a picker. To add a garment: photograph/obtain it in BLACK on a light
   background, run `node ops/make-garment-mockup.mjs <photo> <name> 900 [holeMax]`, add it to
-  `GARMENTS` in LogoStudio.tsx (ratio, chest top, logo width). The page states the print size at 300 dpi, and offers the file at
+  `GARMENTS` in LogoStudio.tsx (ratio, chest top, logo width). The script crops both layers to the
+  garment's own bounds, centred — a garment photographed off-centre put the logo beside the chest. The page states the print size at 300 dpi, and offers the file at
   `/api/logo-designs/<id>/download` (counted, attachment, sandboxed CSP so an SVG cannot run
   on our origin). «أرسل للمطبعة على واتساب» hands the FILE to the phone's share sheet (Web
   Share with files); if fetching outlasts the tap, the button becomes «اضغط لإرسال الملف»

@@ -141,10 +141,11 @@ function BannerEditor({ banner, onSaved }: { banner: Banner; onSaved: (b: Banner
   return (
     <section className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 space-y-3">
       <h2 className="text-lg font-bold text-[#1a1a2e]">البانر</h2>
-      <div className="relative rounded-xl overflow-hidden bg-[#1a1a2e] aspect-[3/1] sm:aspect-[4/1]">
+      {/* Same as the page: the picture whole, the words under it. */}
+      <div className="rounded-xl overflow-hidden bg-[#1a1a2e]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {b.imageUrl && <img src={b.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-l from-black/70 to-black/10 p-4 flex flex-col justify-end text-white">
+        {b.imageUrl && <img src={b.imageUrl} alt="" className="block w-full h-auto" />}
+        <div className="p-4 text-white">
           <p className="font-black text-lg sm:text-2xl">{b.title || '—'}</p>
           {b.subtitle && <p className="text-xs sm:text-sm opacity-85">{b.subtitle}</p>}
         </div>
@@ -163,7 +164,7 @@ function BannerEditor({ banner, onSaved }: { banner: Banner; onSaved: (b: Banner
         {b.imageUrl && <button type="button" disabled={busy} onClick={() => setB({ ...b, imageUrl: null })} className="px-4 py-2 rounded-lg border text-sm text-red-600 disabled:opacity-50">إزالة الصورة</button>}
         <button type="button" disabled={busy} onClick={save} className="px-5 py-2 rounded-lg bg-[#1a1a2e] text-white text-sm font-bold disabled:opacity-50">{busy ? 'جارٍ…' : 'حفظ البانر'}</button>
       </div>
-      <p className="text-xs text-gray-400">مقاس مقترح: صورة عريضة (مثلاً 1920×640). العنوان والسطر بيظهروا فوقها.</p>
+      <p className="text-xs text-gray-400">الصورة بتظهر كاملة بمقاسها، والعنوان والسطر تحتها. الأفضل صورة عريضة (مثلاً 1920×640) عشان ما تاخدش الشاشة كلها على الموبايل.</p>
     </section>
   );
 }

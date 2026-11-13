@@ -42,6 +42,7 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
     { href: '/tareeq',     label: isRtl ? 'طريق'           : 'Tareeq',     icon: 'badge' as IconName, logoImg: '/Tareeq-small.png' },
     { href: '/library',    label: isRtl ? 'المكتبة الرقمية' : 'Library',    icon: 'book' as IconName },
     { href: '/media',      label: isRtl ? 'الوسائط المجانية' : 'Free Media', icon: 'video' as IconName },
+    { href: '/logo',       label: isRtl ? 'شعار للطباعة'   : 'Logo for printing', icon: 'download' as IconName },
     ...(user ? [{ href: '/membership', label: isRtl ? 'عضوية الأسرة' : 'Family Membership', icon: 'badge' as IconName,
       badge: memberStatus === 'ACTIVE'
         ? (memberTier === 'community' ? (isRtl ? 'مجتمع' : 'Community') : (isRtl ? 'فعّالة' : 'Active'))

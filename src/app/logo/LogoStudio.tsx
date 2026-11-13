@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/context/LanguageContext';
 import { useToast } from '@/components/ui/Toast';
 import Icon from '@/components/media/Icon';
@@ -106,14 +106,29 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
 
   const outline = isLight(color) ? 'rgba(26,26,46,.28)' : 'rgba(255,255,255,.14)';
 
+  const [headerH, setHeaderH] = useState(80);
+  useEffect(() => {
+    const h = document.querySelector('header');
+    if (!h) return;
+    const on = () => setHeaderH(h.getBoundingClientRect().height || 80);
+    on();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(on) : null;
+    ro?.observe(h);
+    return () => ro?.disconnect();
+  }, []);
+
   return (
     <div dir={isEn ? 'ltr' : 'rtl'} className="bg-[#F6F3EC] text-[#1a1a2e] min-h-screen">
       {/* ── Banner ── */}
-      <section className="relative overflow-hidden bg-[#1a1a2e] text-white">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {banner.imageUrl && <img src={banner.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-        <div className={`absolute inset-0 ${banner.imageUrl ? 'bg-gradient-to-t from-[#1a1a2e] via-[#1a1a2e]/60 to-[#1a1a2e]/20' : ''}`} aria-hidden />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-8 pt-28 sm:pt-36 pb-10 sm:pb-14">
+      {/* The admin's picture is shown WHOLE, at its own proportions, starting below the
+          fixed site header — it used to be a cropped background behind the text, and a
+          designed banner lost its edges (and its middle, on a phone). The words sit under it. */}
+      <section className="relative bg-[#1a1a2e] text-white" style={banner.imageUrl ? { paddingTop: headerH } : undefined}>
+        {banner.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={banner.imageUrl} alt={banner.title} className="block w-full h-auto max-w-[1920px] mx-auto" />
+        )}
+        <div className={`relative max-w-6xl mx-auto px-4 sm:px-8 ${banner.imageUrl ? 'pt-6 sm:pt-8' : 'pt-28 sm:pt-36'} pb-10 sm:pb-14`}>
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-3 py-1 text-xs font-bold text-[#F5C518]">
             <Icon name="download" size={14} /> {tx('للطباعة على التيشرتات', 'For t-shirt printing')}
           </p>
@@ -144,7 +159,7 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
                 <div role="tablist" aria-label={tx('طريقة العرض', 'View')} className="inline-flex rounded-full bg-[#F6F3EC] p-1 text-sm font-bold">
                   {(['shirt', 'flat'] as const).map(m => (
                     <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
-                      className={`px-4 py-1.5 rounded-full transition ${mode === m ? 'bg-[#1a1a2e] text-white' : 'text-[#1a1a2e]/70'}`}>
+                      className={`px-3 sm:px-4 py-1.5 rounded-full whitespace-nowrap transition ${mode === m ? 'bg-[#1a1a2e] text-white' : 'text-[#1a1a2e]/70'}`}>
                       {m === 'shirt' ? tx('على تيشرت', 'On a shirt') : tx('على خلفية', 'On a background')}
                     </button>
                   ))}

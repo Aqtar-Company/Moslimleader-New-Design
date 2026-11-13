@@ -29,7 +29,12 @@ if (!src || !name) { console.error('usage: node ops/make-garment-mockup.mjs <pho
 const WIDTH = Number(widthArg) || 900;
 const HOLE_MAX = Number(holeArg) || 0;
 const LIGHT = 110;   // a pixel brighter than this, reachable from the edge, is background
-const GAIN = 3.2;    // how strongly the photo's folds show
+// How strongly the photo shows through. Light and shadow are scaled separately: the
+// owner found full-strength highlights («لسعات إضاءة») washed the colour out, so highlights
+// are kept soft and capped, while the shadows that give the folds their shape stay clearer.
+const SHADOW_GAIN = 2.2;
+const LIGHT_GAIN = 1.1;
+const LIGHT_CAP = 158;   // 128 = the colour itself; a little above it is a soft sheen
 
 const { data: L, info } = await sharp(src).flatten({ background: '#fff' }).resize({ width: WIDTH, withoutEnlargement: true })
   .greyscale().median(3).raw().toBuffer({ resolveWithObject: true });  // median: the gain below would magnify the photo's grain
@@ -71,7 +76,9 @@ const median = vals[Math.floor(vals.length / 2)] ?? 20;
 const shade = Buffer.alloc(N * 2);   // grey (the alpha comes from the blurred mask below)
 for (let i = 0; i < N; i++) {
   const a = bg[i] ? 0 : 255;
-  shade[i * 2] = Math.max(0, Math.min(255, Math.round(128 + (L[i] - median) * GAIN)));
+  const d = L[i] - median;
+  const v = d > 0 ? Math.min(LIGHT_CAP, 128 + d * LIGHT_GAIN) : 128 + d * SHADOW_GAIN;
+  shade[i * 2] = Math.max(0, Math.min(255, Math.round(v)));
   shade[i * 2 + 1] = a;
 }
 // A slight blur on the alpha softens the stair-stepped edge of a hard mask.

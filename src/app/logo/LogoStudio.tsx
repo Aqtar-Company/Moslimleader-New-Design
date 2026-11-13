@@ -39,11 +39,13 @@ const SHIRTS: { hex: string; ar: string; en: string }[] = [
  * layers made by `ops/make-garment-mockup.mjs` from a photo of the garment in BLACK — a mask
  * filled with the chosen colour, and the photo's folds and light as a grey map laid over it
  * with `mix-blend-mode: hard-light` (mid-grey leaves the colour untouched). `chest` is where
- * the logo's top sits and `width` its default share of the garment's width.
+ * the logo's top sits and `width` its default share of the garment's width. Both layers are
+ * cropped to the garment's own bounds with an even margin, so the image's centre line IS the
+ * garment's — the logo is centred on the chest, not on wherever the photo was framed.
  */
 const GARMENTS = {
-  tee: { ratio: '900 / 993', chest: '24%', width: 0.28 },
-  hoodie: { ratio: '900 / 1035', chest: '33%', width: 0.22 },
+  tee: { ratio: '832 / 931', chest: '20%', width: 0.30 },
+  hoodie: { ratio: '857 / 1009', chest: '32%', width: 0.23 },
 } as const;
 
 const fileName = (d: Design) => `moslim-leader-design-${d.id}.${d.fileType}`;
@@ -185,7 +187,7 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
                 style={{ background: mode === 'flat' ? color : 'linear-gradient(180deg,#EEE9DE,#E4DDCD)' }}>
                 {mode !== 'flat' ? (
                   // The garment, centred; the logo is placed in ITS coordinates so it sits on the chest.
-                  <div className="absolute left-1/2 top-1/2 w-[86%]" style={{ translate: '-50% -50%', aspectRatio: GARMENTS[mode].ratio, isolation: 'isolate' }}>
+                  <div className="absolute left-1/2 top-1/2 w-[80%]" style={{ translate: '-50% -50%', aspectRatio: GARMENTS[mode].ratio, isolation: 'isolate' }}>
                     <div aria-hidden className="absolute inset-0" style={{
                       background: color, transition: 'background-color .25s',
                       WebkitMaskImage: `url(/logo-mockups/${mode}-mask.webp)`, maskImage: `url(/logo-mockups/${mode}-mask.webp)`,

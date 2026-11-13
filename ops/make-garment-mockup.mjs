@@ -92,8 +92,20 @@ const withAlpha = (grey) => {
   for (let i = 0; i < N; i++) { out[i * 4] = out[i * 4 + 1] = out[i * 4 + 2] = grey[i]; out[i * 4 + 3] = alpha[i]; }
   return sharp(out, { raw: { width: W, height: H, channels: 4 } });
 };
+// Crop both layers to the garment's own bounds (plus a small even margin), so its centre
+// IS the image's centre: a garment photographed off-centre put the logo — centred on the
+// image — visibly to one side of the chest.
+let x0 = W, y0 = H, x1 = 0, y1 = 0;
+for (let i = 0; i < N; i++) if (!bg[i]) { const x = i % W, y = (i - x) / W; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+const pad = Math.round((x1 - x0) * 0.02);
+const crop = { left: Math.max(0, x0 - pad), top: Math.max(0, y0 - pad) };
+crop.width = Math.min(W, x1 + pad + 1) - crop.left;
+crop.height = Math.min(H, y1 + pad + 1) - crop.top;
+// Keep the garment centred even where the margin hit the image edge on one side only.
+const cx = (x0 + x1) / 2, half = Math.min(cx - crop.left, crop.left + crop.width - 1 - cx);
+crop.left = Math.round(cx - half); crop.width = Math.round(half * 2) + 1;
 const greyShade = Buffer.from(Array.from({ length: N }, (_, i) => shade[i * 2]));
 const white = Buffer.alloc(N, 255);
-const a = await withAlpha(white).webp({ quality: 90, alphaQuality: 100 }).toFile(`public/logo-mockups/${name}-mask.webp`);
-const b = await withAlpha(greyShade).webp({ quality: 85, alphaQuality: 100 }).toFile(`public/logo-mockups/${name}-shade.webp`);
-console.log(`${name}: ${W}×${H}, median ${median}, mask ${Math.round(a.size / 1024)} KB, shade ${Math.round(b.size / 1024)} KB`);
+const a = await withAlpha(white).extract(crop).webp({ quality: 90, alphaQuality: 100 }).toFile(`public/logo-mockups/${name}-mask.webp`);
+const b = await withAlpha(greyShade).extract(crop).webp({ quality: 85, alphaQuality: 100 }).toFile(`public/logo-mockups/${name}-shade.webp`);
+console.log(`${name}: ${crop.width}×${crop.height} (garment ${x0}-${x1} × ${y0}-${y1} of ${W}×${H}), median ${median}, mask ${Math.round(a.size / 1024)} KB, shade ${Math.round(b.size / 1024)} KB`);

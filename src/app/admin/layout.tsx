@@ -33,6 +33,7 @@ const NAV: NavItem[] = [
   { href: '/admin/books',             label: 'المكتبة الرقمية',   icon: '📚', requireAny: ['books.read'] },
   { href: '/admin/series',            label: 'السلاسل',           icon: '📖', requireAny: ['books.read'] },
   { href: '/admin/free-media',        label: 'وسائط مجانية',      icon: '🎵', requireAny: ['books.read', 'free-media.read'] },
+  { href: '/admin/logo-designs',      label: 'الشعار للطباعة',    icon: '👕', requireAny: ['books.read', 'free-media.read'] },
   // —— Production & sourcing ——
   { href: '/admin/production',        label: 'باتشات الإنتاج',    icon: '🏭', requireAny: ['production.read'] },
   { href: '/admin/production-files',  label: 'ملفات الإنتاج',     icon: '📁', requireAny: ['production-files.read'] },

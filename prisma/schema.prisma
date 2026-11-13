@@ -2286,3 +2286,30 @@ model PartnershipRequest {
   @@index([status, createdAt])
   @@index([email])
 }
+
+/// A Moslim Leader logo/design offered at /logo, for people to download and print on a
+/// t-shirt (src/lib/logo-designs.ts). The file is stored as uploaded — the print file — and
+/// a light preview is shown on the page. Managed from /admin/logo-designs.
+model LogoDesign {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(190)
+  /// Free note for the person printing (placement, size, the right side of the shirt…).
+  note        String?  @db.Text
+  /// The print file on R2, exactly as uploaded.
+  fileUrl     String   @db.VarChar(500)
+  /// png | jpg | svg | pdf — judged from the bytes at upload.
+  fileType    String   @db.VarChar(10)
+  fileSize    Int      @default(0)
+  /// Pixel size of a raster file (png/jpg); null for svg/pdf.
+  width       Int?
+  height      Int?
+  /// What the page shows: a WebP of a raster file, the svg itself, or an uploaded picture for a pdf.
+  previewUrl  String?  @db.VarChar(500)
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  downloads   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, sortOrder])
+}

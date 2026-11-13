@@ -992,6 +992,17 @@ Books are protected from download at two levels:
   the item's library category is named «قصة/قصص…» (or "Stories"), or its title says «قصة».
   An audio item is NOT a story just for being audio. Moving the item between categories
   moves the post's category too, unless the post's category was changed by hand.
+- **«شعار مسلم ليدر للطباعة» is `/logo`** (`src/app/logo/`, `src/lib/logo-designs.ts`): designs
+  people download to print on a t-shirt. Admin: `/admin/logo-designs` (free-media permissions)
+  — upload designs and edit the page banner (Setting `logo-page-banner`). Model `LogoDesign`.
+  The PRINT file is stored on R2 exactly as uploaded (PNG/JPG/SVG/PDF, judged by bytes, 40 MB);
+  PNG/JPG get a WebP preview and their pixel size, an SVG is its own preview, a PDF needs an
+  uploaded preview picture. The page tries a design on a shirt (or a plain background) in ten
+  shirt colours plus a picker, states the print size at 300 dpi, and offers the file at
+  `/api/logo-designs/<id>/download` (counted, attachment, sandboxed CSP so an SVG cannot run
+  on our origin). «أرسل للمطبعة على واتساب» hands the FILE to the phone's share sheet (Web
+  Share with files); if fetching outlasts the tap, the button becomes «اضغط لإرسال الملف»
+  holding the fetched file; without file sharing (desktop) it opens wa.me with the link.
 - **Every link press shows a gold bar at the top** (`src/components/NavProgress.tsx`, in the
   root layout). Pages are force-dynamic, so a client navigation waits on the server with
   nothing changing on screen — a footer link pressed on a phone looked dead. The bar starts

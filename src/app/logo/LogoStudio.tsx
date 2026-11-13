@@ -154,7 +154,7 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
           {/* ── Studio ── */}
           <section className="max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-12 grid gap-6 lg:grid-cols-[1.15fr_1fr] items-start">
             {/* Stage */}
-            <div className="rounded-3xl bg-white border border-[#1a1a2e]/5 p-4 sm:p-6 lg:sticky lg:top-24">
+            <div className="rounded-3xl bg-white border border-[#1a1a2e]/5 p-4 sm:p-6">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div role="tablist" aria-label={tx('طريقة العرض', 'View')} className="inline-flex rounded-full bg-[#F6F3EC] p-1 text-sm font-bold">
                   {(['shirt', 'flat'] as const).map(m => (
@@ -225,9 +225,36 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
               </div>
             </div>
 
-            {/* Details + actions */}
-            {sel && (
-              <div className="space-y-4">
+            {/* Design picker — beside the shirt on a computer, right under it on a phone. */}
+            <div className="rounded-3xl bg-white border border-[#1a1a2e]/5 p-4 sm:p-5">
+              <h2 className="text-lg sm:text-xl font-black mb-3">{tx('اختر تصميم الشعار', 'Choose a logo design')}</h2>
+              <ul className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-2 gap-2.5 lg:max-h-[560px] lg:overflow-y-auto lg:pe-1">
+                {designs.map(d => {
+                  const active = d.id === selId;
+                  return (
+                    <li key={d.id}>
+                      <button type="button" onClick={() => { setSelId(d.id); setPending(null); }}
+                        aria-pressed={active}
+                        className={`w-full text-start rounded-2xl bg-white border p-2 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1a1a2e] ${active ? 'border-[#1a1a2e] ring-2 ring-[#F5C518]' : 'border-[#1a1a2e]/10 hover:border-[#1a1a2e]/30'}`}>
+                        <span className="block aspect-square rounded-xl p-2.5"
+                          style={{ background: 'repeating-conic-gradient(#ECE7DC 0% 25%, #fff 0% 50%) 50% / 16px 16px' }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          {d.previewUrl && <img src={d.previewUrl} alt="" loading="lazy" className="w-full h-full object-contain" />}
+                        </span>
+                        <span className="block mt-1.5 px-0.5 font-bold text-xs sm:text-sm leading-snug line-clamp-2">{d.title}</span>
+                        <span className="block px-0.5 text-[10px] text-[#1a1a2e]/50" dir="ltr" style={{ textAlign: isEn ? 'left' : 'right' }}>{d.fileType.toUpperCase()}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </section>
+
+          {/* ── Download / send — under the shirt and the picker ── */}
+          {sel && (
+            <section className="max-w-6xl mx-auto px-4 sm:px-8 pb-16 sm:pb-24">
+              <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr] items-start">
                 <div className="rounded-3xl bg-[#1a1a2e] text-white p-5 sm:p-7">
                   <p className="text-xs font-bold text-[#F5C518]">{tx('التصميم المختار', 'Selected design')}</p>
                   <h2 className="mt-1 text-2xl sm:text-3xl font-black leading-snug">{sel.title}</h2>
@@ -251,7 +278,7 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
                         : sel.fileType === 'pdf' ? tx('ملف PDF جاهز للمطبعة.', 'A print-ready PDF.') : ''}
                   </p>
 
-                  <div className="mt-6 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
+                  <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
                     <a href={`/api/logo-designs/${sel.id}/download`} download={fileName(sel)}
                       className="inline-flex items-center justify-center gap-2 rounded-full bg-[#F5C518] text-[#1a1a2e] font-black px-5 py-3 hover:bg-white transition">
                       <Icon name="download" size={18} /> {tx('تحميل ملف الطباعة', 'Download print file')}
@@ -276,33 +303,6 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
                   </ul>
                 </div>
               </div>
-            )}
-          </section>
-
-          {/* ── All designs ── */}
-          {designs.length > 1 && (
-            <section className="max-w-6xl mx-auto px-4 sm:px-8 pb-16 sm:pb-24">
-              <h2 className="text-xl sm:text-2xl font-black mb-4">{tx('كل التصميمات', 'All designs')}</h2>
-              <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                {designs.map(d => {
-                  const active = d.id === selId;
-                  return (
-                    <li key={d.id}>
-                      <button type="button" onClick={() => { setSelId(d.id); setPending(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        aria-pressed={active}
-                        className={`w-full text-start rounded-2xl bg-white border p-2.5 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1a1a2e] ${active ? 'border-[#1a1a2e] ring-2 ring-[#F5C518]' : 'border-[#1a1a2e]/5 hover:border-[#1a1a2e]/25'}`}>
-                        <span className="block aspect-square rounded-xl p-3"
-                          style={{ background: 'repeating-conic-gradient(#ECE7DC 0% 25%, #fff 0% 50%) 50% / 18px 18px' }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          {d.previewUrl && <img src={d.previewUrl} alt="" loading="lazy" className="w-full h-full object-contain" />}
-                        </span>
-                        <span className="block mt-2 px-1 font-bold text-sm leading-snug line-clamp-2">{d.title}</span>
-                        <span className="block px-1 text-[11px] text-[#1a1a2e]/50" dir="ltr" style={{ textAlign: isEn ? 'left' : 'right' }}>{d.fileType.toUpperCase()}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
             </section>
           )}
         </>

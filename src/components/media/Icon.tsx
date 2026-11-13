@@ -12,9 +12,14 @@ export type IconName =
   | 'video' | 'audio' | 'image' | 'pdf' | 'play' | 'pause' | 'download' | 'share' | 'home'
   | 'back' | 'forward' | 'moon' | 'search' | 'upload' | 'trash' | 'edit' | 'eye' | 'check'
   | 'close' | 'zap' | 'mail' | 'external' | 'next' | 'tag' | 'grid' | 'up' | 'down' | 'loader'
-  | 'alert' | 'book' | 'cart' | 'heart' | 'info' | 'badge' | 'reel' | 'comment' | 'volume' | 'mute' | 'send' | 'smile' | 'link' | 'more' | 'list' | 'expand' | 'bell' | 'bell-on';
+  | 'alert' | 'book' | 'cart' | 'heart' | 'info' | 'badge' | 'reel' | 'comment' | 'volume' | 'mute' | 'send' | 'smile' | 'link' | 'more' | 'list' | 'expand' | 'bell' | 'bell-on'
+  | 'shirt' | 'hoodie' | 'swatch' | 'resize';
 
 const PATHS: Record<IconName, JSX.Element> = {
+  shirt: <path d="M8 3.5L3.5 5.5 2.5 10l3.5 1V20.5h12V11l3.5-1-1-4.5L16 3.5a4 4 0 01-8 0z" />,
+  hoodie: <><path d="M8.5 5L4.5 7 2.5 19h3l1.5-7.5v9h10v-9l1.5 7.5h3l-2-12-4-2" /><path d="M8.5 5c0-1.8 1.6-2.8 3.5-2.8s3.5 1 3.5 2.8c0 2.2-1.6 3.5-3.5 3.5S8.5 7.2 8.5 5z" /><path d="M9.5 16.5h5" /></>,
+  swatch: <><rect x="3.5" y="3.5" width="17" height="17" rx="3" /><path d="M3.5 15.5l5-4 4 3 3-2.5 5 4" /></>,
+  resize: <><path d="M14.5 3.5h6v6M9.5 20.5h-6v-6" /><path d="M20.5 3.5l-7 7M3.5 20.5l7-7" /></>,
   video: <><rect x="2.5" y="5" width="15" height="14" rx="2.5" /><path d="M17.5 10l4-2.5v9l-4-2.5" /></>,
   audio: <><path d="M3 14v-2a9 9 0 0118 0v2" /><rect x="3" y="14" width="4.5" height="6.5" rx="1.5" /><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5" /></>,
   image: <><rect x="3" y="3.5" width="18" height="17" rx="2.5" /><circle cx="9" cy="9.5" r="1.8" /><path d="M21 15.5l-5-5L5 20.5" /></>,

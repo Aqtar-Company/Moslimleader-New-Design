@@ -999,7 +999,8 @@ Books are protected from download at two levels:
   PNG/JPG get a WebP preview and their pixel size, an SVG is its own preview, a PDF needs an
   uploaded preview picture. The banner picture is shown WHOLE (`h-auto`, below the fixed header,
   measured) with the title under it — the owner asked for the full picture, not a cropped
-  background. The page tries a design on a shirt (or a plain background) in ten
+  background. Layout (the owner's): the shirt with the DESIGN PICKER beside it on a computer and right
+  under it on a phone; download / WhatsApp / file facts BELOW both. The page tries a design on a shirt (or a plain background) in ten
   shirt colours plus a picker, states the print size at 300 dpi, and offers the file at
   `/api/logo-designs/<id>/download` (counted, attachment, sandboxed CSP so an SVG cannot run
   on our origin). «أرسل للمطبعة على واتساب» hands the FILE to the phone's share sheet (Web

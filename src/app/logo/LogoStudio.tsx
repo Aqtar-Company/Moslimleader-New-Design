@@ -168,21 +168,6 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
           <section className="max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-12 grid gap-6 lg:grid-cols-[1.15fr_1fr] items-start">
             {/* Stage */}
             <div className="rounded-3xl bg-white border border-[#1a1a2e]/5 p-4 sm:p-6">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div role="tablist" aria-label={tx('طريقة العرض', 'View')} className="inline-flex rounded-full bg-[#F6F3EC] p-1 text-sm font-bold">
-                  {(['tee', 'hoodie', 'flat'] as const).map(m => (
-                    <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
-                      className={`px-3 sm:px-4 py-1.5 rounded-full whitespace-nowrap transition ${mode === m ? 'bg-[#1a1a2e] text-white' : 'text-[#1a1a2e]/70'}`}>
-                      {m === 'tee' ? tx('تيشرت', 'T-shirt') : m === 'hoodie' ? tx('هودي', 'Hoodie') : tx('خلفية', 'Background')}
-                    </button>
-                  ))}
-                </div>
-                <label className="flex items-center gap-2 text-xs font-bold text-[#1a1a2e]/70">
-                  {tx('الحجم', 'Size')}
-                  <input type="range" min={20} max={70} value={scale} onChange={e => setScale(Number(e.target.value))} className="w-24 accent-[#1a1a2e]" aria-label={tx('حجم الشعار', 'Logo size')} />
-                </label>
-              </div>
-
               <div className="relative mx-auto w-full max-w-[460px] aspect-[500/560] rounded-2xl overflow-hidden transition-colors"
                 style={{ background: mode === 'flat' ? color : 'linear-gradient(180deg,#EEE9DE,#E4DDCD)' }}>
                 {mode !== 'flat' ? (
@@ -216,14 +201,14 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
                 )}
               </div>
 
-              {/* Colours */}
-              <div className="mt-4">
+              {/* Options — colour, garment and size together in one place, under the stage. */}
+              <div className="mt-4 rounded-2xl bg-[#F6F3EC] p-3 sm:p-4 space-y-3">
                 <p className="text-xs font-bold text-[#1a1a2e]/60 mb-2">{mode === 'tee' ? tx('لون التيشرت', 'T-shirt colour') : mode === 'hoodie' ? tx('لون الهودي', 'Hoodie colour') : tx('لون الخلفية', 'Background colour')}</p>
                 <div className="flex flex-wrap items-center gap-2">
                   {SHIRTS.map(s => (
                     <button key={s.hex} type="button" onClick={() => setColor(s.hex)} aria-pressed={color === s.hex} title={isEn ? s.en : s.ar}
                       aria-label={isEn ? s.en : s.ar}
-                      className={`w-9 h-9 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a1a2e] ${color === s.hex ? 'ring-2 ring-offset-2 ring-[#1a1a2e] scale-110' : 'hover:scale-105'}`}
+                      className={`w-9 h-9 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a1a2e] ${color === s.hex ? 'ring-2 ring-offset-2 ring-offset-[#F6F3EC] ring-[#1a1a2e] scale-110' : 'hover:scale-105'}`}
                       style={{ background: s.hex, borderColor: isLight(s.hex) ? 'rgba(26,26,46,.25)' : 'transparent' }} />
                   ))}
                   <label className="relative w-9 h-9 rounded-full overflow-hidden border border-[#1a1a2e]/20 cursor-pointer" title={tx('لون آخر', 'Another colour')}
@@ -231,6 +216,22 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
                     <input type="color" value={color} onChange={e => setColor(e.target.value.toUpperCase())} className="absolute inset-0 opacity-0 cursor-pointer" aria-label={tx('اختر لوناً آخر', 'Pick another colour')} />
                   </label>
                   <span className="text-xs font-bold text-[#1a1a2e]/60 tabular-nums" dir="ltr">{SHIRTS.find(s => s.hex === color)?.[isEn ? 'en' : 'ar'] ?? color}</span>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 pt-3 border-t border-[#1a1a2e]/10">
+                  <div role="tablist" aria-label={tx('طريقة العرض', 'View')} className="inline-flex rounded-full bg-white p-1 text-xs font-bold">
+                    {(['tee', 'hoodie', 'flat'] as const).map(m => (
+                      <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full whitespace-nowrap transition ${mode === m ? 'bg-[#1a1a2e] text-white' : 'text-[#1a1a2e]/70 hover:text-[#1a1a2e]'}`}>
+                        <Icon name={m === 'tee' ? 'shirt' : m === 'hoodie' ? 'hoodie' : 'swatch'} size={14} />
+                        {m === 'tee' ? tx('تيشرت', 'T-shirt') : m === 'hoodie' ? tx('هودي', 'Hoodie') : tx('خلفية', 'Background')}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-bold text-[#1a1a2e]/70">
+                    <Icon name="resize" size={14} />
+                    {tx('الحجم', 'Size')}
+                    <input type="range" min={20} max={70} value={scale} onChange={e => setScale(Number(e.target.value))} className="w-28 accent-[#1a1a2e]" aria-label={tx('حجم الشعار', 'Logo size')} />
+                  </label>
                 </div>
                 {sel?.fileType === 'jpg' && (
                   <p className="mt-3 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">{tx('ملف JPG ما فيهوش شفافية: الخلفية البيضاء بتاعته هتتطبع زي ما هي.', 'A JPG has no transparency: its white background will be printed too.')}</p>

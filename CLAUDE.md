@@ -997,7 +997,9 @@ Books are protected from download at two levels:
   — upload designs and edit the page banner (Setting `logo-page-banner`). Model `LogoDesign`.
   The PRINT file is stored on R2 exactly as uploaded (PNG/JPG/SVG/PDF, judged by bytes, 40 MB);
   PNG/JPG get a WebP preview and their pixel size, an SVG is its own preview, a PDF needs an
-  uploaded preview picture. The page tries a design on a shirt (or a plain background) in ten
+  uploaded preview picture. The banner picture is shown WHOLE (`h-auto`, below the fixed header,
+  measured) with the title under it — the owner asked for the full picture, not a cropped
+  background. The page tries a design on a shirt (or a plain background) in ten
   shirt colours plus a picker, states the print size at 300 dpi, and offers the file at
   `/api/logo-designs/<id>/download` (counted, attachment, sandboxed CSP so an SVG cannot run
   on our origin). «أرسل للمطبعة على واتساب» hands the FILE to the phone's share sheet (Web

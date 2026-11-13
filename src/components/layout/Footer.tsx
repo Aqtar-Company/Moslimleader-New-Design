@@ -97,39 +97,42 @@ export default function Footer() {
             <h4 className="text-white text-xs font-bold uppercase tracking-widest mb-1">
               {isRtl ? 'روابط سريعة' : 'Quick Links'}
             </h4>
-            {[
-              { href: '/', ar: 'الرئيسية', en: 'Home' },
-              { href: '/library', ar: 'المكتبة الرقمية', en: 'Digital Library' },
-              { href: '/media', ar: 'الوسائط المجانية', en: 'Free Media' },
-              { href: '/catalog', ar: '📖 كتالوج المنتجات', en: '📖 Product Catalog' },
-              { href: '/nursery', ar: '🌱 ركن القيم للحضانات', en: '🌱 Values Corner' },
-              { href: '/about', ar: 'من نحن', en: 'About' },
-              { href: '/land', ar: 'أرض القائد المسلم', en: 'Moslim Leader Land' },
-              { href: '/logo', ar: 'شعار مسلم ليدر للطباعة', en: 'Logo for printing' },
-              { href: '/contact', ar: 'تواصل معنا', en: 'Contact' },
-              { href: '/policy', ar: 'سياسة الخصوصية', en: 'Privacy Policy' },
-              { href: '/delete-data', ar: 'حذف البيانات', en: 'Delete My Data' },
-            ].map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                // A pressed state a finger can see: on a phone there is no hover, and the
-                // page answers only after the server does (NavProgress shows that wait).
-                className="text-sm text-gray-400 hover:text-[#F5C518] active:text-[#F5C518] active:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition flex items-center gap-1.5 group"
+            {/* Two columns: one long list made the footer taller than the page above it. */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+              {[
+                { href: '/', ar: 'الرئيسية', en: 'Home' },
+                { href: '/library', ar: 'المكتبة الرقمية', en: 'Digital Library' },
+                { href: '/media', ar: 'الوسائط المجانية', en: 'Free Media' },
+                { href: '/catalog', ar: '📖 كتالوج المنتجات', en: '📖 Product Catalog' },
+                { href: '/nursery', ar: '🌱 ركن القيم للحضانات', en: '🌱 Values Corner' },
+                { href: '/about', ar: 'من نحن', en: 'About' },
+                { href: '/land', ar: 'أرض القائد المسلم', en: 'Moslim Leader Land' },
+                { href: '/logo', ar: 'شعار مسلم ليدر للطباعة', en: 'Logo for printing' },
+                { href: '/contact', ar: 'تواصل معنا', en: 'Contact' },
+                { href: '/policy', ar: 'سياسة الخصوصية', en: 'Privacy Policy' },
+                { href: '/delete-data', ar: 'حذف البيانات', en: 'Delete My Data' },
+              ].map(link => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  // A pressed state a finger can see: on a phone there is no hover, and the
+                  // page answers only after the server does (NavProgress shows that wait).
+                  className="text-sm text-gray-400 hover:text-[#F5C518] active:text-[#F5C518] active:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition flex items-center gap-1.5 group"
+                >
+                  <span className="w-1 h-1 rounded-full bg-[#F5C518]/40 group-hover:bg-[#F5C518] group-active:bg-[#F5C518] transition" />
+                  {isRtl ? link.ar : link.en}
+                </Link>
+              ))}
+              <a
+                href="/brand-strategy.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-400 hover:text-[#F5C518] transition flex items-center gap-1.5 group"
               >
-                <span className="w-1 h-1 rounded-full bg-[#F5C518]/40 group-hover:bg-[#F5C518] group-active:bg-[#F5C518] transition" />
-                {isRtl ? link.ar : link.en}
-              </Link>
-            ))}
-            <a
-              href="/brand-strategy.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-gray-400 hover:text-[#F5C518] transition flex items-center gap-1.5 group"
-            >
-              <span className="w-1 h-1 rounded-full bg-[#F5C518]/40 group-hover:bg-[#F5C518] transition" />
-              {isRtl ? '📋 الرؤية الاستراتيجية' : '📋 Strategic Vision'}
-            </a>
+                <span className="w-1 h-1 rounded-full bg-[#F5C518]/40 group-hover:bg-[#F5C518] transition" />
+                {isRtl ? '📋 الرؤية الاستراتيجية' : '📋 Strategic Vision'}
+              </a>
+            </div>
           </div>
 
           {/* ── Column 3: Contact info + socials ── */}

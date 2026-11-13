@@ -1,11 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { downloadName } from '@/lib/logo-designs';
+import { getAuthUser } from '@/lib/jwt';
+import { downloadName, verifyDownloadToken } from '@/lib/logo-designs';
 
 /**
  * GET /api/logo-designs/<id>/download — the print file of a published design, as an
- * attachment, counted. Open to everyone: the page exists so people can print the logo.
+ * attachment, counted. Needs an account (the owner's rule) — or a signed link
+ * (`?t=`, see signDownloadToken) that a signed-in member sent to a print shop.
  *
  * Served through this site rather than linked on R2: a plain cross-origin link OPENS an
  * image or a PDF instead of saving it, and «مشاركة على واتساب» needs the file from the same
@@ -16,6 +18,14 @@ const TYPES: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', svg
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const id = parseInt(params.id);
   if (!Number.isFinite(id)) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  const user = await getAuthUser().catch(() => null);
+  if (!user && !verifyDownloadToken(id, req.nextUrl.searchParams.get('t'))) {
+    // A person who opened the link in a browser is sent to sign in and back to the page.
+    if ((req.headers.get('accept') ?? '').includes('text/html')) {
+      return NextResponse.redirect(new URL('/login?redirect=%2Flogo', req.nextUrl.origin), 302);
+    }
+    return NextResponse.json({ error: 'سجّل الدخول للتحميل', needsLogin: true }, { status: 401 });
+  }
   const d = await prisma.logoDesign.findFirst({ where: { id, isPublished: true }, select: { id: true, title: true, fileUrl: true, fileType: true } });
   if (!d) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 

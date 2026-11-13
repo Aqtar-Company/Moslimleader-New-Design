@@ -1008,7 +1008,12 @@ Books are protected from download at two levels:
   `GARMENTS` in LogoStudio.tsx (ratio, chest top, logo width). The script crops both layers to the
   garment's own bounds, centred — a garment photographed off-centre put the logo beside the chest. The page states the print size at 300 dpi, and offers the file at
   `/api/logo-designs/<id>/download` (counted, attachment, sandboxed CSP so an SVG cannot run
-  on our origin). «أرسل للمطبعة على واتساب» hands the FILE to the phone's share sheet (Web
+  on our origin). **Downloading needs an account** (the owner's rule): a visitor sees «تسجيل
+  الدخول للتحميل» / «إنشاء حساب»; the route answers 401 (or redirects a browser to /login).
+  The link a member sends a PRINT SHOP must open without an account, so `page.tsx` signs one
+  per design (`signDownloadToken`, `?t=<exp>.<hmac>` with JWT_SECRET, 14 days) — that is the
+  link in the WhatsApp text and «نسخ رابط الملف». A notice under the page states the terms:
+  families and individuals only, no commercial use without written permission. «أرسل للمطبعة على واتساب» hands the FILE to the phone's share sheet (Web
   Share with files); if fetching outlasts the tap, the button becomes «اضغط لإرسال الملف»
   holding the fetched file; without file sharing (desktop) it opens wa.me with the link.
 - **Every link press shows a gold bar at the top** (`src/components/NavProgress.tsx`, in the

@@ -57,7 +57,13 @@ const isLight = (hex: string) => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 170;
 };
 
-export default function LogoStudio({ designs, banner }: { designs: Design[]; banner: Banner }) {
+export default function LogoStudio({ designs, banner, signedIn, shareTokens }: {
+  designs: Design[]; banner: Banner;
+  /** Downloading needs an account; a visitor is asked to sign in instead. */
+  signedIn: boolean;
+  /** Per design, a signed token so the link sent to a print shop opens without an account. */
+  shareTokens: Record<number, string>;
+}) {
   const { lang } = useLang();
   const isEn = lang === 'en';
   const tx = (ar: string, en: string) => (isEn ? en : ar);
@@ -75,12 +81,18 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
     ? { w: Math.round((sel.width / 300) * 2.54), h: Math.round((sel.height / 300) * 2.54) }
     : null;
 
+  const loginHref = (signup = false) => `/login?${signup ? 'mode=signup&' : ''}redirect=${encodeURIComponent('/logo')}`;
+  const shareLink = (d: Design) => {
+    const t = shareTokens[d.id];
+    return `${window.location.origin}/api/logo-designs/${d.id}/download${t ? `?t=${encodeURIComponent(t)}` : ''}`;
+  };
+
   const share = async () => {
     if (!sel) return;
-    const link = `${window.location.origin}/api/logo-designs/${sel.id}/download`;
+    const link = shareLink(sel);
     const text = tx(
-      `تصميم «${sel.title}» من مسلم ليدر — للطباعة على تيشرت.${sel.note ? `\n${sel.note}` : ''}\nملف الطباعة: ${link}`,
-      `“${sel.title}” — a Moslim Leader design for t-shirt printing.${sel.note ? `\n${sel.note}` : ''}\nPrint file: ${link}`,
+      `تصميم «${sel.title}» من مسلم ليدر — للطباعة على تيشرت.${sel.note ? `\n${sel.note}` : ''}\nللاستخدام الشخصي فقط، وغير مسموح بطباعته للبيع.\nملف الطباعة: ${link}`,
+      `“${sel.title}” — a Moslim Leader design for t-shirt printing.${sel.note ? `\n${sel.note}` : ''}\nFor personal use only — not to be printed for sale.\nPrint file: ${link}`,
     );
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     if (pending) {
@@ -91,7 +103,7 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
     setSharing(true);
     try {
       if (nav.canShare && nav.share) {
-        const res = await fetch(`${link}?share=1`, { signal: AbortSignal.timeout(30_000) });
+        const res = await fetch(`${link}${link.includes('?') ? '&' : '?'}share=1`, { signal: AbortSignal.timeout(30_000) });
         if (res.ok) {
           const blob = await res.blob();
           const file = new File([blob], fileName(sel), { type: blob.type || 'application/octet-stream' });
@@ -113,7 +125,7 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
 
   const copyLink = async () => {
     if (!sel) return;
-    const link = `${window.location.origin}/api/logo-designs/${sel.id}/download`;
+    const link = shareLink(sel);
     try { await navigator.clipboard.writeText(link); addToast(tx('تم نسخ رابط الملف', 'File link copied'), 'success'); }
     catch { addToast(link, 'info'); }
   };
@@ -292,6 +304,7 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
                         : sel.fileType === 'pdf' ? tx('ملف PDF جاهز للمطبعة.', 'A print-ready PDF.') : ''}
                   </p>
 
+                  {signedIn ? (<>
                   <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
                     <a href={`/api/logo-designs/${sel.id}/download`} download={fileName(sel)}
                       className="inline-flex items-center justify-center gap-2 rounded-full bg-[#F5C518] text-[#1a1a2e] font-black px-5 py-3 hover:bg-white transition">
@@ -306,6 +319,22 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
                   <button type="button" onClick={copyLink} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-white/70 hover:text-white">
                     <Icon name="link" size={14} /> {tx('نسخ رابط الملف', 'Copy file link')}
                   </button>
+                  </>) : (
+                    <div className="mt-6 rounded-2xl bg-white/[0.06] p-4">
+                      <p className="flex items-start gap-2 text-sm leading-relaxed text-white/85">
+                        <Icon name="info" size={18} className="mt-0.5 shrink-0 text-[#F5C518]" />
+                        {tx('تحميل الملف وإرساله للمطبعة متاحين لأصحاب الحسابات. سجّل دخولك، أو أنشئ حساباً لو ما عندكش.', 'Downloading the file and sending it to a printer need an account. Sign in, or create one if you have none.')}
+                      </p>
+                      <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+                        <a href={loginHref()} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#F5C518] text-[#1a1a2e] font-black px-5 py-3 hover:bg-white transition">
+                          {tx('تسجيل الدخول للتحميل', 'Sign in to download')}
+                        </a>
+                        <a href={loginHref(true)} className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 text-white font-black px-5 py-3 hover:bg-white/10 transition">
+                          {tx('إنشاء حساب', 'Create an account')}
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-3xl bg-white border border-[#1a1a2e]/5 p-5 text-sm leading-relaxed text-[#1a1a2e]/80">
@@ -317,6 +346,21 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
                   </ul>
                 </div>
               </div>
+
+              {/* The owner's terms: families and individuals only; no commercial use. */}
+              <aside role="note" className="mt-4 rounded-3xl border border-amber-300/70 bg-amber-50 p-5 sm:p-6 text-[#1a1a2e]">
+                <p className="flex items-center gap-2 font-black text-amber-900">
+                  <Icon name="alert" size={18} />
+                  {tx('تنبيه: للاستخدام الشخصي فقط', 'Notice: personal use only')}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-[#1a1a2e]/80">
+                  {tx('التصميمات متاحة للأسر والأفراد لطباعتها على ملابسهم الشخصية.', 'These designs are offered to families and individuals to print on their own clothes.')}
+                </p>
+                <p className="mt-1.5 text-sm leading-relaxed font-bold text-amber-900">
+                  {tx('يُمنع الاستخدام التجاري — مثل بيع الملابس المطبوع عليها الشعار، أو طباعته على منتجات معروضة للبيع، أو بيع الملف نفسه — إلا بإذن مكتوب من مسلم ليدر.',
+                    'Commercial use is not permitted — such as selling clothes printed with the logo, printing it on products offered for sale, or selling the file itself — without written permission from Moslim Leader.')}
+                </p>
+              </aside>
             </section>
           )}
         </>

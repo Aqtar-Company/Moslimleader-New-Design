@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { r2KeyFromUrl, deleteFromR2 } from '@/lib/r2';
 
@@ -60,4 +61,30 @@ export async function removeDesignFiles(urls: (string | null | undefined)[]): Pr
 export function downloadName(title: string, id: number, ext: string): string {
   const latin = title.normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
   return `moslim-leader-${latin || `design-${id}`}.${ext}`;
+}
+
+/**
+ * Downloading needs an account (the owner's rule). A signed-in member who sends a design to a
+ * print shop sends a LINK the shop must be able to open without one, so that link carries a
+ * signature: `t=<expiry>.<hmac>`, valid for LINK_DAYS, made only for a signed-in member.
+ */
+const LINK_DAYS = 14;
+const linkSecret = () => process.env.JWT_SECRET || '';
+const sigOf = (id: number, exp: number) =>
+  createHmac('sha256', linkSecret()).update(`logo-download:${id}:${exp}`).digest('base64url').slice(0, 32);
+
+export function signDownloadToken(id: number): string | null {
+  if (!linkSecret()) return null;
+  const exp = Math.floor(Date.now() / 1000) + LINK_DAYS * 86400;
+  return `${exp}.${sigOf(id, exp)}`;
+}
+
+export function verifyDownloadToken(id: number, token: string | null | undefined): boolean {
+  if (!token || !linkSecret()) return false;
+  const [expStr, sig] = token.split('.');
+  const exp = Number(expStr);
+  if (!Number.isInteger(exp) || exp < Date.now() / 1000 || !sig) return false;
+  const want = Buffer.from(sigOf(id, exp));
+  const got = Buffer.from(sig);
+  return want.length === got.length && timingSafeEqual(want, got);
 }

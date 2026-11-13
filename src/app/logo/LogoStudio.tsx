@@ -34,9 +34,21 @@ const SHIRTS: { hex: string; ar: string; en: string }[] = [
   { hex: '#D4A017', ar: 'خردلي', en: 'Mustard' },
 ];
 
+/**
+ * The garments the logo is tried on: real photographs, recoloured in the browser. Each is two
+ * layers made by `ops/make-garment-mockup.mjs` from a photo of the garment in BLACK — a mask
+ * filled with the chosen colour, and the photo's folds and light as a grey map laid over it
+ * with `mix-blend-mode: hard-light` (mid-grey leaves the colour untouched). `chest` is where
+ * the logo's top sits and `width` its default share of the garment's width.
+ */
+const GARMENTS = {
+  tee: { ratio: '900 / 993', chest: '24%', width: 0.28 },
+  hoodie: { ratio: '900 / 1035', chest: '33%', width: 0.22 },
+} as const;
+
 const fileName = (d: Design) => `moslim-leader-design-${d.id}.${d.fileType}`;
 const sizeMb = (n: number) => (n / 1024 / 1024).toFixed(n >= 10 * 1024 * 1024 ? 0 : 1);
-/** Light colours need a darker outline for the shirt to read against the page. */
+/** Light swatches need a border to read against the white card. */
 const isLight = (hex: string) => {
   const n = parseInt(hex.slice(1), 16);
   const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
@@ -51,7 +63,7 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
 
   const [selId, setSelId] = useState<number | null>(designs[0]?.id ?? null);
   const [color, setColor] = useState(SHIRTS[1].hex);
-  const [mode, setMode] = useState<'shirt' | 'flat'>('shirt');
+  const [mode, setMode] = useState<'tee' | 'hoodie' | 'flat'>('tee');
   const [scale, setScale] = useState(42);
   const [sharing, setSharing] = useState(false);
   const [pending, setPending] = useState<{ file: File; text: string } | null>(null);
@@ -104,7 +116,6 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
     catch { addToast(link, 'info'); }
   };
 
-  const outline = isLight(color) ? 'rgba(26,26,46,.28)' : 'rgba(255,255,255,.14)';
 
   const [headerH, setHeaderH] = useState(80);
   useEffect(() => {
@@ -157,10 +168,10 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
             <div className="rounded-3xl bg-white border border-[#1a1a2e]/5 p-4 sm:p-6">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div role="tablist" aria-label={tx('طريقة العرض', 'View')} className="inline-flex rounded-full bg-[#F6F3EC] p-1 text-sm font-bold">
-                  {(['shirt', 'flat'] as const).map(m => (
+                  {(['tee', 'hoodie', 'flat'] as const).map(m => (
                     <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
                       className={`px-3 sm:px-4 py-1.5 rounded-full whitespace-nowrap transition ${mode === m ? 'bg-[#1a1a2e] text-white' : 'text-[#1a1a2e]/70'}`}>
-                      {m === 'shirt' ? tx('على تيشرت', 'On a shirt') : tx('على خلفية', 'On a background')}
+                      {m === 'tee' ? tx('تيشرت', 'T-shirt') : m === 'hoodie' ? tx('هودي', 'Hoodie') : tx('خلفية', 'Background')}
                     </button>
                   ))}
                 </div>
@@ -172,40 +183,40 @@ export default function LogoStudio({ designs, banner }: { designs: Design[]; ban
 
               <div className="relative mx-auto w-full max-w-[460px] aspect-[500/560] rounded-2xl overflow-hidden transition-colors"
                 style={{ background: mode === 'flat' ? color : 'linear-gradient(180deg,#EEE9DE,#E4DDCD)' }}>
-                {mode === 'shirt' && (
-                  <svg viewBox="0 0 500 560" className="absolute inset-0 w-full h-full" aria-hidden>
-                    <defs>
-                      <linearGradient id="tee-shade" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0" stopColor="#000" stopOpacity=".14" />
-                        <stop offset=".22" stopColor="#000" stopOpacity="0" />
-                        <stop offset=".78" stopColor="#000" stopOpacity="0" />
-                        <stop offset="1" stopColor="#000" stopOpacity=".14" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M150 48 C185 80 315 80 350 48 L458 98 L424 210 L372 190 L372 532 Q250 548 128 532 L128 190 L76 210 L42 98 Z"
-                      fill={color} stroke={outline} strokeWidth={2.5} strokeLinejoin="round" style={{ transition: 'fill .25s' }} />
-                    <path d="M150 48 C185 80 315 80 350 48 L458 98 L424 210 L372 190 L372 532 Q250 548 128 532 L128 190 L76 210 L42 98 Z" fill="url(#tee-shade)" />
-                    <path d="M188 52 C210 96 290 96 312 52" fill="none" stroke={outline} strokeWidth={6} strokeLinecap="round" />
-                    <path d="M128 190 L128 200 M372 190 L372 200" stroke={outline} strokeWidth={2} />
-                  </svg>
-                )}
-                {sel?.previewUrl ? (
+                {mode !== 'flat' ? (
+                  // The garment, centred; the logo is placed in ITS coordinates so it sits on the chest.
+                  <div className="absolute left-1/2 top-1/2 w-[86%]" style={{ translate: '-50% -50%', aspectRatio: GARMENTS[mode].ratio, isolation: 'isolate' }}>
+                    <div aria-hidden className="absolute inset-0" style={{
+                      background: color, transition: 'background-color .25s',
+                      WebkitMaskImage: `url(/logo-mockups/${mode}-mask.webp)`, maskImage: `url(/logo-mockups/${mode}-mask.webp)`,
+                      WebkitMaskSize: '100% 100%', maskSize: '100% 100%',
+                    }} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/logo-mockups/${mode}-shade.webp`} alt="" aria-hidden draggable={false}
+                      className="absolute inset-0 w-full h-full select-none pointer-events-none" style={{ mixBlendMode: 'hard-light' }} />
+                    {sel?.previewUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={sel.previewUrl} alt={sel.title} draggable={false}
+                        className="absolute left-1/2 object-contain select-none pointer-events-none"
+                        // One `translate`, set here: Tailwind's -translate-x-1/2 uses the same CSS
+                        // property, and combining the two shifted the logo twice.
+                        style={{ top: GARMENTS[mode].chest, translate: '-50% 0', width: `${GARMENTS[mode].width * (scale / 42) * 100}%`, maxHeight: '45%' }} />
+                    )}
+                  </div>
+                ) : sel?.previewUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={sel.previewUrl} alt={sel.title} draggable={false}
                     className="absolute left-1/2 object-contain select-none pointer-events-none"
-                    // One `translate`, set here: Tailwind's -translate-x-1/2 uses the same CSS
-                    // property, and combining the two shifted the logo twice in the flat view.
-                    style={mode === 'shirt'
-                      ? { top: '25%', translate: '-50% 0', width: `${scale * 0.62}%`, maxHeight: '48%' }
-                      : { top: '50%', translate: '-50% -50%', width: `${scale}%`, maxHeight: '80%' }} />
-                ) : (
-                  <p className="absolute inset-0 flex items-center justify-center text-sm text-[#1a1a2e]/50">{tx('لا توجد معاينة', 'No preview')}</p>
+                    style={{ top: '50%', translate: '-50% -50%', width: `${scale}%`, maxHeight: '80%' }} />
+                ) : null}
+                {!sel?.previewUrl && (
+                  <p className="absolute inset-x-0 bottom-3 text-center text-sm text-[#1a1a2e]/50">{tx('لا توجد معاينة', 'No preview')}</p>
                 )}
               </div>
 
               {/* Colours */}
               <div className="mt-4">
-                <p className="text-xs font-bold text-[#1a1a2e]/60 mb-2">{mode === 'shirt' ? tx('لون التيشرت', 'Shirt colour') : tx('لون الخلفية', 'Background colour')}</p>
+                <p className="text-xs font-bold text-[#1a1a2e]/60 mb-2">{mode === 'tee' ? tx('لون التيشرت', 'T-shirt colour') : mode === 'hoodie' ? tx('لون الهودي', 'Hoodie colour') : tx('لون الخلفية', 'Background colour')}</p>
                 <div className="flex flex-wrap items-center gap-2">
                   {SHIRTS.map(s => (
                     <button key={s.hex} type="button" onClick={() => setColor(s.hex)} aria-pressed={color === s.hex} title={isEn ? s.en : s.ar}

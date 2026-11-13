@@ -1000,8 +1000,12 @@ Books are protected from download at two levels:
   uploaded preview picture. The banner picture is shown WHOLE (`h-auto`, below the fixed header,
   measured) with the title under it — the owner asked for the full picture, not a cropped
   background. Layout (the owner's): the shirt with the DESIGN PICKER beside it on a computer and right
-  under it on a phone; download / WhatsApp / file facts BELOW both. The page tries a design on a shirt (or a plain background) in ten
-  shirt colours plus a picker, states the print size at 300 dpi, and offers the file at
+  under it on a phone; download / WhatsApp / file facts BELOW both. The page tries a design on a T-SHIRT or a HOODIE — real photographs, recoloured in the browser:
+  `public/logo-mockups/<g>-mask.webp` filled with the colour + `<g>-shade.webp` (the folds, centred
+  on mid-grey) over it with `mix-blend-mode: hard-light` — or on a plain background, in ten
+  shirt colours plus a picker. To add a garment: photograph/obtain it in BLACK on a light
+  background, run `node ops/make-garment-mockup.mjs <photo> <name> 900 [holeMax]`, add it to
+  `GARMENTS` in LogoStudio.tsx (ratio, chest top, logo width). The page states the print size at 300 dpi, and offers the file at
   `/api/logo-designs/<id>/download` (counted, attachment, sandboxed CSP so an SVG cannot run
   on our origin). «أرسل للمطبعة على واتساب» hands the FILE to the phone's share sheet (Web
   Share with files); if fetching outlasts the tap, the button becomes «اضغط لإرسال الملف»

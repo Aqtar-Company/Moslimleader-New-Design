@@ -9,6 +9,7 @@ import { signToken, makeAuthCookie } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { generateMembershipNumber, generateUniqueQRToken } from '@/lib/membership-utils';
 import { emailLogoImg } from '@/lib/email-template';
+import { rememberCountry } from '@/lib/visitor-country';
 
 // Email regex — basic RFC 5322 subset
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,6 +112,8 @@ export async function POST(req: NextRequest) {
         communityMemberNumber,
       },
     });
+    // Which country the account was made from (never blocks the sign-up).
+    void rememberCountry(user.id, req.headers);
 
     // Admin or invited user → auto-login immediately
     if (isAdmin || hasValidInvite) {

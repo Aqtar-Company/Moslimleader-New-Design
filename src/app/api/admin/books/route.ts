@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       minAge, maxAge, needsParentalGuide,
       allowQuoteShare, allowFriendShare, friendShareHours,
       enableReferral, referralDiscount, enableWatermark, enableForensic, paperProductSlug, bgmUrl, promoVideoUrl,
+      translationOfId,
     } = body;
 
     if (!title) return NextResponse.json({ error: 'العنوان مطلوب' }, { status: 400 });
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
       enableWatermark: enableWatermark !== false,
       enableForensic: enableForensic !== false,
       paperProductSlug: paperProductSlug || null,
+      translationOfId: typeof translationOfId === 'string' && translationOfId.trim() ? translationOfId.trim() : null,
         bgmUrl: bgmUrl || null,
         promoVideoUrl: promoVideoUrl || null,
       updatedAt: new Date(),

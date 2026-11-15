@@ -36,6 +36,8 @@ interface Book {
   paperProductSlug?: string | null;
   bgmUrl?: string | null;
   promoVideoUrl?: string | null;
+  translationOfId?: string | null;
+  seriesId?: string | null;
   _count: { accesses: number };
 }
 
@@ -73,6 +75,7 @@ const emptyForm = {
   paperProductSlug: '',
   bgmUrl: '',
   promoVideoUrl: '',
+  translationOfId: '',
 };
 
 export default function AdminBooksPage() {
@@ -173,6 +176,7 @@ export default function AdminBooksPage() {
       paperProductSlug: b.paperProductSlug || '',
       bgmUrl: b.bgmUrl || '',
       promoVideoUrl: b.promoVideoUrl || '',
+      translationOfId: b.translationOfId || '',
     });
     setIsOpenEnded(b.minAge != null && b.maxAge == null);
     setUploadedPdfPath('');
@@ -512,6 +516,27 @@ export default function AdminBooksPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+                {/* The same book in another language — «متاح أيضاً بـ…» on the book page. Stories in a
+                    series are linked automatically by their story number; this is for the rest. */}
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">نسخة مترجمة من (اختياري)</label>
+                  <select
+                    value={form.translationOfId}
+                    onChange={e => setForm(prev => ({ ...prev, translationOfId: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">— ليس ترجمة لكتاب آخر —</option>
+                    {books
+                      .filter(b => b.id !== editBook?.id && (b.language || 'ar') !== form.language && !b.translationOfId)
+                      .sort((a, b) => a.title.localeCompare(b.title, 'ar'))
+                      .map(b => (
+                        <option key={b.id} value={b.id}>{b.title} — {b.language || 'ar'}</option>
+                      ))}
+                  </select>
+                  <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
+                    اختر النسخة الأصلية لو الكتاب ده ترجمة لها، فتظهر كل اللغات على صفحة كل نسخة. قصص السلاسل مش محتاجة ده: بتترابط لوحدها بنفس رقم القصة في السلسلة.
+                  </p>
                 </div>
                 <div className="col-span-2">
                   <label className="text-xs font-bold text-gray-500 mb-1 block">القسم</label>

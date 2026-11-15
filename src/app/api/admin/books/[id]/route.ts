@@ -26,11 +26,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const ALLOWED = [
       'title', 'titleEn', 'description', 'descriptionEn', 'author', 'authorEn',
       'cover', 'price', 'priceUSD', 'freePages', 'totalPages', 'isPublished',
-      'language', 'filePath', 'seriesId', 'seriesOrder',
+      'language', 'filePath', 'seriesId', 'seriesOrder', 'translationOfId',
       'minAge', 'maxAge', 'needsParentalGuide',
     ];
     const data: Record<string, unknown> = { updatedAt: new Date() };
     for (const k of ALLOWED) if (k in body) data[k] = body[k];
+    // A translation points at its ORIGINAL — never at itself, and an empty choice clears it.
+    if ('translationOfId' in data) {
+      const t = typeof data.translationOfId === 'string' ? data.translationOfId.trim() : '';
+      data.translationOfId = t && t !== id ? t : null;
+    }
 
     const book = await prisma.book.update({ where: { id }, data });
 

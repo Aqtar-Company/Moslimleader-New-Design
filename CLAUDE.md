@@ -1149,6 +1149,17 @@ Books are protected from download at two levels:
   use it — `generateMetadata` in `src/app/tareeq/[id]/page.tsx` and the crawler route
   `preview/route.ts` — and both drop URLs from the title/description. Facebook caches a
   preview per URL: after a change, «Scrape Again» in the Sharing Debugger.
+- **Visits are counted from moslimleader's OWN nginx log, and only since 2026-11-15.** Until then
+  every site on the box wrote to the shared `/var/log/nginx/access.log` with the default `main`
+  format, which carries no host — so moslimleader's past visits cannot be separated from the
+  other projects' and are lost for good. `/etc/nginx/conf.d/moslimleader.conf` now has
+  `access_log /var/log/nginx/moslimleader.access.log main;` under `server_name` in BOTH server
+  blocks (a `.bak-<timestamp>` copy sits beside it). The site is not behind Cloudflare and has
+  no analytics tag, so this file is the only visit data there is. Count page views by filtering
+  out bots, `/_next/`, `/api/` and file extensions; «unique visitors» from it are distinct IPs,
+  an approximation. Interest signals that DO go back further live in the database:
+  `BookAccessLog` (with country), `TareeqPostView` (signed-in only), `NotifyRequest`, carts.
+  `User.country` is empty for most new signups (64% of the 30 days to 2026-11-15).
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { seriesLangPrice } from '@/lib/series-lang';
+import { findBookVersions, type BookVersion } from '@/lib/book-versions';
 // GET /api/books/[id]
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const baseSelect = {
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     isPublished: true, allowQuoteShare: true, allowFriendShare: true,
     friendShareHours: true, enableReferral: true, referralDiscount: true,
     enableWatermark: true, enableForensic: true,
-    paperProductSlug: true, seriesId: true, seriesOrder: true,
+    paperProductSlug: true, seriesId: true, seriesOrder: true, translationOfId: true,
     bgmUrl: true, promoVideoUrl: true,
     _count: { select: { accesses: true } },
   };
@@ -106,7 +107,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    return NextResponse.json({ book, hasAccess, lastPage, viewCount, buyCount, seriesBooks, seriesName, seriesNameEn, seriesSeriesId, seriesPrice, seriesPriceUSD, seriesOwnedIds });
+    // The same book in other languages (series numbering, or linked by hand in admin).
+    let versions: BookVersion[] = [];
+    try { versions = await findBookVersions(book as any); } catch (e) { console.error('[books/:id versions]', e); }
+
+    return NextResponse.json({ book, hasAccess, lastPage, viewCount, buyCount, seriesBooks, seriesName, seriesNameEn, seriesSeriesId, seriesPrice, seriesPriceUSD, seriesOwnedIds, versions });
   } catch (err) {
     console.error('[books/:id GET]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });

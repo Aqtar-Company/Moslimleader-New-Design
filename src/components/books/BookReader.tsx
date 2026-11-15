@@ -21,6 +21,10 @@ interface BookReaderProps {
   uiLang?: 'ar' | 'en';
   bgmUrl?: string;
   promoVideoUrl?: string;
+  /** Whether the reader is signed in — the lock screen asks a signed-out reader for an account. */
+  isSignedIn?: boolean;
+  /** «Buy the full series» offer shown on the lock screen, when the book is part of one. */
+  seriesOffer?: SeriesOffer | null;
 }
 
 interface Bookmark {
@@ -92,32 +96,62 @@ function WatermarkOverlay({ text }: { text: string }) {
 }
 
 // ── Lock Overlay ──────────────────────────────────────────────────────────────
-function LockOverlay({ price, priceDisplay, bookId }: { price: number; priceDisplay?: string; bookId: string }) {
+// What a reader sees when the free pages end. Measured 2026-11-15: in 30 days books were
+// opened from 388 different addresses, 62 of them signed in, and 5 people had ever bought
+// one. So this screen speaks the reader's language (it was Arabic only), shows the book and
+// its price in the reader's currency, offers the series where there is one, and asks a
+// signed-out reader for an account — the step most of them had not taken.
+type SeriesOffer = { href: string; label: string };
+function LockOverlay({ price, priceDisplay, bookId, isEnUI, isSignedIn, coverUrl, bookTitle, seriesOffer }: {
+  price: number; priceDisplay?: string; bookId: string; isEnUI: boolean; isSignedIn: boolean;
+  coverUrl?: string; bookTitle?: string; seriesOffer?: SeriesOffer | null;
+}) {
+  const tx = (ar: string, en: string) => (isEnUI ? en : ar);
+  const priceText = priceDisplay || `${price.toLocaleString('ar-EG')} ج.م`;
+  const signupHref = `/login?mode=signup&redirect=${encodeURIComponent(`/library/${bookId}`)}`;
+  const loginHref = `/login?redirect=${encodeURIComponent(`/library/${bookId}/buy`)}`;
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center z-20"
-      style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(26,26,46,0.97) 25%, #1a1a2e 100%)' }}>
-      <div className="text-center px-6 py-8 max-w-sm">
-        <div className="w-16 h-16 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/30 flex items-center justify-center mx-auto mb-5">
-          <svg className="w-8 h-8 text-[#F5C518]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-          </svg>
-        </div>
-        <h3 className="text-white font-black text-xl mb-2">أكمل رحلة القراءة</h3>
-        <p className="text-gray-400 text-sm mb-5 leading-relaxed">انتهت صفحاتك المجانية — احصل على الكتاب كاملاً واستمر في التعلّم</p>
-        <div className="flex items-baseline justify-center gap-1 mb-5">
-          <span className="text-[#F5C518] font-black text-4xl">
-            {priceDisplay ? priceDisplay.split(' ')[0] : price.toLocaleString('ar-EG')}
-          </span>
-          <span className="text-gray-400 text-sm">
-            {priceDisplay ? priceDisplay.split(' ').slice(1).join(' ') : 'ج.م'}
-          </span>
-        </div>
+    <div dir={isEnUI ? 'ltr' : 'rtl'} className="absolute inset-0 flex flex-col items-center justify-center z-20 overflow-y-auto"
+      style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(26,26,46,0.97) 20%, #1a1a2e 100%)' }}>
+      <div className="text-center px-6 py-8 max-w-sm w-full">
+        {coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={coverUrl} alt="" className="w-20 h-28 object-cover rounded-xl mx-auto mb-4 shadow-lg ring-1 ring-white/10" />
+        ) : (
+          <div className="w-16 h-16 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/30 flex items-center justify-center mx-auto mb-5">
+            <svg className="w-8 h-8 text-[#F5C518]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+          </div>
+        )}
+        <h3 className="text-white font-black text-xl mb-1">{tx('انتهت الصفحات المجانية', 'That was the last free page')}</h3>
+        <p className="text-gray-400 text-sm mb-5 leading-relaxed">
+          {bookTitle
+            ? tx(`أكمل «${bookTitle}» حتى آخره، وتبقى معك على كل أجهزتك.`, `Read “${bookTitle}” to the end — it stays with you on all your devices.`)
+            : tx('أكمل الكتاب حتى آخره، ويبقى معك على كل أجهزتك.', 'Read the book to the end — it stays with you on all your devices.')}
+        </p>
         <a href={`/library/${bookId}/buy`}
-          className="block w-full bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black py-4 rounded-2xl text-base transition text-center shadow-lg shadow-amber-500/20">
-          اشترِ الآن
+          className="flex items-center justify-center gap-2 w-full bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black py-4 rounded-2xl text-base transition shadow-lg shadow-amber-500/20">
+          <span>{tx('اشترِ الكتاب', 'Buy the book')}</span>
+          <span className="opacity-60" aria-hidden>·</span>
+          <span dir="auto">{priceText}</span>
         </a>
-        <div className="flex items-center justify-center gap-3 mt-4 text-gray-500 text-xs">
-          {['دفع آمن', 'وصول فوري', 'على جميع الأجهزة'].map(t => (
+        {seriesOffer && (
+          <a href={seriesOffer.href}
+            className="mt-2.5 block w-full border border-[#F5C518]/50 text-[#F5C518] hover:bg-[#F5C518]/10 font-bold py-3 rounded-2xl text-sm transition">
+            {seriesOffer.label}
+          </a>
+        )}
+        {!isSignedIn && (
+          <div className="mt-5 rounded-2xl bg-white/[0.05] border border-white/10 px-4 py-3 text-sm text-gray-300 leading-relaxed">
+            {tx('ليس لديك حساب؟ ', 'No account yet? ')}
+            <a href={signupHref} className="font-black text-white underline decoration-[#F5C518] underline-offset-4">{tx('أنشئ حساباً', 'Create one')}</a>
+            {tx(' ليُحفظ مكانك في القراءة، أو ', ' to keep your place in the book, or ')}
+            <a href={loginHref} className="font-bold text-white underline decoration-white/40 underline-offset-4">{tx('سجّل دخولك', 'sign in')}</a>.
+          </div>
+        )}
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-4 text-gray-500 text-xs">
+          {(isEnUI ? ['Secure payment', 'Instant access', 'All your devices'] : ['دفع آمن', 'وصول فوري', 'على جميع الأجهزة']).map(t => (
             <span key={t} className="flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
               {t}
@@ -163,13 +197,13 @@ function QuoteToast({ text, bookTitle, coverUrl, onClose }: { text: string; book
 }
 
 // ── Free Page Warning ─────────────────────────────────────────────────────────
-function FreePageWarning({ remaining, bookId, isLtr }: { remaining: number; bookId: string; isLtr: boolean }) {
+function FreePageWarning({ remaining, bookId, isEnUI }: { remaining: number; bookId: string; isEnUI: boolean }) {
   return (
-    <div className="absolute top-3 left-3 right-3 z-30 bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm">
+    <div dir={isEnUI ? 'ltr' : 'rtl'} className="absolute top-3 left-3 right-3 z-30 bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm">
       <p className="text-amber-800 text-xs font-bold">
-        {remaining === 0 ? (isLtr ? 'This is the last free page' : 'هذه آخر صفحة مجانية') : (isLtr ? `Only ${remaining} free pages left` : `تبقّت ${remaining} صفحة مجانية فقط`)}
+        {remaining === 0 ? (isEnUI ? 'This is the last free page' : 'هذه آخر صفحة مجانية') : (isEnUI ? `Only ${remaining} free pages left` : `تبقّت ${remaining} صفحة مجانية فقط`)}
       </p>
-      <a href={`/library/${bookId}/buy`} className="text-xs font-black text-amber-700 underline whitespace-nowrap">اشترِ الآن</a>
+      <a href={`/library/${bookId}/buy`} className="text-xs font-black text-amber-700 underline whitespace-nowrap">{isEnUI ? 'Buy now' : 'اشترِ الآن'}</a>
     </div>
   );
 }
@@ -468,7 +502,7 @@ export default function BookReader({
   bookId, freePages, hasAccess, watermarkText, enableForensic = true,
   allowQuoteShare = true, price, priceDisplay, initialPage = 1, onPageChange,
   bookTitle = '', coverUrl = '', bookLanguage = 'ar',
-  uiLang = 'ar', bgmUrl, promoVideoUrl,
+  uiLang = 'ar', bgmUrl, promoVideoUrl, isSignedIn = false, seriesOffer = null,
 }: BookReaderProps) {
   const isLtr = bookLanguage === 'en';
   const isEnUI = uiLang === 'en';
@@ -1013,7 +1047,7 @@ export default function BookReader({
         >
           <div className="relative">
             {showWarning && !isLocked && (
-              <FreePageWarning isLtr={isLtr} remaining={pagesLeft} bookId={bookId} />
+              <FreePageWarning isEnUI={isEnUI} remaining={pagesLeft} bookId={bookId} />
             )}
 
             {/* Page with simple slide animation */}
@@ -1060,7 +1094,8 @@ export default function BookReader({
             {isLocked && (
               <div style={{ width: pageWidth, height: Math.round(pageWidth * 1.41) }}
                 className="relative rounded-xl overflow-hidden bg-[#1a1a2e]">
-                <LockOverlay price={price} priceDisplay={priceDisplay} bookId={bookId} />
+                <LockOverlay price={price} priceDisplay={priceDisplay} bookId={bookId} isEnUI={isEnUI} isSignedIn={isSignedIn}
+                  coverUrl={coverUrl} bookTitle={bookTitle} seriesOffer={seriesOffer} />
               </div>
             )}
           </div>

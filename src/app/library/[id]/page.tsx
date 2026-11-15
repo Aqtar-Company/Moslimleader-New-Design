@@ -116,6 +116,31 @@ interface SeriesBookNav {
   language?: string | null;
 }
 
+type BookVersionNav = { id: string; language: string; title: string; titleEn?: string | null };
+
+// The same book in other languages — «متاح أيضاً بـ…». Each language is named in itself, so a
+// reader scanning for their own language reads it the way they write it.
+const LANG_ENDONYM: Record<string, string> = {
+  ar: 'العربية', en: 'English', de: 'Deutsch', fr: 'Français', id: 'Bahasa Indonesia', ur: 'اردو',
+  tr: 'Türkçe', es: 'Español', ms: 'Bahasa Melayu',
+};
+function VersionsLine({ versions, isEn }: { versions: BookVersionNav[]; isEn: boolean }) {
+  if (versions.length === 0) return null;
+  return (
+    <div className="mt-3">
+      <p className="text-[11px] font-bold text-gray-500 mb-1.5">{isEn ? 'Also available in' : 'متاح أيضاً بـ'}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {versions.map(v => (
+          <a key={v.id} href={`/library/${v.id}`} lang={v.language} title={v.title}
+            className="inline-flex items-center rounded-full border border-[#1a1a2e]/15 bg-white px-3 py-1 text-xs font-bold text-[#1a1a2e] hover:border-[#F5C518] hover:bg-amber-50 transition">
+            {LANG_ENDONYM[v.language] ?? v.language.toUpperCase()}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 type MobileTab = 'reader' | 'info';
 
 import { Suspense } from 'react';
@@ -176,6 +201,7 @@ function BookPageInner() {
   const [mobileTab, setMobileTab] = useState<MobileTab>('reader');
   const [copyDone, setCopyDone] = useState(false);
   const [seriesBooks, setSeriesBooks] = useState<SeriesBookNav[]>([]);
+  const [versions, setVersions] = useState<BookVersionNav[]>([]);
   const [seriesName, setSeriesName] = useState<string | null>(null);
   const [seriesNameEn, setSeriesNameEn] = useState<string | null>(null);
   const [seriesSeriesId, setSeriesSeriesId] = useState<string | null>(null);
@@ -200,6 +226,7 @@ function BookPageInner() {
         setSeriesPrice(d.seriesPrice ?? null);
         setSeriesPriceUSD(d.seriesPriceUSD ?? null);
         setSeriesOwnedIds(d.seriesOwnedIds ?? []);
+        setVersions(Array.isArray(d.versions) ? d.versions : []);
         let access = d.hasAccess ?? false;
 
         const refToken = searchParams.get('ref');
@@ -424,6 +451,7 @@ function BookPageInner() {
         <div>
           <h1 className="font-black text-gray-900 text-xl leading-tight">{isEn && (book as any).titleEn ? (book as any).titleEn : book.title}</h1>
           {book.author && <p className="text-gray-500 text-sm mt-1">{isEn && (book as any).authorEn ? (book as any).authorEn : book.author}</p>}
+          <VersionsLine versions={versions} isEn={isEn} />
           {book.category && (
             <span className="inline-block mt-2 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-3 py-1 rounded-full">
               {book.category}
@@ -593,6 +621,7 @@ function BookPageInner() {
             <div className="flex-1 min-w-0">
               <h1 className="font-black text-gray-900 text-base leading-tight mb-1">{book.title}</h1>
               {book.author && <p className="text-gray-500 text-xs mb-2">{book.author}</p>}
+              <div className="mb-3"><VersionsLine versions={versions} isEn={isEn} /></div>
               {/* Visitor/Buyer counts */}
               {(viewCount !== null || buyCount !== null) && (
                 <div className="flex items-center gap-4 mb-3">
@@ -717,6 +746,15 @@ function BookPageInner() {
                     uiLang={isEn ? 'en' : 'ar'}
                     bgmUrl={(book as any).bgmUrl || undefined}
                     promoVideoUrl={(book as any).promoVideoUrl || undefined}
+                    isSignedIn={!!user}
+                    seriesOffer={book.seriesId && seriesSeriesId && seriesPrice && seriesLangBooks(book).length > 1 && seriesRemaining(book) > 0
+                      ? {
+                          href: seriesBuyHref(book),
+                          label: ownsSome(book)
+                            ? (isEn ? `Complete the series — ${seriesRemaining(book)} more stories · ${seriesPriceLabel()}` : `أكمل السلسلة — الباقي ${seriesRemaining(book)} قصة · ${seriesPriceLabel()}`)
+                            : (isEn ? `Or the whole series — ${seriesLangBooks(book).length} stories · ${seriesPriceLabel()}` : `أو السلسلة كاملة — ${seriesLangBooks(book).length} قصة · ${seriesPriceLabel()}`),
+                        }
+                      : null}
                   />
                 </ReaderErrorBoundary>
               ) : (

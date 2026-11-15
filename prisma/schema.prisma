@@ -771,6 +771,10 @@ model Book {
   enableWatermark    Boolean     @default(true)
   enableForensic     Boolean     @default(true)
   paperProductSlug   String?
+  /// The same book in another language: the id of the ORIGINAL edition this one translates
+  /// (set in admin). Books in a series need none — the same story number in the same series
+  /// already marks them as one book (src/lib/book-versions.ts).
+  translationOfId    String?
   seriesId           String?
   series             BookSeries? @relation(fields: [seriesId], references: [id])
   seriesOrder        Int?
@@ -783,6 +787,8 @@ model Book {
   shareLinks BookShareLink[]
   bookOrders BookOrder[]
   accessLogs BookAccessLog[]
+
+  @@index([translationOfId])
 }
 
 model BookSeries {

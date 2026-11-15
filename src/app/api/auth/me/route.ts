@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { rememberCountry } from '@/lib/visitor-country';
+import { headers } from 'next/headers';
 
 export async function GET() {
   try {
@@ -10,6 +12,8 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({ where: { id: auth.userId } });
     if (!user) return NextResponse.json({ user: null }, { status: 401 });
+    // Members who signed up before the country was kept get it on their next visit.
+    void rememberCountry(user.id, headers(), user);
 
     // Expose permissions only when the user is staff/admin so customers
     // can't probe the catalogue.

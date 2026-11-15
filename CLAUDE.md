@@ -1160,6 +1160,26 @@ Books are protected from download at two levels:
   an approximation. Interest signals that DO go back further live in the database:
   `BookAccessLog` (with country), `TareeqPostView` (signed-in only), `NotifyRequest`, carts.
   `User.country` is empty for most new signups (64% of the 30 days to 2026-11-15).
+- **`User.country` is filled at sign-up and sign-in (since 2026-11-15)** by
+  `rememberCountry()` in `src/lib/visitor-country.ts`, called from register, login, both OAuth
+  callbacks and `/api/auth/me` (so existing members get it on their next visit). It only FILLS
+  an empty value — a country chosen in طريق's profile is never overwritten — never blocks a
+  sign-in, and tries each member once per process. Source: a proxy country header if any, else
+  one `http://ip-api.com` lookup (free tier is HTTP only; the book tracker uses the same).
+- **The book lock screen** (`LockOverlay` in `BookReader.tsx`) follows the UI language, shows
+  the cover, the price in the reader's currency, the series offer (`seriesOffer` prop, built by
+  the book page with the same helpers as its own series button) and, for a signed-out reader,
+  «أنشئ حساباً / سجّل دخولك». It was Arabic-only and offered nothing but «اشترِ الآن».
+- **A book's other-language editions** — «متاح أيضاً بـ…» on `/library/[id]`, from
+  `findBookVersions()` in `src/lib/book-versions.ts`, returned by `/api/books/[id]` as
+  `versions`. Two links, merged: same `seriesId` + same `seriesOrder` + another language (a
+  series holds the same stories in several languages, so this needs nothing set — IF the story
+  numbers match across languages), and `Book.translationOfId`, set in admin («نسخة مترجمة من»),
+  pointing a translation at its ORIGINAL.
+- **The طريق composer shows the six categories as chips** and marks the one the text points to
+  «مقترح» (`suggestCategory()` in `src/lib/tareeq-category-suggest.ts`, keyword rules). It
+  never sets one by itself. Note for any Arabic regex: `\b` is ASCII-only in JavaScript and
+  never matches after an Arabic word — use a lookahead.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

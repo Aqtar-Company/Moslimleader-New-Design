@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { signToken, makeAuthCookie } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { rememberCountry } from '@/lib/visitor-country';
 
 export async function POST(req: NextRequest) {
   try {
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest) {
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     }).catch(err => console.error('[login lastLoginAt]', err));
+    void rememberCountry(user.id, req.headers, user);
 
     const token = await signToken({
       userId: user.id,

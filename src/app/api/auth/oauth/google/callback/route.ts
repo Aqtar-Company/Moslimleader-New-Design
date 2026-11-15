@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { signToken, makeAuthCookie } from '@/lib/jwt';
+import { rememberCountry } from '@/lib/visitor-country';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -91,6 +92,7 @@ export async function GET(req: NextRequest) {
     if (!user.emailVerified) {
       await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } });
     }
+    void rememberCountry(user.id, req.headers, user);
 
     // Link OAuth account
     await prisma.oAuthAccount.upsert({

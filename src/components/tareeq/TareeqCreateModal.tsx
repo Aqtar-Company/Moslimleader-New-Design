@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
+import { TAREEQ_CATEGORIES } from '@/lib/tareeq-constants';
+import { suggestCategory } from '@/lib/tareeq-category-suggest';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { compressImage } from '@/lib/compress-image';
 import { captureVideoFrames } from '@/lib/tareeq-video-frames';
@@ -233,13 +234,11 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   // Track all object URLs for cleanup on unmount
   const localPreviewRef = useRef<string | null>(null);
   const extraPreviewUrlsRef = useRef<string[]>([]);
-  const [showCatPicker, setShowCatPicker] = useState(false);
   const [seriesTitle, setSeriesTitle] = useState('');
   const [showSeriesInput, setShowSeriesInput] = useState(false);
   const [draftBanner, setDraftBanner] = useState<Draft | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const catPickerRef = useRef<HTMLDivElement>(null);
   const uploadedForFile = useRef<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -295,14 +294,6 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, []);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (catPickerRef.current && !catPickerRef.current.contains(e.target as Node)) setShowCatPicker(false);
-    };
-    if (showCatPicker) document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [showCatPicker]);
 
   // Keep refs in sync for cleanup and immediate save on unmount
   useEffect(() => {
@@ -979,7 +970,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const canPublish = !loading && !uploading && !extraUploading && !thumbUploading && !coverUploading && !mainUploadFailed && !!(mediaUrl || content.trim());
   // A draft has nothing to wait for that publishing doesn't, so it shares the gate.
   const canDraft = canPublish;
-  const catObj = category ? TAREEQ_CATEGORIES[category] : null;
+  // The category these words point to — shown as «مقترح», never chosen for the author.
+  const suggestedCategory = category ? null : suggestCategory(`${title} ${content}`);
   const charCount = content.length;
   const charLeft = 5000 - charCount;
 
@@ -1871,55 +1863,36 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             )}
           </div>
 
-          {/* ── Category row ── */}
-          <div className="px-4 pb-5" ref={catPickerRef}>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowCatPicker(v => !v)}
-                className="flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-full border transition"
-                style={category
-                  ? { background: 'var(--tr-gold-glow)', color: 'var(--tr-gold-bright)', borderColor: 'var(--tr-gold-dim)' }
-                  : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', borderColor: 'var(--tr-border-soft)' }
-                }
-              >
-                {category
-                  ? <>{CATEGORY_ICONS[category]} {isRtl ? catObj?.ar : catObj?.en}</>
-                  : <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
-                      </svg>
-                      {isRtl ? 'اختر الفئة (اختياري)' : 'Category (optional)'}
-                    </>
-                }
-                <svg className="w-3 h-3 opacity-50 ms-auto" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d={showCatPicker ? 'M4.5 15.75l7.5-7.5 7.5 7.5' : 'M19.5 8.25l-7.5 7.5-7.5-7.5'} />
-                </svg>
-              </button>
-
-              {showCatPicker && (
-                <div
-                  className="absolute bottom-full mb-2 start-0 z-20 p-2 grid grid-cols-3 gap-1 w-[210px] rounded-2xl"
-                  style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 12px 40px rgba(0,0,0,0.7)' }}
-                >
-                  {CATEGORY_KEYS.map(key => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => { setCategory(category === key ? '' : key); setShowCatPicker(false); }}
-                      className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl text-xs font-bold transition"
-                      style={category === key
-                        ? { background: 'var(--tr-gold-glow)', color: 'var(--tr-gold-bright)' }
-                        : { color: 'var(--tr-text-secondary)' }
-                      }
-                    >
-                      <span className="text-xl">{CATEGORY_ICONS[key]}</span>
-                      <span>{isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* ── Category ── The six choices in plain sight (they used to sit behind an
+              «(اختياري)» dropdown) and the one the text points to marked «مقترح». Still optional:
+              nothing is chosen for the author. See src/lib/tareeq-category-suggest.ts. */}
+          <div className="px-4 pb-5">
+            <p className="text-xs font-bold mb-2" style={{ color: 'var(--tr-text-secondary)' }}>
+              {isRtl ? 'التصنيف — يوصّل منشورك لمن يهتم به' : 'Category — helps your post reach the people who care'}
+            </p>
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={isRtl ? 'التصنيف' : 'Category'}>
+              {CATEGORY_KEYS.map(key => {
+                const active = category === key;
+                const suggested = !category && suggestedCategory === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setCategory(active ? '' : key)}
+                    className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full border transition"
+                    style={active
+                      ? { background: 'var(--tr-gold-glow)', color: 'var(--tr-gold-bright)', borderColor: 'var(--tr-gold-dim)' }
+                      : suggested
+                        ? { background: 'transparent', color: 'var(--tr-gold-bright)', borderColor: 'var(--tr-gold-dim)', borderStyle: 'dashed' }
+                        : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', borderColor: 'var(--tr-border-soft)' }}
+                  >
+                    {isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}
+                    {suggested && <span className="text-[10px] font-semibold opacity-80">{isRtl ? '· مقترح' : '· suggested'}</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

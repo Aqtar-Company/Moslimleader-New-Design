@@ -69,57 +69,6 @@ export default function AboutPage() {
     { titleKey: 'about.val3.title', descKey: 'about.val3.desc', icon: 'heart' },
   ] as const;
 
-  const founderFacts: { icon: IconName; title: string; body: string }[] = [
-    {
-      icon: 'badge',
-      title: tx('المسار الأكاديمي', 'Academic path'),
-      body: tx(
-        'أستاذ مشارك في قسم الإعلام الرقمي والاتصال بجامعة عفت في جدة، وفي قسم التصميمات بكلية الفنون الجميلة بجامعة الإسكندرية. دكتوراه الفلسفة في التصميم الجرافيكي من جامعة الإسكندرية.',
-        'Associate Professor at the Department of Digital Media and Communication, Effat University (Jeddah), and at the Faculty of Fine Arts, Alexandria University. PhD in Graphic Design, Alexandria University.',
-      ),
-    },
-    {
-      icon: 'moon',
-      title: tx('العلوم الشرعية', 'Islamic studies'),
-      body: tx(
-        'ماجستير الفقه وأصوله من جامعة منيسوتا الإسلامية (2025)، ويدرس الدكتوراه فيه. وحاصل على إجازة في قراءة عاصم بروايتي شعبة وحفص.',
-        'MA in Fiqh and its Principles, Minnesota Islamic University (2025), now reading for the doctorate. Holds an ijazah in the recitation of ʿĀṣim, in the narrations of Shuʿbah and Ḥafṣ.',
-      ),
-    },
-    {
-      icon: 'zap',
-      title: tx('بحث يخدم المحتوى', 'Research behind the content'),
-      body: tx(
-        'أبحاث محكّمة في توظيف الذكاء الاصطناعي لتصميم المحتوى التعليمي للأطفال المسلمين وترويجه، وفي أثر الوسائط الورقية والرقمية على قراءة القرآن.',
-        'Peer-reviewed research on using AI to design and promote educational content for Muslim children, and on how print and digital media affect Quran reading.',
-      ),
-    },
-    {
-      icon: 'book',
-      title: tx('المؤلفات', 'Books'),
-      body: tx(
-        'العقل الشجاع، فقيه في بلاد العجائب، البخاري على كوكب المريخ، رسائل أمهات العظماء، فلسطين في عيون أبنائي، وسلاسل: الصلاة، ومسلسل البر، وابني يسأل.',
-        'The Brave Mind, An Islamic Jurist in Wonderland, Al-Bukhari on Mars Planet, Letters of the Mothers of the Great, Palestine in My Children\'s Eyes, and the story series on prayer, on righteousness to parents, and «My Child Asks».',
-      ),
-    },
-    {
-      icon: 'heart',
-      title: tx('مشاريع قرآنية', 'Quran projects'),
-      body: tx(
-        'موقع لاستماع وتدبر القرآن، وتطبيق «صحف» للحفظ السماعي، ومشروع «ألواح» لحفظ القرآن لغير الناطقين بالعربية وللأطفال دون سن القراءة.',
-        'A site for listening to and reflecting on the Quran, the «Suhuf» app for memorising by listening, and «Alwah» for memorisation by non-Arabic speakers and pre-reading children.',
-      ),
-    },
-    {
-      icon: 'check',
-      title: tx('تقدير', 'Recognition'),
-      body: tx(
-        'حاصل على «إقامة موهبة» المميزة في المملكة العربية السعودية (2024) ضمن فئة الكفاءات الاستثنائية.',
-        'Awarded the Saudi Premium Residency in the «Mawhiba» (exceptional talent) category, 2024.',
-      ),
-    },
-  ];
-
   const partners = [
     { logo: '/about/partners/aqtar.webp', name: tx('أقطار', 'Aqtar'), field: tx('للتصميم والميديا', 'Design & Media'), url: 'https://aqtardesign.com', host: 'aqtardesign.com',
       desc: tx('استشارات الهوية البصرية والاتصال المؤسسي والوسائط.', 'Visual identity, corporate communication and media.') },
@@ -176,14 +125,15 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ── Founders ── Two portrait cards side by side — Dr. Marwa Ali, general manager, first
-          — then the words, in the same order. Her picture is a drawn avatar, not a
-          photograph: her choice, and the rule this site follows for women's pictures. */}
+      {/* ── Founders ── One card per founder, each holding the whole introduction — Dr. Marwa
+          Ali, general manager, first. Her picture is a drawn avatar, not a photograph: her
+          choice, and the rule this site follows for women's pictures. Dr. Ibrahim's card is
+          kept short on purpose and points to his own site for the rest. */}
       <section id="founder" className="bg-[#FAF6E6] py-16 scroll-mt-24">
         <div className="max-w-5xl mx-auto px-6">
           <SectionHead eyebrow={tx('من يقود مسلم ليدر', 'Who leads Moslim Leader')} title={tx('المؤسسون', 'The founders')} />
 
-          <div className="grid sm:grid-cols-2 gap-5">
+          <div className="grid md:grid-cols-2 gap-5 items-stretch">
             {[
               {
                 key: 'marwa',
@@ -191,6 +141,17 @@ export default function AboutPage() {
                 name: tx('د. مروة علي', 'Dr. Marwa Ali'),
                 role: tx('المدير العام · شريك مؤسس', 'General Manager · Co-founder'),
                 line: tx('دكتورة صيدلانية وباحثة في الفكر الإسلامي', 'Pharmacist and researcher in Islamic thought'),
+                bio: [
+                  tx(
+                    'المدير العام لمسلم ليدر وشريكة في تأسيسها. أسهمت في صياغة رؤيتها ورسالتها، وتقود العمل فيها من الفكرة الأولى إلى المحتوى التربوي الذي يصل إلى الطفل وأسرته.',
+                    'General Manager and co-founder of Moslim Leader. She helped shape its vision and message, and leads its work from the first idea to the educational content that reaches the child and the family.',
+                  ),
+                  tx(
+                    'وتدير إلى جانب ذلك منصة «كليم» للسلامة النفسية.',
+                    'She also directs Kaleem, a platform for mental well-being.',
+                  ),
+                ],
+                link: null as null | { href: string; host: string },
               },
               {
                 key: 'ibrahim',
@@ -198,9 +159,16 @@ export default function AboutPage() {
                 name: tx('د. إبراهيم حسن', 'Dr. Ibrahim Hassan'),
                 role: tx('المؤسس', 'Founder'),
                 line: tx('أستاذ مشارك التصميم البصري والميديا الحديثة', 'Associate Professor of Visual Design and New Media'),
+                bio: [
+                  tx(
+                    'مؤسس مسلم ليدر، وأستاذ مشارك بجامعة عفت في جدة وبكلية الفنون الجميلة بجامعة الإسكندرية. يجمع بين التصميم والإعلام والعلوم الشرعية، ومن هذا الجمع وُلدت مسلم ليدر: محتوى يقوم على الشريعة، بلغة بصرية معاصرة، ويختبره البحث.',
+                    'Founder of Moslim Leader and Associate Professor at Effat University in Jeddah and at the Faculty of Fine Arts, Alexandria University. He brings together design, media and Islamic scholarship — and Moslim Leader grew out of that combination: content rooted in the Sharia, in a contemporary visual language, tested by research.',
+                  ),
+                ],
+                link: { href: 'https://ibrahimhassan.net', host: 'ibrahimhassan.net' },
               },
             ].map(p => (
-              <a key={p.key} href={`#about-${p.key}`} className="group block rounded-[2rem] overflow-hidden bg-white border border-[#EFE7CE] hover:border-[#F5C518] hover:shadow-lg transition">
+              <article key={p.key} id={`about-${p.key}`} className="flex flex-col rounded-[2rem] overflow-hidden bg-white border border-[#EFE7CE] scroll-mt-24">
                 <div className="relative aspect-[5/4] overflow-hidden" style={{ background: 'radial-gradient(600px 300px at 80% 0%, rgba(245,197,24,.20), transparent 60%), linear-gradient(160deg, #16223F 0%, #0C1428 100%)' }}>
                   <div className="absolute inset-0" style={{ backgroundImage: STAR }} aria-hidden />
                   <div className="absolute top-4 end-4 w-12 h-12 bg-[#F5C518]" style={{ clipPath: STAR_CLIP }} aria-hidden />
@@ -217,72 +185,24 @@ export default function AboutPage() {
                     <img src={p.img} alt={p.name} width={p.w} height={p.h} className="absolute bottom-0 inset-x-0 mx-auto h-[94%] w-auto object-contain" />
                   )}
                 </div>
-                <div className="p-6">
-                  <p className="inline-block text-xs font-bold text-[#0C1428] bg-[#F5C518] rounded-full px-3 py-1">{p.role}</p>
+                <div className="flex flex-col flex-1 p-6 sm:p-8">
+                  <p className="self-start text-xs font-bold text-[#0C1428] bg-[#F5C518] rounded-full px-3 py-1">{p.role}</p>
                   <h3 className="mt-3 text-2xl sm:text-3xl font-black text-[#0C1428] leading-snug">{p.name}</h3>
                   <p className="mt-1 text-[#5C6373] font-semibold">{p.line}</p>
+                  <div className="mt-5 space-y-3 text-[#3A4150] leading-loose">
+                    {p.bio.map((para, i) => <p key={i}>{para}</p>)}
+                  </div>
+                  {p.link && (
+                    <a href={p.link.href} target="_blank" rel="noopener" className="mt-auto pt-6 self-start inline-flex items-center gap-2 font-bold text-[#16223F] hover:text-[#22335C]">
+                      <span>{tx('للمزيد عنه:', 'More about him:')}</span>
+                      <span className="border-b-2 border-[#F5C518] pb-0.5" dir="ltr">{p.link.host}</span>
+                      <Icon name="external" size={16} />
+                    </a>
+                  )}
                 </div>
-              </a>
+              </article>
             ))}
           </div>
-
-          {/* Dr. Marwa first */}
-          <article id="about-marwa" className="mt-12 relative overflow-hidden rounded-[2rem] text-white p-8 sm:p-10 scroll-mt-24"
-            style={{ background: 'radial-gradient(700px 320px at 10% 0%, rgba(245,197,24,.18), transparent 60%), linear-gradient(160deg, #16223F 0%, #0C1428 100%)' }}>
-            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: STAR }} aria-hidden />
-            <div className="relative max-w-3xl">
-              <p className="text-sm font-bold text-[#FBEEBB] mb-2">{tx('المدير العام', 'General Manager')}</p>
-              <h2 className="text-3xl sm:text-4xl font-black leading-snug">{tx('د. مروة علي', 'Dr. Marwa Ali')}</h2>
-              <p className="mt-5 text-[#D7DCE8] text-base sm:text-lg leading-loose">
-                {tx(
-                  'المدير العام لمسلم ليدر وشريكة مؤسسة فيها؛ شريكة في رؤيتها وفي منتجاتها كلها: من الفكرة والرسالة، إلى المحتوى التربوي، إلى المنتج الذي يصل إلى الطفل وأسرته.',
-                  'General Manager and co-founder of Moslim Leader — a partner in its vision and in everything it makes: from the idea and the message, to the educational content, to the product that reaches the child and the family.',
-                )}
-              </p>
-              <p className="mt-4 text-[#D7DCE8] leading-loose">
-                {tx(
-                  'دكتورة صيدلانية وباحثة في الفكر الإسلامي، وتدير منصة كليم للصحة النفسية.',
-                  'A pharmacist and researcher in Islamic thought, she also directs the Kaleem mental well-being platform.',
-                )}
-              </p>
-            </div>
-          </article>
-
-          {/* Then Dr. Ibrahim */}
-          <article id="about-ibrahim" className="mt-6 bg-white border border-[#EFE7CE] rounded-[2rem] p-8 sm:p-10 scroll-mt-24">
-            <p className="text-sm font-bold text-[#22335C] mb-2">{tx('المؤسس', 'Founder')}</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#0C1428] leading-snug">{tx('د. إبراهيم حسن', 'Dr. Ibrahim Hassan')}</h2>
-            <p className="mt-2 text-[#5C6373] font-semibold">
-              {tx('مؤسس مسلم ليدر · أستاذ مشارك التصميم البصري والميديا الحديثة', 'Founder of Moslim Leader · Associate Professor of Visual Design and New Media')}
-            </p>
-            <blockquote className="mt-6 bg-[#FAF6E6] border-s-4 border-s-[#F5C518] rounded-e-2xl p-5 text-[#1C2430] leading-loose">
-              {tx(
-                '«أؤمن أن نهضة الفرد والمجتمع تبدأ من مدى شعور الفرد بالمسؤولية… فالإنسان ينتهي به الأمر إلى أن يقف بين يدي الله يُسأَل عن كل ما مكّنه الله فيه، ويشمل ذلك علمه وماله وعمله. لا أفصل بين الدنيا والآخرة.»',
-                '“I believe the renewal of a person and of a society begins with how responsible a person feels… for in the end we stand before Allah and are asked about everything He enabled us in — our knowledge, our wealth and our work. I do not separate this world from the next.”',
-              )}
-            </blockquote>
-            <p className="mt-5 text-[#3A4150] leading-relaxed">
-              {tx(
-                'يجمع بين التربية والتصميم والإعلام والعلوم الشرعية، ومن هذا الجمع وُلدت مسلم ليدر: محتوى يقوم على الشريعة، ويُصمَّم بلغة بصرية معاصرة، ويُختبر بالبحث.',
-                'He brings together education, design, media and Islamic scholarship — and Moslim Leader grew out of that combination: content rooted in the Sharia, designed in a contemporary visual language, and tested by research.',
-              )}
-            </p>
-            <a href="https://ibrahimhassan.net" target="_blank" rel="noopener" className="mt-6 inline-flex items-center gap-2 font-bold text-[#16223F] border-b-2 border-[#F5C518] pb-0.5 hover:text-[#22335C]">
-              ibrahimhassan.net <Icon name="external" size={16} />
-            </a>
-
-            <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {founderFacts.map(f => (
-                <div key={f.title} className="bg-[#FFFDF4] border border-[#EFE7CE] rounded-2xl p-5">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="w-10 h-10 rounded-xl bg-[#FAF6E6] text-[#22335C] flex items-center justify-center"><Icon name={f.icon} size={20} /></span>
-                    <h3 className="font-black text-[#16223F]">{f.title}</h3>
-                  </div>
-                  <p className="text-sm text-[#3A4150] leading-relaxed">{f.body}</p>
-                </div>
-              ))}
-            </div>
-          </article>
         </div>
       </section>
 

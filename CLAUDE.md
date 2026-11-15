@@ -1076,9 +1076,12 @@ Books are protected from download at two levels:
   variable is missing the request is accepted and `[partnership-requests] TURNSTILE_SECRET_KEY
   is not set` is logged — check for that line after deploying. No admin screen yet; `status`
   (new/contacted/trial/closed) is there for one.
-- **«من نحن» — the founders:** two portrait cards side by side, **Dr. Marwa Ali first**
-  (المدير العام · شريك مؤسس — the owner's wording), then Dr. Ibrahim Hassan; the text below
-  follows the same order. Her picture is the drawn avatar, never a photograph.
+- **«من نحن» — the founders:** two cards side by side, **Dr. Marwa Ali first**
+  (المدير العام · شريك مؤسس — the owner's wording), then Dr. Ibrahim Hassan. Each card holds
+  its WHOLE introduction (no second block below — the owner asked for one card per founder).
+  Dr. Ibrahim's is short on purpose and links to ibrahimhassan.net for the rest. Do NOT
+  mention a doctorate from Minnesota Islamic University: he has not registered for it yet
+  (owner, 2026-11-15). Her picture is the drawn avatar, never a photograph.
 - **«أرض القائد المسلم» has its own page, `/land` (`src/app/land/`).** A future project laid
   out as one. **The page OPENS ON THE MAP, and the map is DESIGNED BY THE OWNER IN LOVABLE**
   — repo `Aqtar-Company/pixel-perfect-replay-42559` (Lovable syncs it). Its header, map and

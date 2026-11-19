@@ -24,8 +24,24 @@ const S = 1080;                       // output side, px
 const BADGE = 0.27;                   // seal diameter as a share of the side
 const LOGO_SRC = '/Moslimleader-logo.svg';
 const LOGO_RATIO = 756.97 / 993.94;   // the logo's own width / height
-const YELLOW = '#FDBF00';            // the logo's own yellow
-const LOGO_FILL = 0.84;              // logo height as a share of the yellow field's diameter
+const LOGO_FILL = 0.74;              // logo height as a share of the badge's diameter
+
+/** Background colours offered for the badge; the first is the logo's own yellow. */
+const BADGE_COLORS: { hex: string; ar: string; en: string }[] = [
+  { hex: '#FDBF00', ar: 'أصفر', en: 'Yellow' },
+  { hex: '#FFFFFF', ar: 'أبيض', en: 'White' },
+  { hex: '#1a1a2e', ar: 'كحلي', en: 'Navy' },
+  { hex: '#754A2C', ar: 'بني', en: 'Brown' },
+  { hex: '#1F7A4D', ar: 'أخضر', en: 'Green' },
+  { hex: '#6B1F2A', ar: 'نبيتي', en: 'Burgundy' },
+  { hex: '#2F5DA8', ar: 'أزرق', en: 'Blue' },
+  { hex: '#141414', ar: 'أسود', en: 'Black' },
+];
+/** Light swatches need a border to read against the white card. */
+const isLight = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16);
+  return 0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255) > 170;
+};
 
 type Corner = 'br' | 'bl' | 'tr' | 'tl';
 type Frame = { zoom: number; x: number; y: number }; // x/y: the photo's centre offset, in output px
@@ -55,36 +71,32 @@ function clampFrame(img: HTMLImageElement, f: Frame): Frame {
 }
 
 /**
- * The badge: the lion's face as large as the circle allows, on the brand yellow, inside a
- * black ring. No words — at the size a profile picture is seen, only a shape reads.
+ * The badge: the lion's face as large as the circle allows, on a background colour the
+ * member chooses. No frame and no words — at the size a profile picture is seen, only a
+ * shape reads. A soft shadow lifts it off a photo of the same colour.
  */
-function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, corner: Corner) {
+function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, corner: Corner, color: string) {
   const d = S * BADGE;
   const r = d / 2;
-  const ring = d * 0.075;
   const dist = S / 2 - r - S * 0.03;
   const a = (CORNER_ANGLE[corner] * Math.PI) / 180;
   const cx = S / 2 + dist * Math.cos(a);
   const cy = S / 2 + dist * Math.sin(a);
 
-  // Black outer frame, with a soft shadow so it lifts off any photo.
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,.35)';
   ctx.shadowBlur = S * 0.02;
   ctx.shadowOffsetY = S * 0.005;
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = '#000'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
   ctx.restore();
-
-  // Yellow field.
-  ctx.beginPath(); ctx.arc(cx, cy, r - ring, 0, Math.PI * 2); ctx.fillStyle = YELLOW; ctx.fill();
 
   if (logo) {
     // The shield is taller than wide; at this height its widest point and its top and
-    // bottom tips all stay inside the yellow field.
-    const lh = (r - ring) * 2 * LOGO_FILL;
+    // bottom tips all stay inside the circle.
+    const lh = d * LOGO_FILL;
     const lw = lh * LOGO_RATIO;
     ctx.save();
-    ctx.beginPath(); ctx.arc(cx, cy, r - ring, 0, Math.PI * 2); ctx.clip();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
     ctx.drawImage(logo, cx - lw / 2, cy - lh / 2, lw, lh);
     ctx.restore();
   }
@@ -102,6 +114,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
   const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [frame, setFrame] = useState<Frame>({ zoom: 1, x: 0, y: 0 });
   const [corner, setCorner] = useState<Corner>('br');
+  const [color, setColor] = useState(BADGE_COLORS[0].hex);
   const [round, setRound] = useState(true);
   const [busy, setBusy] = useState(false);
   // The finished picture, kept ready: Web Share must be called inside the tap, and making
@@ -140,7 +153,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
       ctx.beginPath(); ctx.arc(S / 2, S * 0.4, S * 0.17, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(S / 2, S * 0.95, S * 0.32, S * 0.3, 0, Math.PI, 0); ctx.fill();
     }
-    drawBadge(ctx, logo, corner);
+    drawBadge(ctx, logo, corner, color);
 
     blobRef.current = null;
     if (!photo) return;
@@ -152,7 +165,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
       }, 'image/jpeg', 0.92);
     }, 250);
     return () => clearTimeout(t);
-  }, [photo, frame, logo, corner]);
+  }, [photo, frame, logo, corner, color]);
 
   // ── Choosing a photo ──
   const onFile = async (file: File | undefined) => {
@@ -374,7 +387,21 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
 
               <div className="rounded-3xl bg-white border border-[#1a1a2e]/5 p-5">
                 <h2 className="font-black text-lg">{tx('٢. البادج', '2. The badge')}</h2>
-                <p className="mt-3 text-xs font-bold text-[#1a1a2e]/60">{tx('المكان', 'Position')}</p>
+                <p className="mt-3 text-xs font-bold text-[#1a1a2e]/60">{tx('لون الخلفية', 'Background colour')}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {BADGE_COLORS.map(c => (
+                    <button key={c.hex} type="button" onClick={() => setColor(c.hex)} aria-pressed={color === c.hex}
+                      title={isEn ? c.en : c.ar} aria-label={isEn ? c.en : c.ar}
+                      className={`w-9 h-9 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a1a2e] ${color === c.hex ? 'ring-2 ring-offset-2 ring-[#1a1a2e] scale-110' : 'hover:scale-105'}`}
+                      style={{ background: c.hex, borderColor: isLight(c.hex) ? 'rgba(26,26,46,.25)' : 'transparent' }} />
+                  ))}
+                  <label className="relative w-9 h-9 rounded-full overflow-hidden border border-[#1a1a2e]/20 cursor-pointer" title={tx('لون آخر', 'Another colour')}
+                    style={{ background: 'conic-gradient(red,yellow,lime,cyan,blue,magenta,red)' }}>
+                    <input type="color" value={color} onChange={e => setColor(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" aria-label={tx('اختر لوناً آخر', 'Pick another colour')} />
+                  </label>
+                  <span className="text-xs font-bold text-[#1a1a2e]/60">{BADGE_COLORS.find(c => c.hex.toLowerCase() === color.toLowerCase())?.[isEn ? 'en' : 'ar'] ?? <span dir="ltr">{color.toUpperCase()}</span>}</span>
+                </div>
+                <p className="mt-4 text-xs font-bold text-[#1a1a2e]/60">{tx('المكان', 'Position')}</p>
                 <div className="mt-2 grid grid-cols-2 gap-2" dir="ltr">
                   {/* Laid out as the picture's own corners, so it reads left/right the same in both languages. */}
                   {(['tl', 'tr', 'bl', 'br'] as Corner[]).map(id => {

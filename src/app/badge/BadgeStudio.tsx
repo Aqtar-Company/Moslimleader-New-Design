@@ -25,6 +25,11 @@ const BADGE = 0.27;                   // seal diameter as a share of the side
 const LOGO_SRC = '/Moslimleader-logo.svg';
 const LOGO_RATIO = 756.97 / 993.94;   // the logo's own width / height
 const LOGO_FILL = 0.74;              // logo height as a share of the badge's diameter
+// «الإطار» style
+const RIBBON_BAND = 0.13;            // band thickness, as a share of the side
+const RIBBON_BADGE = 0.2;            // badge diameter on the band
+const RIBBON_SPREAD = (120 * Math.PI) / 180; // the band fades out this far either side of the badge
+const RIBBON_SOLID = (55 * Math.PI) / 180;   // …and is fully opaque this far
 
 /** Background colours offered for the badge; the first is the logo's own yellow. */
 const BADGE_COLORS: { hex: string; ar: string; en: string }[] = [
@@ -44,6 +49,7 @@ const isLight = (hex: string) => {
 };
 
 type Corner = 'br' | 'bl' | 'tr' | 'tl';
+type Style = 'ribbon' | 'badge';
 type Frame = { zoom: number; x: number; y: number }; // x/y: the photo's centre offset, in output px
 
 const CORNER_ANGLE: Record<Corner, number> = { br: 45, bl: 135, tl: 225, tr: 315 };
@@ -70,26 +76,15 @@ function clampFrame(img: HTMLImageElement, f: Frame): Frame {
   return { zoom: f.zoom, x: Math.min(mx, Math.max(-mx, f.x)), y: Math.min(my, Math.max(-my, f.y)) };
 }
 
-/**
- * The badge: the lion's face as large as the circle allows, on a background colour the
- * member chooses. No frame and no words — at the size a profile picture is seen, only a
- * shape reads. A soft shadow lifts it off a photo of the same colour.
- */
-function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, corner: Corner, color: string) {
-  const d = S * BADGE;
+/** The badge disc itself: a circle in `color` with the lion's face as large as fits. */
+function drawSeal(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, cx: number, cy: number, d: number, color: string) {
   const r = d / 2;
-  const dist = S / 2 - r - S * 0.03;
-  const a = (CORNER_ANGLE[corner] * Math.PI) / 180;
-  const cx = S / 2 + dist * Math.cos(a);
-  const cy = S / 2 + dist * Math.sin(a);
-
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,.35)';
   ctx.shadowBlur = S * 0.02;
   ctx.shadowOffsetY = S * 0.005;
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
   ctx.restore();
-
   if (logo) {
     // The shield is taller than wide; at this height its widest point and its top and
     // bottom tips all stay inside the circle.
@@ -100,6 +95,133 @@ function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null,
     ctx.drawImage(logo, cx - lw / 2, cy - lh / 2, lw, lh);
     ctx.restore();
   }
+}
+
+/**
+ * Style «الشارة»: the badge alone, on its own colour. No words — at the size a profile
+ * picture is seen, only a shape reads.
+ */
+function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, corner: Corner, color: string) {
+  const d = S * BADGE;
+  const dist = S / 2 - d / 2 - S * 0.03;
+  const a = (CORNER_ANGLE[corner] * Math.PI) / 180;
+  drawSeal(ctx, logo, S / 2 + dist * Math.cos(a), S / 2 + dist * Math.sin(a), d, color);
+}
+
+const WORD_FONT = (size: number) => `900 ${size}px Inter, Cairo, sans-serif`;
+
+const hexToRgb = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255] as const;
+};
+
+/**
+ * Lay a word along an arc of the picture's circle: the word is set straight on its own
+ * canvas (so the browser shapes and kerns it), then copied onto the arc in thin vertical
+ * strips, each rotated to its own angle. This also keeps Arabic joined, should the words
+ * ever be Arabic again — drawing letter by letter would cut every connection.
+ *
+ * `inward`: tops of the letters point to the centre (the lower half of the circle, read
+ * normally from below). Otherwise the baseline faces the centre (the upper half), so the
+ * word is never upside down.
+ */
+function drawArcWord(ctx: CanvasRenderingContext2D, word: string, at: number, radius: number, size: number, fill: string, inward: boolean) {
+  const font = WORD_FONT(size);
+  ctx.save(); ctx.font = font;
+  const m = ctx.measureText(word).width;
+  ctx.restore();
+  const pad = Math.ceil(size * 0.2);
+  const W = Math.ceil(m) + pad * 2;
+  const H = Math.ceil(size * 1.6);
+  const off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  const o = off.getContext('2d');
+  if (!o) return;
+  o.font = font; o.direction = 'ltr'; o.textAlign = 'center'; o.textBaseline = 'middle';
+  o.fillStyle = fill;
+  o.fillText(word, W / 2, H / 2 + size * 0.08);
+
+  const step = 2;
+  for (let x = 0; x < W; x += step) {
+    const mid = x + step / 2 - W / 2;
+    const phi = inward ? at - mid / radius : at + mid / radius;
+    ctx.save();
+    ctx.translate(S / 2 + radius * Math.cos(phi), S / 2 + radius * Math.sin(phi));
+    ctx.rotate(inward ? phi - Math.PI / 2 : phi + Math.PI / 2);
+    // +0.6px of overlap so no hairline seam shows between strips.
+    ctx.drawImage(off, x, 0, step, H, -step / 2, -H / 2, step + 0.6, H);
+    ctx.restore();
+  }
+}
+
+/**
+ * Style «الإطار»: a band in the chosen colour along the edge of the picture's circle, solid
+ * around the badge and fading to nothing at both ends — the kind of frame members already
+ * know from other networks. The badge sits in its middle; «MOSLIM» on one side of it and
+ * «LEADER» on the other, curved along the band, in reading order.
+ */
+function drawRibbon(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, corner: Corner, color: string) {
+  const a = (CORNER_ANGLE[corner] * Math.PI) / 180;
+  const outer = S / 2;
+  const band = S * RIBBON_BAND;
+  const inner = outer - band;
+  const mid = outer - band / 2;
+  const [r, g, b] = hexToRgb(color);
+
+  // The band: a conic gradient centred on the badge, opaque near it, gone at ±SPREAD.
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(S / 2, S / 2, outer, 0, Math.PI * 2);
+  ctx.arc(S / 2, S / 2, inner, 0, Math.PI * 2, true);
+  ctx.closePath();
+  const solid = RIBBON_SOLID / RIBBON_SPREAD;
+  const stopsAt = (t: number) => (Math.PI + t * RIBBON_SPREAD) / (2 * Math.PI); // t in [-1, 1]
+  if (typeof ctx.createConicGradient === 'function') {
+    const gr = ctx.createConicGradient(a - Math.PI, S / 2, S / 2);
+    const c = (al: number) => `rgba(${r},${g},${b},${al})`;
+    gr.addColorStop(0, c(0));
+    gr.addColorStop(stopsAt(-1), c(0));
+    gr.addColorStop(stopsAt(-solid), c(1));
+    gr.addColorStop(stopsAt(solid), c(1));
+    gr.addColorStop(stopsAt(1), c(0));
+    gr.addColorStop(1, c(0));
+    ctx.fillStyle = gr;
+    ctx.fill();
+  } else {
+    // Old browsers without conic gradients: fill short wedges with a falling opacity.
+    ctx.clip();
+    const n = 120;
+    for (let i = 0; i < n; i++) {
+      const t0 = -1 + (2 * i) / n, t1 = -1 + (2 * (i + 1)) / n;
+      const tm = Math.abs((t0 + t1) / 2);
+      const al = tm <= solid ? 1 : Math.max(0, 1 - (tm - solid) / (1 - solid));
+      ctx.beginPath(); ctx.moveTo(S / 2, S / 2);
+      ctx.arc(S / 2, S / 2, outer, a + t0 * RIBBON_SPREAD, a + t1 * RIBBON_SPREAD + 0.004);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(${r},${g},${b},${al})`;
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // The badge, centred on the band and pulled in just enough to stay inside the circle.
+  const d = S * RIBBON_BADGE;
+  const dist = outer - d / 2 - S * 0.012;
+  drawSeal(ctx, logo, S / 2 + dist * Math.cos(a), S / 2 + dist * Math.sin(a), d, color);
+
+  // The two words, in English, read left → right. Lower half: letters' tops face the centre
+  // and left→right runs toward the SMALLER angle, so «MOSLIM» (read first) sits on the
+  // larger-angle side. Upper half: the baseline faces the centre and it is the reverse.
+  const inward = Math.sin(a) > 0;
+  const size = band * 0.46;
+  const text = isLight(color) ? '#1a1a2e' : '#FFFFFF';
+  const gap = d / 2 + S * 0.02;
+  ctx.save(); ctx.font = WORD_FONT(size);
+  const w1 = ctx.measureText('MOSLIM').width, w2 = ctx.measureText('LEADER').width;
+  ctx.restore();
+  const first = (gap + w1 / 2) / mid, second = (gap + w2 / 2) / mid;
+  drawArcWord(ctx, 'MOSLIM', inward ? a + first : a - first, mid, size, text, inward);
+  drawArcWord(ctx, 'LEADER', inward ? a - second : a + second, mid, size, text, inward);
 }
 
 export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
@@ -115,6 +237,8 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
   const [frame, setFrame] = useState<Frame>({ zoom: 1, x: 0, y: 0 });
   const [corner, setCorner] = useState<Corner>('br');
   const [color, setColor] = useState(BADGE_COLORS[0].hex);
+  const [style, setStyle] = useState<Style>('ribbon');
+  const [fontReady, setFontReady] = useState(0);
   const [round, setRound] = useState(true);
   const [busy, setBusy] = useState(false);
   // The finished picture, kept ready: Web Share must be called inside the tap, and making
@@ -130,6 +254,9 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
 
   useEffect(() => {
     loadImage(LOGO_SRC).then(setLogo).catch(() => setLogo(null));
+    // The frame's words are drawn on a canvas, which does not wait for web fonts: redraw
+    // once the font is in.
+    document.fonts?.load?.('900 40px Inter').then(() => setFontReady(n => n + 1)).catch(() => {});
     return () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); };
   }, []);
 
@@ -153,7 +280,8 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
       ctx.beginPath(); ctx.arc(S / 2, S * 0.4, S * 0.17, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(S / 2, S * 0.95, S * 0.32, S * 0.3, 0, Math.PI, 0); ctx.fill();
     }
-    drawBadge(ctx, logo, corner, color);
+    if (style === 'ribbon') drawRibbon(ctx, logo, corner, color);
+    else drawBadge(ctx, logo, corner, color);
 
     blobRef.current = null;
     if (!photo) return;
@@ -165,7 +293,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
       }, 'image/jpeg', 0.92);
     }, 250);
     return () => clearTimeout(t);
-  }, [photo, frame, logo, corner, color]);
+  }, [photo, frame, logo, corner, color, style, fontReady]);
 
   // ── Choosing a photo ──
   const onFile = async (file: File | undefined) => {
@@ -387,7 +515,16 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
 
               <div className="rounded-3xl bg-white border border-[#1a1a2e]/5 p-5">
                 <h2 className="font-black text-lg">{tx('٢. البادج', '2. The badge')}</h2>
-                <p className="mt-3 text-xs font-bold text-[#1a1a2e]/60">{tx('لون الخلفية', 'Background colour')}</p>
+                <p className="mt-3 text-xs font-bold text-[#1a1a2e]/60">{tx('الشكل', 'Style')}</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {([{ id: 'ribbon', ar: 'إطار مع الاسم', en: 'Frame with name' }, { id: 'badge', ar: 'الشارة فقط', en: 'Badge only' }] as const).map(o => (
+                    <button key={o.id} type="button" onClick={() => setStyle(o.id)} aria-pressed={style === o.id}
+                      className={`rounded-2xl border px-3 py-2.5 text-sm font-bold transition ${style === o.id ? 'border-[#1a1a2e] ring-2 ring-[#F5C518]' : 'border-[#1a1a2e]/10 hover:border-[#1a1a2e]/30'}`}>
+                      {isEn ? o.en : o.ar}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs font-bold text-[#1a1a2e]/60">{tx('اللون', 'Colour')}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   {BADGE_COLORS.map(c => (
                     <button key={c.hex} type="button" onClick={() => setColor(c.hex)} aria-pressed={color === c.hex}

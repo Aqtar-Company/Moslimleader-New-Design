@@ -24,11 +24,10 @@ const S = 1080;                       // output side, px
 const BADGE = 0.27;                   // seal diameter as a share of the side
 const LOGO_SRC = '/Moslimleader-logo.svg';
 const LOGO_RATIO = 756.97 / 993.94;   // the logo's own width / height
-const GOLD = '#F5C518';
-const NAVY = '#1a1a2e';
+const YELLOW = '#FDBF00';            // the logo's own yellow
+const LOGO_FILL = 0.84;              // logo height as a share of the yellow field's diameter
 
 type Corner = 'br' | 'bl' | 'tr' | 'tl';
-type Style = 'seal' | 'named';
 type Frame = { zoom: number; x: number; y: number }; // x/y: the photo's centre offset, in output px
 
 const CORNER_ANGLE: Record<Corner, number> = { br: 45, bl: 135, tl: 225, tr: 315 };
@@ -55,59 +54,38 @@ function clampFrame(img: HTMLImageElement, f: Frame): Frame {
   return { zoom: f.zoom, x: Math.min(mx, Math.max(-mx, f.x)), y: Math.min(my, Math.max(-my, f.y)) };
 }
 
-function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, corner: Corner, style: Style, label: string) {
+/**
+ * The badge: the lion's face as large as the circle allows, on the brand yellow, inside a
+ * black ring. No words — at the size a profile picture is seen, only a shape reads.
+ */
+function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, corner: Corner) {
   const d = S * BADGE;
   const r = d / 2;
-  // With the name under it, the whole mark is taller; move it further in so the label stays
-  // inside the circle too.
-  const margin = S * (style === 'named' ? 0.075 : 0.03);
-  const dist = S / 2 - r - margin;
+  const ring = d * 0.075;
+  const dist = S / 2 - r - S * 0.03;
   const a = (CORNER_ANGLE[corner] * Math.PI) / 180;
   const cx = S / 2 + dist * Math.cos(a);
-  const cy = S / 2 + dist * Math.sin(a) - (style === 'named' && corner.startsWith('b') ? S * 0.02 : 0);
+  const cy = S / 2 + dist * Math.sin(a);
 
+  // Black outer frame, with a soft shadow so it lifts off any photo.
   ctx.save();
-  // Soft shadow, so the seal lifts off any photo, light or dark.
   ctx.shadowColor = 'rgba(0,0,0,.35)';
   ctx.shadowBlur = S * 0.02;
   ctx.shadowOffsetY = S * 0.005;
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = '#000'; ctx.fill();
   ctx.restore();
 
-  // Gold ring, then a thin navy line inside it: reads on white walls and on black jackets.
-  ctx.save();
-  ctx.beginPath(); ctx.arc(cx, cy, r - d * 0.035, 0, Math.PI * 2);
-  ctx.lineWidth = d * 0.07; ctx.strokeStyle = GOLD; ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, cy, r - d * 0.085, 0, Math.PI * 2);
-  ctx.lineWidth = d * 0.012; ctx.strokeStyle = NAVY; ctx.stroke();
-  ctx.restore();
+  // Yellow field.
+  ctx.beginPath(); ctx.arc(cx, cy, r - ring, 0, Math.PI * 2); ctx.fillStyle = YELLOW; ctx.fill();
 
   if (logo) {
-    const lh = d * 0.62;
+    // The shield is taller than wide; at this height its widest point and its top and
+    // bottom tips all stay inside the yellow field.
+    const lh = (r - ring) * 2 * LOGO_FILL;
     const lw = lh * LOGO_RATIO;
-    ctx.drawImage(logo, cx - lw / 2, cy - lh / 2 + d * 0.01, lw, lh);
-  }
-
-  if (style === 'named') {
-    const fs = d * 0.15;
     ctx.save();
-    ctx.font = `900 ${fs}px Cairo, "Noto Sans Arabic", sans-serif`;
-    ctx.direction = 'rtl';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    const tw = ctx.measureText(label).width;
-    const pw = Math.max(d * 0.95, tw + fs * 1.4);
-    const ph = fs * 1.75;
-    const px = cx - pw / 2;
-    const py = cy + r - ph * 0.45;
-    ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = S * 0.012;
-    ctx.beginPath();
-    ctx.roundRect(px, py, pw, ph, ph / 2);
-    ctx.fillStyle = NAVY; ctx.fill();
-    ctx.shadowColor = 'transparent';
-    ctx.lineWidth = d * 0.02; ctx.strokeStyle = GOLD; ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.fillText(label, cx, py + ph / 2 + fs * 0.06);
+    ctx.beginPath(); ctx.arc(cx, cy, r - ring, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, cx - lw / 2, cy - lh / 2, lw, lh);
     ctx.restore();
   }
 }
@@ -122,10 +100,8 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [logo, setLogo] = useState<HTMLImageElement | null>(null);
-  const [fontReady, setFontReady] = useState(false);
   const [frame, setFrame] = useState<Frame>({ zoom: 1, x: 0, y: 0 });
   const [corner, setCorner] = useState<Corner>('br');
-  const [style, setStyle] = useState<Style>('seal');
   const [round, setRound] = useState(true);
   const [busy, setBusy] = useState(false);
   // The finished picture, kept ready: Web Share must be called inside the tap, and making
@@ -133,7 +109,6 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
   const blobRef = useRef<Blob | null>(null);
   const urlRef = useRef<string | null>(null);
 
-  const label = 'مسلم ليدر';
   const pageUrl = 'https://moslimleader.com/badge';
   const postText = tx(
     `أنا جزء من مجتمع مسلم ليدر، ووضعت البادج على صورتي بكل فخر.\nمجتمع يربّي أبناءنا على القيم والقيادة.\nاعمل البادج بتاعك: ${pageUrl}`,
@@ -142,9 +117,6 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
 
   useEffect(() => {
     loadImage(LOGO_SRC).then(setLogo).catch(() => setLogo(null));
-    const f = document.fonts;
-    if (f?.load) f.load('900 40px Cairo').then(() => setFontReady(true)).catch(() => setFontReady(true));
-    else setFontReady(true);
     return () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); };
   }, []);
 
@@ -168,7 +140,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
       ctx.beginPath(); ctx.arc(S / 2, S * 0.4, S * 0.17, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(S / 2, S * 0.95, S * 0.32, S * 0.3, 0, Math.PI, 0); ctx.fill();
     }
-    drawBadge(ctx, logo, corner, style, label);
+    drawBadge(ctx, logo, corner);
 
     blobRef.current = null;
     if (!photo) return;
@@ -180,7 +152,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
       }, 'image/jpeg', 0.92);
     }, 250);
     return () => clearTimeout(t);
-  }, [photo, frame, logo, corner, style, fontReady]);
+  }, [photo, frame, logo, corner]);
 
   // ── Choosing a photo ──
   const onFile = async (file: File | undefined) => {
@@ -402,16 +374,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
 
               <div className="rounded-3xl bg-white border border-[#1a1a2e]/5 p-5">
                 <h2 className="font-black text-lg">{tx('٢. البادج', '2. The badge')}</h2>
-                <p className="mt-3 text-xs font-bold text-[#1a1a2e]/60">{tx('الشكل', 'Style')}</p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  {([{ id: 'seal', ar: 'الختم', en: 'Seal' }, { id: 'named', ar: 'الختم مع الاسم', en: 'Seal with name' }] as const).map(o => (
-                    <button key={o.id} type="button" onClick={() => setStyle(o.id)} aria-pressed={style === o.id}
-                      className={`rounded-2xl border px-3 py-2.5 text-sm font-bold transition ${style === o.id ? 'border-[#1a1a2e] ring-2 ring-[#F5C518]' : 'border-[#1a1a2e]/10 hover:border-[#1a1a2e]/30'}`}>
-                      {isEn ? o.en : o.ar}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-4 text-xs font-bold text-[#1a1a2e]/60">{tx('المكان', 'Position')}</p>
+                <p className="mt-3 text-xs font-bold text-[#1a1a2e]/60">{tx('المكان', 'Position')}</p>
                 <div className="mt-2 grid grid-cols-2 gap-2" dir="ltr">
                   {/* Laid out as the picture's own corners, so it reads left/right the same in both languages. */}
                   {(['tl', 'tr', 'bl', 'br'] as Corner[]).map(id => {

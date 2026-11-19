@@ -108,6 +108,7 @@ export default function Footer() {
                 { href: '/about', ar: 'من نحن', en: 'About' },
                 { href: '/land', ar: 'أرض القائد المسلم', en: 'Moslim Leader Land' },
                 { href: '/logo', ar: 'شعار مسلم ليدر للطباعة', en: 'Logo for printing' },
+                { href: '/badge', ar: 'بادج مسلم ليدر لصورتك', en: 'Badge for your picture' },
                 { href: '/contact', ar: 'تواصل معنا', en: 'Contact' },
                 { href: '/policy', ar: 'سياسة الخصوصية', en: 'Privacy Policy' },
                 { href: '/delete-data', ar: 'حذف البيانات', en: 'Delete My Data' },

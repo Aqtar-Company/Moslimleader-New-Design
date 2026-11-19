@@ -48,11 +48,11 @@ const isLight = (hex: string) => {
   return 0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255) > 170;
 };
 
-type Corner = 'br' | 'bl' | 'tr' | 'tl';
 type Style = 'ribbon' | 'badge';
 type Frame = { zoom: number; x: number; y: number }; // x/y: the photo's centre offset, in output px
 
-const CORNER_ANGLE: Record<Corner, number> = { br: 45, bl: 135, tl: 225, tr: 315 };
+/** Always bottom-right: 45° below the horizontal, clockwise from the right (canvas y points down). */
+const BADGE_ANGLE = Math.PI / 4;
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -101,10 +101,10 @@ function drawSeal(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, 
  * Style «الشارة»: the badge alone, on its own colour. No words — at the size a profile
  * picture is seen, only a shape reads.
  */
-function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, corner: Corner, color: string) {
+function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, color: string) {
   const d = S * BADGE;
   const dist = S / 2 - d / 2 - S * 0.03;
-  const a = (CORNER_ANGLE[corner] * Math.PI) / 180;
+  const a = BADGE_ANGLE;
   drawSeal(ctx, logo, S / 2 + dist * Math.cos(a), S / 2 + dist * Math.sin(a), d, color);
 }
 
@@ -160,8 +160,8 @@ function drawArcWord(ctx: CanvasRenderingContext2D, word: string, at: number, ra
  * know from other networks. The badge sits in its middle; «MOSLIM» on one side of it and
  * «LEADER» on the other, curved along the band, in reading order.
  */
-function drawRibbon(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, corner: Corner, color: string) {
-  const a = (CORNER_ANGLE[corner] * Math.PI) / 180;
+function drawRibbon(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null, color: string) {
+  const a = BADGE_ANGLE;
   const outer = S / 2;
   const band = S * RIBBON_BAND;
   const inner = outer - band;
@@ -235,7 +235,6 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [frame, setFrame] = useState<Frame>({ zoom: 1, x: 0, y: 0 });
-  const [corner, setCorner] = useState<Corner>('br');
   const [color, setColor] = useState(BADGE_COLORS[0].hex);
   const [style, setStyle] = useState<Style>('ribbon');
   const [fontReady, setFontReady] = useState(0);
@@ -280,8 +279,8 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
       ctx.beginPath(); ctx.arc(S / 2, S * 0.4, S * 0.17, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(S / 2, S * 0.95, S * 0.32, S * 0.3, 0, Math.PI, 0); ctx.fill();
     }
-    if (style === 'ribbon') drawRibbon(ctx, logo, corner, color);
-    else drawBadge(ctx, logo, corner, color);
+    if (style === 'ribbon') drawRibbon(ctx, logo, color);
+    else drawBadge(ctx, logo, color);
 
     blobRef.current = null;
     if (!photo) return;
@@ -293,7 +292,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
       }, 'image/jpeg', 0.92);
     }, 250);
     return () => clearTimeout(t);
-  }, [photo, frame, logo, corner, color, style, fontReady]);
+  }, [photo, frame, logo, color, style, fontReady]);
 
   // ── Choosing a photo ──
   const onFile = async (file: File | undefined) => {
@@ -413,13 +412,6 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
 
   const loginHref = (signup = false) => `/login?${signup ? 'mode=signup&' : ''}redirect=${encodeURIComponent('/badge')}`;
 
-  const corners: { id: Corner; ar: string; en: string }[] = [
-    { id: 'br', ar: 'أسفل اليمين', en: 'Bottom right' },
-    { id: 'bl', ar: 'أسفل اليسار', en: 'Bottom left' },
-    { id: 'tr', ar: 'أعلى اليمين', en: 'Top right' },
-    { id: 'tl', ar: 'أعلى اليسار', en: 'Top left' },
-  ];
-
   return (
     <div dir={isEn ? 'ltr' : 'rtl'} className="bg-[#F6F3EC] text-[#1a1a2e] min-h-screen">
       <section className="bg-[#1a1a2e] text-white">
@@ -429,11 +421,11 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
           </p>
           <h1 className="mt-3 text-3xl sm:text-5xl font-black leading-tight">{tx('بادج مسلم ليدر على صورتك', 'The Moslim Leader badge on your picture')}</h1>
           <p className="mt-3 max-w-2xl text-white/80 leading-relaxed">
-            {tx('ارفع صورتك، وضع عليها البادج في زاوية لا تغطي وجهك، وحمّلها لتستخدمها في أي مكان.',
-              'Add your picture, place the badge in a corner that keeps your face clear, and download it to use anywhere.')}
+            {tx('ارفع صورتك، اختر شكل البادج ولونه، وحمّلها لتستخدمها في أي مكان.',
+              'Add your picture, choose the badge style and colour, and download it to use anywhere.')}
           </p>
           <ol className="mt-6 flex flex-wrap gap-2 text-sm">
-            {[tx('ارفع صورتك', 'Add your picture'), tx('اضبطها واختر مكان البادج', 'Frame it and place the badge'), tx('حمّلها وشاركها', 'Download and share')].map((s, i) => (
+            {[tx('ارفع صورتك', 'Add your picture'), tx('اضبطها واختر الشكل واللون', 'Frame it, pick style and colour'), tx('حمّلها وشاركها', 'Download and share')].map((s, i) => (
               <li key={i} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
                 <span className="w-5 h-5 rounded-full bg-[#F5C518] text-[#1a1a2e] text-[11px] font-black inline-flex items-center justify-center tabular-nums">{i + 1}</span>
                 {s}
@@ -537,19 +529,6 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
                     <input type="color" value={color} onChange={e => setColor(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" aria-label={tx('اختر لوناً آخر', 'Pick another colour')} />
                   </label>
                   <span className="text-xs font-bold text-[#1a1a2e]/60">{BADGE_COLORS.find(c => c.hex.toLowerCase() === color.toLowerCase())?.[isEn ? 'en' : 'ar'] ?? <span dir="ltr">{color.toUpperCase()}</span>}</span>
-                </div>
-                <p className="mt-4 text-xs font-bold text-[#1a1a2e]/60">{tx('المكان', 'Position')}</p>
-                <div className="mt-2 grid grid-cols-2 gap-2" dir="ltr">
-                  {/* Laid out as the picture's own corners, so it reads left/right the same in both languages. */}
-                  {(['tl', 'tr', 'bl', 'br'] as Corner[]).map(id => {
-                    const c = corners.find(x => x.id === id)!;
-                    return (
-                      <button key={id} type="button" onClick={() => setCorner(id)} aria-pressed={corner === id}
-                        className={`rounded-2xl border px-3 py-2.5 text-sm font-bold transition ${corner === id ? 'border-[#1a1a2e] ring-2 ring-[#F5C518]' : 'border-[#1a1a2e]/10 hover:border-[#1a1a2e]/30'}`}>
-                        {isEn ? c.en : c.ar}
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
 

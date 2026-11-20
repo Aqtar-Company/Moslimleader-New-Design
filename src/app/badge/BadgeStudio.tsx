@@ -431,10 +431,23 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
   };
   const copyPost = () => copyText();
 
-  /** The picture as a File, when this browser can hand files to the phone's share sheet. */
+  /**
+   * A phone or tablet. Asking only "can this browser share files?" is not enough: Safari and
+   * Chrome on a Mac can, and open the MAC's share menu — AirDrop, Messages, Notes — where
+   * WhatsApp and Facebook are not offered at all. The share sheet is only the right door on a
+   * touch device, where those apps are installed and listed. (An iPad reports itself as a Mac,
+   * hence the touch-points check.)
+   */
+  const isTouchDevice = () => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1);
+  };
+
+  /** The picture as a File, when this is a phone/tablet whose share sheet takes files. */
   const shareableFile = () => {
     const b = blobRef.current;
-    if (!b || !nav?.share) return null;
+    if (!b || !nav?.share || !isTouchDevice()) return null;
     const file = new File([b], fileName, { type: 'image/jpeg' });
     return !nav.canShare || nav.canShare({ files: [file] }) ? file : null;
   };

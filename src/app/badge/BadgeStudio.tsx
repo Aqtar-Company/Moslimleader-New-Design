@@ -24,6 +24,17 @@ const S = 1080;                       // output side, px
 const BADGE = 0.27;                   // seal diameter as a share of the side
 const LOGO_SRC = '/Moslimleader-logo.svg';
 const LOGO_RATIO = 756.97 / 993.94;   // the logo's own width / height
+/**
+ * Ready pictures for members who would rather not use a photo of themselves — drawn girls
+ * in hijab, cropped square with room above the head so the round crop never cuts it.
+ * Files: public/badge-pictures/girl-<n>.webp (1080²) and girl-<n>-thumb.webp (240²). To add
+ * one, drop both files there and raise the count.
+ */
+const READY_PICTURES = Array.from({ length: 5 }, (_, i) => ({
+  src: `/badge-pictures/girl-${i + 1}.webp`,
+  thumb: `/badge-pictures/girl-${i + 1}-thumb.webp`,
+}));
+
 const LOGO_FILL = 0.74;              // logo height as a share of the badge's diameter
 // «الإطار» style
 const RIBBON_BAND = 0.13;            // band thickness, as a share of the side
@@ -240,6 +251,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
   const [fontReady, setFontReady] = useState(0);
   const [round, setRound] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [readySrc, setReadySrc] = useState<string | null>(null);
   // The finished picture, kept ready: Web Share must be called inside the tap, and making
   // the JPEG first can outlast the tap's permission to share.
   const blobRef = useRef<Blob | null>(null);
@@ -247,8 +259,8 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
 
   const pageUrl = 'https://moslimleader.com/badge';
   const postText = tx(
-    `أنا جزء من مجتمع مسلم ليدر، ووضعت البادج على صورتي بكل فخر.\nمجتمع يربّي أبناءنا على القيم والقيادة.\nاعمل البادج بتاعك: ${pageUrl}`,
-    `I'm part of the Moslim Leader community, and I'm proud to wear its badge.\nA community raising our children on values and leadership.\nGet your badge: ${pageUrl}`,
+    `أنا جزء من مجتمع مسلم ليدر، مجتمع النبلاء 🌟، وضعت البادج على صورتي بكل فخر.\nمجتمع يربّي أبناءنا على القيم والنبل والأخلاق.\nاعمل البادج من الرابط التالي:\n${pageUrl}`,
+    `I'm part of the Moslim Leader community, the community of the noble 🌟, and I'm proud to wear its badge on my picture.\nA community raising our children on values, nobility and good character.\nGet your badge here:\n${pageUrl}`,
   );
 
   useEffect(() => {
@@ -295,6 +307,16 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
   }, [photo, frame, logo, color, style, fontReady]);
 
   // ── Choosing a photo ──
+  const pickReady = async (src: string) => {
+    try {
+      const img = await loadImage(src);
+      setPhoto(img);
+      setFrame({ zoom: 1, x: 0, y: 0 });
+      setReadySrc(src);
+    } catch {
+      addToast(tx('تعذّر فتح الصورة، حاول مرة أخرى.', 'Could not open the picture, try again.'), 'error');
+    }
+  };
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) {
@@ -306,6 +328,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
       const img = await loadImage(url);
       setPhoto(img);
       setFrame({ zoom: 1, x: 0, y: 0 });
+      setReadySrc(null);
     } catch {
       addToast(tx('المتصفح ما قدرش يفتح الصورة دي. جرّب صورة JPG أو PNG.', 'This browser could not open that image. Try a JPG or PNG.'), 'error');
     } finally {
@@ -499,6 +522,19 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
                   className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#1a1a2e] text-white font-black px-5 py-3 hover:bg-[#2a2a4e] transition">
                   <Icon name="upload" size={18} /> {photo ? tx('اختر صورة أخرى', 'Choose another picture') : tx('اختر صورة', 'Choose a picture')}
                 </button>
+                <p className="mt-4 text-xs font-bold text-[#1a1a2e]/60">{tx('أو اختاري صورة جاهزة', 'Or choose a ready picture')}</p>
+                <ul className="mt-2 grid grid-cols-5 gap-2">
+                  {READY_PICTURES.map((r, i) => (
+                    <li key={r.src}>
+                      <button type="button" onClick={() => pickReady(r.src)} aria-pressed={readySrc === r.src}
+                        aria-label={tx(`صورة جاهزة ${i + 1}`, `Ready picture ${i + 1}`)}
+                        className={`block w-full aspect-square rounded-full overflow-hidden border-2 transition ${readySrc === r.src ? 'border-[#F5C518] ring-2 ring-[#1a1a2e]' : 'border-transparent hover:border-[#1a1a2e]/30'}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={r.thumb} alt="" loading="lazy" className="w-full h-full object-cover" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
                 <p className="mt-2 flex items-start gap-1.5 text-xs text-[#1a1a2e]/60 leading-relaxed">
                   <Icon name="check" size={14} className="mt-0.5 shrink-0 text-emerald-600" />
                   {tx('صورتك لا تُرفع لأي مكان — كل شيء يتم على جهازك.', 'Your picture is not uploaded anywhere — everything happens on your device.')}

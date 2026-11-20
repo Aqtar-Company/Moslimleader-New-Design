@@ -93,7 +93,10 @@ export default function AccountPage() {
   // those readers to where the files went instead of to an empty profile tab.
   useEffect(() => {
     try {
-      if (new URLSearchParams(window.location.search).get('tab') === 'downloads') window.location.replace('/media');
+      const want = new URLSearchParams(window.location.search).get('tab');
+      if (want === 'downloads') window.location.replace('/media');
+      // Direct links to a tab (/account?tab=loyalty) — used in announcements and emails.
+      else if (want && (['profile', 'addresses', 'orders', 'books', 'loyalty', 'children', 'membership', 'support'] as Tab[]).includes(want as Tab)) setTab(want as Tab);
     } catch { /* ignore */ }
   }, []);
 
@@ -132,7 +135,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace('/login?redirect=/account');
+      router.replace(`/login?redirect=${encodeURIComponent('/account' + window.location.search)}`);
     }
     if (user) {
       setName(user.name);

@@ -266,8 +266,8 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
 
   const pageUrl = shareUrl || 'https://moslimleader.com/badge';
   const postText = tx(
-    `أنا جزء من مجتمع مسلم ليدر، مجتمع النبلاء 🌟، وضعت البادج على صورتي بكل فخر.\nمجتمع يربّي أبناءنا على القيم والنبل والأخلاق.\nاعمل البادج من الرابط التالي:\n${pageUrl}`,
-    `I'm part of the Moslim Leader community, the community of the noble 🌟, and I'm proud to wear its badge on my picture.\nA community raising our children on values, nobility and good character.\nGet your badge here:\n${pageUrl}`,
+    `أنا جزء من مجتمع مسلم ليدر، مجتمع النبلاء، وضعت البادج على صورتي بكل فخر.\nمجتمع يربّي أبناءنا على القيم والنبل والأخلاق.\nاعمل البادج من الرابط التالي:\n${pageUrl}`,
+    `I'm part of the Moslim Leader community, the community of the noble, and I'm proud to wear its badge on my picture.\nA community raising our children on values, nobility and good character.\nGet your badge here:\n${pageUrl}`,
   );
 
   useEffect(() => {
@@ -417,18 +417,8 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
   };
 
   const nav = typeof navigator !== 'undefined' ? navigator as Navigator & { canShare?: (d: ShareData) => boolean } : null;
-  const sharePicture = async () => {
-    const b = blobRef.current;
-    if (!b || !nav?.share) { await download(); return; }
-    const file = new File([b], fileName, { type: 'image/jpeg' });
-    if (nav.canShare && !nav.canShare({ files: [file] })) { await download(); return; }
-    setBusy(true);
-    try { await nav.share({ files: [file], text: postText }); }
-    catch (e) { if ((e as Error)?.name !== 'AbortError') await download(); }
-    finally { setBusy(false); }
-  };
 
-  const copyPost = async () => {
+  const copyText = async (quiet = false) => {
     try {
       await navigator.clipboard.writeText(postText);
     } catch {
@@ -437,7 +427,46 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
       try { document.execCommand('copy'); } catch { /* nothing more to try */ }
       t.remove();
     }
-    addToast(tx('تم نسخ نص البوست', 'Post text copied'), 'success');
+    if (!quiet) addToast(tx('تم نسخ نص البوست', 'Post text copied'), 'success');
+  };
+  const copyPost = () => copyText();
+
+  /** The picture as a File, when this browser can hand files to the phone's share sheet. */
+  const shareableFile = () => {
+    const b = blobRef.current;
+    if (!b || !nav?.share) return null;
+    const file = new File([b], fileName, { type: 'image/jpeg' });
+    return !nav.canShare || nav.canShare({ files: [file] }) ? file : null;
+  };
+
+  /**
+   * Picture AND post together. A wa.me or facebook.com/sharer link can carry text or a link,
+   * never a picture — that is how the post arrived on WhatsApp as bare text. So:
+   *  - on a phone, the picture goes to the share sheet with the post as its caption (the
+   *    member picks WhatsApp, Facebook, …). The text is ALSO copied afterwards, because some
+   *    apps (WhatsApp on iPhone) drop the caption of a shared picture;
+   *  - where files cannot be shared (most computers), the picture is downloaded and the post
+   *    copied, then the app opens, and a note says to attach the picture and paste the text.
+   * `share()` is called before anything else is awaited: the browser only allows it inside the tap.
+   */
+  const shareWithPost = async (target: 'any' | 'whatsapp' | 'facebook') => {
+    const file = shareableFile();
+    if (file) {
+      setBusy(true);
+      try {
+        await nav!.share({ files: [file], text: postText });
+        await copyText(true);
+        addToast(tx('لو النص ما ظهرش مع الصورة، هو متنسخ — الصقه في الرسالة.', 'If the text did not come with the picture, it is copied — paste it in.'), 'info');
+        return;
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return;   // they closed the sheet
+      } finally { setBusy(false); }
+    }
+    await download();
+    await copyText(true);
+    if (target === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(postText)}`, '_blank', 'noopener');
+    if (target === 'facebook') window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`, '_blank', 'noopener');
+    addToast(tx('الصورة اتحمّلت والنص اتنسخ: ارفق الصورة والصق النص في البوست.', 'Picture downloaded and text copied: attach the picture and paste the text.'), 'success');
   };
 
   const loginHref = (signup = false) => `/login?${signup ? 'mode=signup&' : ''}redirect=${encodeURIComponent('/badge')}`;
@@ -578,13 +607,13 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
               <div className="rounded-3xl bg-[#1a1a2e] text-white p-5 sm:p-6">
                 <h2 className="font-black text-lg">{tx('٣. حمّلها وشاركها', '3. Download and share')}</h2>
                 <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-                  <button type="button" onClick={download} disabled={!photo}
+                  <button type="button" onClick={() => shareWithPost('any')} disabled={!photo || busy}
                     className="inline-flex items-center justify-center gap-2 rounded-full bg-[#F5C518] text-[#1a1a2e] font-black px-5 py-3 hover:bg-white transition disabled:opacity-40">
-                    <Icon name="download" size={18} /> {tx('تحميل الصورة', 'Download picture')}
+                    {busy ? <Icon name="loader" size={18} spin /> : <Icon name="share" size={18} />} {tx('شارك الصورة مع البوست', 'Share picture with post')}
                   </button>
-                  <button type="button" onClick={sharePicture} disabled={!photo || busy}
+                  <button type="button" onClick={download} disabled={!photo}
                     className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 text-white font-black px-5 py-3 hover:bg-white/10 transition disabled:opacity-40">
-                    {busy ? <Icon name="loader" size={18} spin /> : <Icon name="share" size={18} />} {tx('مشاركة الصورة', 'Share picture')}
+                    <Icon name="download" size={18} /> {tx('تحميل الصورة فقط', 'Download picture only')}
                   </button>
                 </div>
                 {!photo && <p className="mt-2 text-xs text-white/55">{tx('اختر صورتك أولاً.', 'Choose your picture first.')}</p>}
@@ -604,14 +633,14 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
                     <button type="button" onClick={copyPost} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 hover:bg-white/20">
                       <Icon name="link" size={14} /> {tx('نسخ النص', 'Copy text')}
                     </button>
-                    <a href={`https://wa.me/?text=${encodeURIComponent(postText)}`} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] text-white px-3 py-2 hover:bg-[#1ebe5b]">
+                    <button type="button" onClick={() => shareWithPost('whatsapp')} disabled={!photo || busy}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] text-white px-3 py-2 hover:bg-[#1ebe5b] disabled:opacity-40">
                       <Icon name="send" size={14} /> {tx('واتساب', 'WhatsApp')}
-                    </a>
-                    <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#1877F2] text-white px-3 py-2 hover:bg-[#166fe0]">
+                    </button>
+                    <button type="button" onClick={() => shareWithPost('facebook')} disabled={!photo || busy}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#1877F2] text-white px-3 py-2 hover:bg-[#166fe0] disabled:opacity-40">
                       <Icon name="external" size={14} /> {tx('فيسبوك', 'Facebook')}
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>

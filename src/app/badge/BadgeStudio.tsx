@@ -62,8 +62,9 @@ const isLight = (hex: string) => {
 type Style = 'ribbon' | 'badge';
 type Frame = { zoom: number; x: number; y: number }; // x/y: the photo's centre offset, in output px
 
-/** Always bottom-right: 45° below the horizontal, clockwise from the right (canvas y points down). */
-const BADGE_ANGLE = Math.PI / 4;
+/** Always bottom centre (canvas angles run clockwise from the right, y points down), so the
+ *  frame and its two words sit symmetrically under the face. */
+const BADGE_ANGLE = Math.PI / 2;
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -119,7 +120,8 @@ function drawBadge(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null,
   drawSeal(ctx, logo, S / 2 + dist * Math.cos(a), S / 2 + dist * Math.sin(a), d, color);
 }
 
-const WORD_FONT = (size: number) => `900 ${size}px Inter, Cairo, sans-serif`;
+// Georgia ships with Windows, macOS and iOS; elsewhere (most Android) the browser's serif.
+const WORD_FONT = (size: number) => `bold ${size}px Georgia, "Times New Roman", serif`;
 
 const hexToRgb = (hex: string) => {
   const n = parseInt(hex.slice(1), 16);
@@ -267,7 +269,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
     loadImage(LOGO_SRC).then(setLogo).catch(() => setLogo(null));
     // The frame's words are drawn on a canvas, which does not wait for web fonts: redraw
     // once the font is in.
-    document.fonts?.load?.('900 40px Inter').then(() => setFontReady(n => n + 1)).catch(() => {});
+    document.fonts?.load?.('bold 40px Georgia').then(() => setFontReady(n => n + 1)).catch(() => {});
     return () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); };
   }, []);
 

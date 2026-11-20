@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { signToken, makeAuthCookie } from '@/lib/jwt';
 import { rememberCountry } from '@/lib/visitor-country';
+import { attachReferral, REF_COOKIE } from '@/lib/referral';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -112,6 +113,8 @@ export async function GET(req: NextRequest) {
       await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } });
     }
     void rememberCountry(user.id, req.headers, user);
+    // A brand-new account opened through someone's invite link (/r/<code>).
+    await attachReferral(user.id, req.cookies.get(REF_COOKIE)?.value);
 
     const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
     const response = NextResponse.redirect(`${baseUrl}${safeRedirect}`);

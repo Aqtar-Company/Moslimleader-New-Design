@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
+import { pointsForPurchase, movePoints } from '@/lib/loyalty';
 import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
 import { egpToUsd } from '@/lib/currency';
@@ -303,21 +304,10 @@ export async function POST(req: NextRequest) {
     // Best-effort campaign attribution by coupon code (never blocks the order).
     await attributeOrderToCampaign({ orderId: order.id, couponCode: order.couponCode, userId: resolvedUserId as string });
 
-    // Award loyalty points: 1 point per 10 EGP (USD × 50 ≈ EGP, best-effort)
+    // Earn on the goods (shipping excluded); USD × 50 ≈ EGP, the shop's book/PayPal rate.
     try {
-      const egpEquiv = persistedTotal * 50;
-      const earnedPoints = Math.floor(egpEquiv / 10);
-      if (earnedPoints > 0) {
-        await prisma.$transaction([
-          prisma.user.update({
-            where: { id: resolvedUserId as string },
-            data: { loyaltyPoints: { increment: earnedPoints } },
-          }),
-          prisma.loyaltyTransaction.create({
-            data: { userId: resolvedUserId as string, points: earnedPoints, reason: 'order_earn', orderId: order.id },
-          }),
-        ]);
-      }
+      const earnedPoints = pointsForPurchase(Math.max(0, persistedTotal - (Number(shippingUsd) || 0)), 'USD');
+      if (earnedPoints > 0) await movePoints(resolvedUserId as string, earnedPoints, 'order_earn', order.id);
     } catch (loyaltyErr) {
       console.error('[paypal capture-order loyalty]', loyaltyErr);
     }

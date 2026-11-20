@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
+import { syncOrderLoyalty } from '@/lib/loyalty';
 import { logActionSafe } from '@/lib/audit-log';
 
 // PATCH /api/admin/returns/[id] — approve or reject a return request
@@ -85,5 +86,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     metadata: { orderId: returnRequest.orderId, action, adminNote, refundAmount },
   });
 
+  await syncOrderLoyalty(returnRequest.orderId);
   return NextResponse.json({ ok: true, status: newStatus });
 }

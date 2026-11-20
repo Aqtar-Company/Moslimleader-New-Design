@@ -10,6 +10,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { generateMembershipNumber, generateUniqueQRToken } from '@/lib/membership-utils';
 import { emailLogoImg } from '@/lib/email-template';
 import { rememberCountry } from '@/lib/visitor-country';
+import { attachReferral, REF_COOKIE } from '@/lib/referral';
 
 // Email regex — basic RFC 5322 subset
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -114,6 +115,8 @@ export async function POST(req: NextRequest) {
     });
     // Which country the account was made from (never blocks the sign-up).
     void rememberCountry(user.id, req.headers);
+    // Invited through someone's link (/r/<code>)? Never blocks the sign-up.
+    await attachReferral(user.id, req.cookies.get(REF_COOKIE)?.value);
 
     // Admin or invited user → auto-login immediately
     if (isAdmin || hasValidInvite) {

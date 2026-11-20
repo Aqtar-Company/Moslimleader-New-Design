@@ -237,7 +237,12 @@ function drawRibbon(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null
   drawArcWord(ctx, 'LEADER', inward ? a - second : a + second, mid, size, text, inward);
 }
 
-export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
+export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
+  signedIn: boolean;
+  /** The member's own invite link (/r/<code>); the plain page link when there is none. */
+  shareUrl: string | null;
+  rewardPoints: number;
+}) {
   const { lang } = useLang();
   const isEn = lang === 'en';
   const tx = (ar: string, en: string) => (isEn ? en : ar);
@@ -259,7 +264,7 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
   const blobRef = useRef<Blob | null>(null);
   const urlRef = useRef<string | null>(null);
 
-  const pageUrl = 'https://moslimleader.com/badge';
+  const pageUrl = shareUrl || 'https://moslimleader.com/badge';
   const postText = tx(
     `أنا جزء من مجتمع مسلم ليدر، مجتمع النبلاء 🌟، وضعت البادج على صورتي بكل فخر.\nمجتمع يربّي أبناءنا على القيم والنبل والأخلاق.\nاعمل البادج من الرابط التالي:\n${pageUrl}`,
     `I'm part of the Moslim Leader community, the community of the noble 🌟, and I'm proud to wear its badge on my picture.\nA community raising our children on values, nobility and good character.\nGet your badge here:\n${pageUrl}`,
@@ -588,6 +593,13 @@ export default function BadgeStudio({ signedIn }: { signedIn: boolean }) {
                 <div className="mt-5 pt-5 border-t border-white/10">
                   <p className="text-xs font-bold text-[#F5C518]">{tx('بوست الانتماء', 'The belonging post')}</p>
                   <p className="mt-2 rounded-2xl bg-white/[0.06] p-3 text-sm leading-relaxed whitespace-pre-line text-white/85">{postText}</p>
+                  {shareUrl && (
+                    <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-[#F5C518]/90">
+                      <Icon name="link" size={14} className="mt-0.5 shrink-0" />
+                      {tx(`الرابط ده خاص بيك: كل صديق يسجّل منه ويستلم أول طلب له، تكسب ${rewardPoints} نقطة.`,
+                        `This link is yours: for every friend who signs up through it and receives a first order, you earn ${rewardPoints} points.`)}
+                    </p>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
                     <button type="button" onClick={copyPost} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 hover:bg-white/20">
                       <Icon name="link" size={14} /> {tx('نسخ النص', 'Copy text')}

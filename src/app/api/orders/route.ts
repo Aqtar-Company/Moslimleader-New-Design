@@ -6,6 +6,9 @@ import { products as staticProducts } from '@/lib/products';
 import { loadStaticOverrides, applyOverride } from '@/lib/product-overrides';
 import { sendOrderEmails } from '@/lib/order-email';
 import { attributeOrderToCampaign } from '@/lib/campaign-attribution';
+import { POINTS_PER_EGP, pointsForPurchase, movePoints } from '@/lib/loyalty';
+
+class PointsChangedError extends Error {}
 
 
 // GET /api/orders — list current user's orders
@@ -212,6 +215,24 @@ export async function POST(req: NextRequest) {
     }
     verifiedDiscount += membershipDiscount;
 
+    // Loyalty points — computed HERE, from the customer's real balance, and subtracted from
+    // the total that is saved. The checkout used to subtract them only on screen: the order,
+    // the invoice and the courier's collection amount all carried the full price while the
+    // points were still taken. Points are EGP-valued, so they are offered on EGP orders only.
+    const orderCurrency = (currency ?? 'EGP').toUpperCase();
+    let pointsDiscount = 0;
+    const requestedPoints = Math.floor(Number(loyaltyPointsToRedeem) || 0);
+    if (requestedPoints > 0 && orderCurrency === 'EGP') {
+      const balance = (await prisma.user.findUnique({ where: { id: auth.userId }, select: { loyaltyPoints: true } }))?.loyaltyPoints ?? 0;
+      pointsDiscount = Math.max(0, Math.min(
+        Math.floor(requestedPoints / POINTS_PER_EGP),
+        Math.floor(balance / POINTS_PER_EGP),
+        Math.floor(verifiedSubtotal - verifiedDiscount),
+      ));
+    }
+    const pointsToSpend = pointsDiscount * POINTS_PER_EGP;
+    verifiedDiscount += pointsDiscount;
+
     // Verify shipping cost server-side for COD/local orders — cap at 500 to prevent tampering
     const verifiedShipping = paymentMethod === 'paypal'
       ? (shippingCost ?? 0)   // PayPal orders already verified at capture step
@@ -244,6 +265,17 @@ export async function POST(req: NextRequest) {
           },
           include: { items: true },
         });
+        if (pointsToSpend > 0) {
+          // Atomic: the balance must still cover it, or the whole order rolls back.
+          const spent = await tx.user.updateMany({
+            where: { id: auth.userId, loyaltyPoints: { gte: pointsToSpend } },
+            data: { loyaltyPoints: { decrement: pointsToSpend } },
+          });
+          if (spent.count === 0) throw new PointsChangedError();
+          await tx.loyaltyTransaction.create({
+            data: { userId: auth.userId, points: -pointsToSpend, reason: 'order_redeem', orderId: created.id },
+          });
+        }
         await adjustStock(
           decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }))),
           { reason: 'order_created', orderId: created.id },
@@ -259,6 +291,9 @@ export async function POST(req: NextRequest) {
         return created;
       });
     } catch (err) {
+      if (err instanceof PointsChangedError) {
+        return NextResponse.json({ error: 'رصيد نقاطك تغيّر — راجع الإجمالي وحاول مرة أخرى' }, { status: 409 });
+      }
       if (err instanceof InsufficientStockError) {
         return NextResponse.json({ error: err.message }, { status: 409 });
       }
@@ -319,48 +354,12 @@ export async function POST(req: NextRequest) {
       console.error('[orders POST email]', emailErr);
     }
 
-    // Award loyalty points: 1 point per 10 EGP (best-effort, non-blocking)
+    // Earn on what was paid for the goods (shipping excluded), in this order's currency.
     try {
-      const earnedPoints = Math.floor(verifiedTotal / 10);
-      if (earnedPoints > 0) {
-        await prisma.$transaction([
-          prisma.user.update({
-            where: { id: auth.userId },
-            data: { loyaltyPoints: { increment: earnedPoints } },
-          }),
-          prisma.loyaltyTransaction.create({
-            data: {
-              userId: auth.userId,
-              points: earnedPoints,
-              reason: 'order_earn',
-              orderId: order.id,
-            },
-          }),
-        ]);
-      }
+      const earnedPoints = pointsForPurchase(verifiedSubtotal - verifiedDiscount, orderCurrency);
+      if (earnedPoints > 0) await movePoints(auth.userId, earnedPoints, 'order_earn', order.id);
     } catch (loyaltyErr) {
       console.error('[orders POST loyalty]', loyaltyErr);
-    }
-
-    // Redeem loyalty points if requested — atomic check+decrement prevents race condition
-    // Cap to order total so a single order can't drain unlimited points
-    const cappedLoyalty = loyaltyPointsToRedeem && loyaltyPointsToRedeem > 0
-      ? Math.min(Math.floor(loyaltyPointsToRedeem), Math.ceil(verifiedTotal))
-      : 0;
-    if (cappedLoyalty > 0) {
-      try {
-        const updated = await prisma.user.updateMany({
-          where: { id: auth.userId, loyaltyPoints: { gte: cappedLoyalty } },
-          data: { loyaltyPoints: { decrement: cappedLoyalty } },
-        });
-        if (updated.count > 0) {
-          await prisma.loyaltyTransaction.create({
-            data: { userId: auth.userId, points: -cappedLoyalty, reason: 'order_redeem', orderId: order.id },
-          });
-        }
-      } catch (redeemErr) {
-        console.error('[orders POST loyalty redeem]', redeemErr);
-      }
     }
 
     return NextResponse.json({ order }, { status: 201 });

@@ -206,9 +206,6 @@ export default function CheckoutPage() {
       .then(d => setLoyaltyPoints(d.points ?? 0))
       .catch(() => {});
   }, [user]);
-  // كل 10 نقاط = 1 وحدة من عملة المستخدم
-  const pointsDiscount = usePoints ? Math.min(Math.floor(loyaltyPoints / 10), total - discount - membershipDiscount) : 0;
-  const pointsToRedeem = pointsDiscount * 10;
 
   const [intlConfig, setIntlConfig] = useState<IntlShippingConfig>(DEFAULT_CONFIG);
   const [step, setStep] = useState<Step>('address');
@@ -238,6 +235,12 @@ export default function CheckoutPage() {
   const [payMethod, setPayMethod] = useState<PayMethod>(
     zoneInfo.zone === 'egypt' ? 'cod' : 'paypal'
   );
+  // Points are worth EGP (10 points = 1 EGP) and the server applies them only to EGP orders
+  // placed through /api/orders — PayPal is captured elsewhere and never sees them. Offering
+  // them anywhere else showed a discount the customer was never given.
+  const pointsUsable = currencyEn === 'EGP' && payMethod !== 'paypal';
+  const pointsDiscount = usePoints && pointsUsable ? Math.max(0, Math.min(Math.floor(loyaltyPoints / 10), total - discount - membershipDiscount)) : 0;
+  const pointsToRedeem = pointsDiscount * 10;
   const [errors, setErrors] = useState<Partial<AddressForm>>({});
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1437,14 +1440,21 @@ export default function CheckoutPage() {
                 </div>
               )}
               {/* Loyalty points */}
-              {user && loyaltyPoints >= 10 && (
+              {user && loyaltyPoints >= 10 && !pointsUsable && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  ⭐ {isRtl
+                    ? `معاك ${loyaltyPoints.toLocaleString('en-US')} نقطة — تُصرف في الطلبات بالجنيه المصري عند الدفع عند الاستلام أو التحويل.`
+                    : `You have ${loyaltyPoints.toLocaleString('en-US')} points — redeemable on EGP orders paid on delivery or by transfer.`}
+                </p>
+              )}
+              {user && loyaltyPoints >= 10 && pointsUsable && (
                 <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                   <div>
                     <p className="text-[11px] font-bold text-amber-800">
                       ⭐ {isRtl ? 'نقاطك' : 'Your Points'}: {loyaltyPoints.toLocaleString('en-US')}
                     </p>
                     <p className="text-[10px] text-amber-600">
-                      {isRtl ? `= ${Math.floor(loyaltyPoints / 10)} ${currency} خصم` : `= ${Math.floor(loyaltyPoints / 10)} ${currency} off`}
+                      {isRtl ? `= ${Math.floor(loyaltyPoints / 10)} جنيه خصم` : `= ${Math.floor(loyaltyPoints / 10)} EGP off`}
                     </p>
                   </div>
                   <button
@@ -1456,7 +1466,7 @@ export default function CheckoutPage() {
                   </button>
                 </div>
               )}
-              {usePoints && pointsDiscount > 0 && (
+              {pointsDiscount > 0 && (
                 <div className="flex justify-between text-amber-600">
                   <span className="font-bold">⭐ {isRtl ? 'خصم النقاط' : 'Points Discount'}</span>
                   <span className="font-semibold">−{pointsDiscount} {currency}</span>

@@ -63,8 +63,13 @@ export default function AccountPage() {
   const [booksLoading, setBooksLoading] = useState(false);
   // Which owned series is open on the «كتبي» tab (null = the shelf itself)
   const [openSeriesKey, setOpenSeriesKey] = useState<string | null>(null);
-  const [loyaltyData, setLoyaltyData] = useState<{ points: number; egpValue: number; transactions: { id: string; points: number; reason: string; createdAt: string }[] } | null>(null);
+  const [loyaltyData, setLoyaltyData] = useState<{
+    points: number; egpValue: number;
+    transactions: { id: string; points: number; reason: string; createdAt: string }[];
+    referral?: { code: string | null; link: string | null; joined: number; rewarded: number; welcomePoints: number; rewardPoints: number } | null;
+  } | null>(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   // Membership
   const [membership, setMembership] = useState<{ id: string; membershipNumber: string; qrToken?: string; status: string; tier?: string | null; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
@@ -851,9 +856,58 @@ export default function AccountPage() {
             <ul className="text-sm text-gray-600 space-y-2">
               <li>⭐ {isRtl ? 'كل 10 جنيه في طلبك = نقطة واحدة' : 'Every 10 EGP spent = 1 point'}</li>
               <li>🎁 {isRtl ? 'كل 100 نقطة = 10 جنيه خصم' : '100 points = 10 EGP discount'}</li>
-              <li>🛒 {isRtl ? 'يمكن صرف النقاط عند الدفع' : 'Redeem at checkout'}</li>
+              <li>🛒 {isRtl ? 'تُصرف عند الدفع في الطلبات بالجنيه المصري (الدفع عند الاستلام أو التحويل)' : 'Redeem at checkout on EGP orders (cash on delivery or transfer)'}</li>
+              <li>↩️ {isRtl ? 'لو الطلب اتلغى، نقاطه بتتشال، واللي صرفته فيه بيرجعلك' : 'If an order is cancelled, its points are removed and any points you spent on it come back'}</li>
             </ul>
           </div>
+
+          {/* Invite a friend */}
+          {loyaltyData?.referral?.link && (() => {
+            const r = loyaltyData.referral!;
+            const msg = isRtl
+              ? `انضم لمجتمع مسلم ليدر، مجتمع النبلاء 🌟\nسجّل من الرابط ده وخد ${r.welcomePoints} نقطة هدية:\n${r.link}`
+              : `Join the Moslim Leader community 🌟\nSign up through this link and get ${r.welcomePoints} gift points:\n${r.link}`;
+            const copy = async () => {
+              try { await navigator.clipboard.writeText(r.link!); }
+              catch {
+                const t = document.createElement('textarea'); t.value = r.link!; document.body.appendChild(t); t.select();
+                try { document.execCommand('copy'); } catch { /* nothing more to try */ }
+                t.remove();
+              }
+              setInviteCopied(true); setTimeout(() => setInviteCopied(false), 2000);
+            };
+            return (
+              <div className="bg-[#1a1a2e] text-white rounded-2xl p-5">
+                <p className="text-sm font-black">{isRtl ? 'ادعُ صديقاً' : 'Invite a friend'}</p>
+                <p className="text-xs text-white/70 mt-1 leading-relaxed">
+                  {isRtl
+                    ? `صديقك ياخد ${r.welcomePoints} نقطة لما يسجّل من رابطك، وانت تاخد ${r.rewardPoints} نقطة لما يستلم أول طلب له.`
+                    : `Your friend gets ${r.welcomePoints} points on signing up through your link; you get ${r.rewardPoints} when their first order is delivered.`}
+                </p>
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2">
+                  <span className="flex-1 text-sm font-mono truncate" dir="ltr">{r.link}</span>
+                  <button type="button" onClick={copy} className="text-xs font-black text-[#F5C518] shrink-0">
+                    {inviteCopied ? (isRtl ? 'تم النسخ ✓' : 'Copied ✓') : (isRtl ? 'نسخ' : 'Copy')}
+                  </button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+                  <a href={`https://wa.me/?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer"
+                    className="rounded-full bg-[#25D366] px-3 py-2">{isRtl ? 'ابعته على واتساب' : 'Send on WhatsApp'}</a>
+                  <a href="/badge" className="rounded-full bg-white/10 px-3 py-2">{isRtl ? 'شارك البادج برابطك' : 'Share the badge with your link'}</a>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-center">
+                  <div className="rounded-xl bg-white/[0.06] py-2">
+                    <p className="text-2xl font-black">{r.joined}</p>
+                    <p className="text-[11px] text-white/60">{isRtl ? 'سجّلوا من رابطك' : 'Signed up'}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/[0.06] py-2">
+                    <p className="text-2xl font-black">{r.rewarded}</p>
+                    <p className="text-[11px] text-white/60">{isRtl ? 'استلموا أول طلب' : 'First order delivered'}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Transaction history */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -870,6 +924,12 @@ export default function AccountPage() {
                   const reasonLabel: Record<string, string> = {
                     order_earn: isRtl ? 'طلب شراء' : 'Purchase',
                     order_redeem: isRtl ? 'صرف نقاط' : 'Redeemed',
+                    order_earn_reversal: isRtl ? 'نقاط طلب ملغي' : 'Cancelled order',
+                    order_redeem_refund: isRtl ? 'استرجاع نقاط طلب ملغي' : 'Points returned',
+                    first_child: isRtl ? 'هدية إضافة أول طفل' : 'First child gift',
+                    child_birthday: isRtl ? 'هدية يوم ميلاد الابن' : "Child's birthday gift",
+                    referral_welcome: isRtl ? 'هدية التسجيل بدعوة صديق' : 'Welcome gift (invited)',
+                    referral_reward: isRtl ? 'صديق دعوته استلم أول طلب' : 'Friend you invited ordered',
                     manual: isRtl ? 'تعديل يدوي' : 'Manual',
                     expired: isRtl ? 'انتهت صلاحية' : 'Expired',
                   };

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { syncOrderLoyalty } from '@/lib/loyalty';
 import { verifyWebhookSignature } from '@/lib/bosta';
 
 // Bosta delivery state codes → our internal order status.
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
       where: { id: shipment.orderId },
       data: { status: newOrderStatus },
     });
+    await syncOrderLoyalty(shipment.orderId);
   }
 
   return NextResponse.json({ ok: true });

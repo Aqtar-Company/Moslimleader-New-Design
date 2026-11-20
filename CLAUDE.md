@@ -1180,6 +1180,26 @@ Books are protected from download at two levels:
   «مقترح» (`suggestCategory()` in `src/lib/tareeq-category-suggest.ts`, keyword rules). It
   never sets one by itself. Note for any Arabic regex: `\b` is ASCII-only in JavaScript and
   never matches after an Arabic word — use a lookahead.
+- **Loyalty points live in `src/lib/loyalty.ts` — one set of rules.** 10 points = 1 EGP;
+  earn 1 point per 10 EGP of the GOODS actually paid (after coupon/membership/points,
+  shipping excluded; USD × 50). Redemption is computed and subtracted ON THE SERVER in
+  `POST /api/orders` and deducted inside the order transaction — until 2026-11-20 the
+  checkout subtracted it only on screen, so the saved order, invoice and courier amount
+  were the full price while the points were taken anyway. Points are offered on EGP orders
+  through `/api/orders` only (not PayPal). `syncOrderLoyalty(orderId)` reconciles an order's
+  points with its status (cancelled/returned/payment_failed → earned taken back, spent given
+  back) and is called after EVERY status change: admin PUT, Bosta webhook, returns. A new
+  place that changes `Order.status` must call it too.
+- **Invites: `/r/<code>` (`src/lib/referral.ts`).** Cookie `ml_ref` 60 days → attached at
+  sign-up (register + both OAuth callbacks, accounts < 1 hour old only). New member +50
+  points; inviter +200 when the new member's FIRST order is DELIVERED (`syncOrderLoyalty`).
+  The badge page's post carries the member's own `/r/<code>` link. Crawlers get og: tags from
+  the route itself — following the redirect, Facebook would adopt /badge's og:url and every
+  click would arrive without the code.
+- **«يوم ميلاد الابن» — `/api/cron/child-birthday`** (`src/lib/child-birthday.ts`), daily,
+  header `x-cron-key: $CRON_SECRET`, `?dry=1` to count without sending. Real addresses only;
+  +50 points; `Child.lastGreetedYear` is claimed before sending (once a year per child).
+  Product suggestions only for `marketingOptIn`.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

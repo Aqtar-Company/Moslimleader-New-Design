@@ -39,6 +39,12 @@ model User {
   // customer list and surfaced as a separate count on the valuation page.
   isWholesale             Boolean   @default(false)
   loyaltyPoints           Int       @default(0)
+  // Invite programme (src/lib/referral.ts). referralCode is this member's own code, made on
+  // first use; referredById is who invited them; referralRewardedAt marks that the inviter
+  // has been rewarded for this member's first delivered order, so it happens once.
+  referralCode            String?   @unique @db.VarChar(16)
+  referredById            String?
+  referralRewardedAt      DateTime?
   tareeqLastSeen          DateTime?
   tareeqSuspended         Boolean   @default(false)
   tareeqSuspendedAt       DateTime?
@@ -137,6 +143,7 @@ model User {
   @@index([isWholesale])
   @@index([tareeqLastSeen])
   @@index([tareeqSuspended])
+  @@index([referredById])
 }
 
 model Campaign {
@@ -1064,6 +1071,9 @@ model Child {
   birthdate DateTime
   gender    String?
   createdAt DateTime @default(now())
+  // The year «يوم ميلاد الابن» was last sent for this child (src/lib/child-birthday.ts),
+  // so a cron that runs twice in a day, or a restart, never greets twice.
+  lastGreetedYear Int?
 
   @@index([userId])
 }

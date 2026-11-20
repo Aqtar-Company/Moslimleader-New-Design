@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { syncOrderLoyalty } from '@/lib/loyalty';
 import { cancelDelivery } from '@/lib/bosta';
 import { requirePerm } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
@@ -98,6 +99,8 @@ export async function PUT(
       }
       throw err;
     }
+
+    if (existing.status !== status) await syncOrderLoyalty(id);
 
     await logActionSafe({
       actor: auth,

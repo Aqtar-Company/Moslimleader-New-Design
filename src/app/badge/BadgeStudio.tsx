@@ -35,12 +35,12 @@ const READY_PICTURES = Array.from({ length: 5 }, (_, i) => ({
   thumb: `/badge-pictures/girl-${i + 1}-thumb.webp`,
 }));
 
-const LOGO_FILL = 0.74;              // logo height as a share of the badge's diameter
+const LOGO_FILL = 0.8;               // logo height as a share of the badge's diameter
 // «الإطار» style
 const RIBBON_BAND = 0.13;            // band thickness, as a share of the side
 const RIBBON_BADGE = 0.2;            // badge diameter on the band
-const RIBBON_SPREAD = (120 * Math.PI) / 180; // the band fades out this far either side of the badge
-const RIBBON_SOLID = (55 * Math.PI) / 180;   // …and is fully opaque this far
+const RIBBON_SPREAD = (92 * Math.PI) / 180;  // the band fades out this far either side of the badge
+const RIBBON_SOLID = (48 * Math.PI) / 180;   // …and is fully opaque this far
 
 /** Background colours offered for the badge; the first is the logo's own yellow. */
 const BADGE_COLORS: { hex: string; ar: string; en: string }[] = [
@@ -226,7 +226,7 @@ function drawRibbon(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null
   // and left→right runs toward the SMALLER angle, so «MOSLIM» (read first) sits on the
   // larger-angle side. Upper half: the baseline faces the centre and it is the reverse.
   const inward = Math.sin(a) > 0;
-  const size = band * 0.46;
+  const size = band * 0.54;
   const text = isLight(color) ? '#1a1a2e' : '#FFFFFF';
   const gap = d / 2 + S * 0.02;
   ctx.save(); ctx.font = WORD_FONT(size);

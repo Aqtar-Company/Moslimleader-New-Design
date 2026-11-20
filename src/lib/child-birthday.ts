@@ -4,6 +4,7 @@ import { isMailableEmail } from '@/lib/real-email';
 import { emailLogoImg } from '@/lib/email-template';
 import { movePoints } from '@/lib/loyalty';
 import { products as staticProducts } from '@/lib/products';
+import { guessGenderFromName } from '@/lib/arabic-name-gender.mjs';
 
 /**
  * «يوم ميلاد الابن» — on a child's birthday, the parent gets an email («كبر فلان في الإسلام
@@ -44,18 +45,36 @@ function suggestionsFor(age: number, gender: string | null) {
     .map(p => ({ name: p.name, url: `${SITE}/shop/${p.slug}`, image: p.images?.[0] ? (p.images[0].startsWith('http') ? p.images[0] : `${SITE}${p.images[0]}`) : null }));
 }
 
-export function birthdayEmail(input: { parentFirstName: string; childName: string; girl: boolean; age: number; points: number; suggestions: { name: string; url: string; image: string | null }[] }) {
-  const { parentFirstName, childName, girl, age, points, suggestions } = input;
+export type ChildSex = 'boy' | 'girl' | 'unknown';
+
+/**
+ * The child's sex for the wording: what the parent chose, else what the first name says
+ * (src/lib/arabic-name-gender.mjs — the project's one copy of those rules), else unknown.
+ * Unknown gets a NEUTRAL text: «كبر سارة» is worse than a sentence with no gender in it.
+ */
+export function childSex(gender: string | null, name: string): ChildSex {
+  if (gender === 'boy' || gender === 'girl') return gender;
+  const g = guessGenderFromName(name)?.gender;
+  return g === 'female' ? 'girl' : g === 'male' ? 'boy' : 'unknown';
+}
+
+export function birthdayEmail(input: { parentFirstName: string; childName: string; sex: ChildSex; age: number; points: number; suggestions: { name: string; url: string; image: string | null }[] }) {
+  const { parentFirstName, childName, sex, age, points, suggestions } = input;
+  const girl = sex === 'girl';
   const c = esc(childName);
-  const subject = girl ? `كبرت ${childName} في الإسلام سنة 🌙` : `كبر ${childName} في الإسلام سنة 🌙`;
-  const line = girl ? `اليوم تُتمّ ${c} عامها الـ${age}.` : `اليوم يُتمّ ${c} عامه الـ${age}.`;
-  const dua = girl
-    ? 'بارك الله لكم فيها، وجعلها قرّة عين لكم، وأنبتها نباتاً حسناً.'
-    : 'بارك الله لكم فيه، وجعله قرّة عين لكم، وأنبته نباتاً حسناً.';
+  const subject = sex === 'girl' ? `كبرت ${childName} في الإسلام سنة 🌙`
+    : sex === 'boy' ? `كبر ${childName} في الإسلام سنة 🌙`
+    : `عامٌ جديد في الإسلام لـ${childName} 🌙`;
+  const line = sex === 'girl' ? `اليوم تُتمّ ${c} عامها الـ${age}.`
+    : sex === 'boy' ? `اليوم يُتمّ ${c} عامه الـ${age}.`
+    : `اليوم يكتمل العام الـ${age} من عمر ${c}.`;
+  const dua = sex === 'girl' ? 'بارك الله لكم فيها، وجعلها قرّة عين لكم، وأنبتها نباتاً حسناً.'
+    : sex === 'boy' ? 'بارك الله لكم فيه، وجعله قرّة عين لكم، وأنبته نباتاً حسناً.'
+    : `بارك الله لكم في ${c}، وجعل قادم أيامه خيراً وبركة.`;
   const hello = parentFirstName ? `أهلاً ${esc(parentFirstName)}،` : 'أهلاً بك،';
   const sugg = suggestions.length ? `
         <tr><td style="padding:8px 32px 0">
-          <p style="margin:0 0 12px;font-weight:bold;color:#1a1a2e">${girl ? `هدايا تناسب ${c} في عمرها` : `هدايا تناسب ${c} في عمره`}</p>
+          <p style="margin:0 0 12px;font-weight:bold;color:#1a1a2e">${girl ? `هدايا تناسب ${c} في عمرها` : sex === 'boy' ? `هدايا تناسب ${c} في عمره` : `هدايا تناسب ${c}`}</p>
           ${suggestions.map(s => `
           <a href="${esc(s.url)}" style="display:block;text-decoration:none;color:#1a1a2e;border:1px solid #eee;border-radius:12px;padding:10px;margin-bottom:8px">
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
@@ -132,13 +151,14 @@ export async function runChildBirthdays(opts: { dryRun?: boolean } = {}) {
 
     try {
       await movePoints(ch.user.id, BIRTHDAY_POINTS, 'child_birthday');
+      const sex = childSex(ch.gender, ch.name);
       const mail = birthdayEmail({
         parentFirstName: (ch.user.name || '').trim().split(/\s+/)[0] || '',
         childName: ch.name.trim(),
-        girl: ch.gender === 'girl',
+        sex,
         age,
         points: BIRTHDAY_POINTS,
-        suggestions: ch.user.marketingOptIn ? suggestionsFor(age, ch.gender) : [],
+        suggestions: ch.user.marketingOptIn ? suggestionsFor(age, sex === 'unknown' ? null : sex) : [],
       });
       await transporter!.sendMail({
         from: `"مسلم ليدر" <${process.env.SMTP_USER || 'orders@moslimleader.com'}>`,

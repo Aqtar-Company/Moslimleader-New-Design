@@ -265,10 +265,11 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
   const urlRef = useRef<string | null>(null);
 
   const pageUrl = shareUrl || 'https://moslimleader.com/badge';
-  const postText = tx(
-    `أنا جزء من مجتمع مسلم ليدر، مجتمع النبلاء، وضعت البادج على صورتي بكل فخر.\nمجتمع يربّي أبناءنا على القيم والنبل والأخلاق.\nاعمل البادج من الرابط التالي:\n${pageUrl}`,
-    `I'm part of the Moslim Leader community, the community of the noble, and I'm proud to wear its badge on my picture.\nA community raising our children on values, nobility and good character.\nGet your badge here:\n${pageUrl}`,
+  const postTextFor = (url: string) => tx(
+    `أنا جزء من مجتمع مسلم ليدر، مجتمع النبلاء، وضعت البادج على صورتي بكل فخر.\nمجتمع يربّي أبناءنا على القيم والنبل والأخلاق.\nاعمل البادج من الرابط التالي:\n${url}`,
+    `I'm part of the Moslim Leader community, the community of the noble, and I'm proud to wear its badge on my picture.\nA community raising our children on values, nobility and good character.\nGet your badge here:\n${url}`,
   );
+  const postText = postTextFor(pageUrl);
 
   useEffect(() => {
     loadImage(LOGO_SRC).then(setLogo).catch(() => setLogo(null));
@@ -418,12 +419,12 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
 
   const nav = typeof navigator !== 'undefined' ? navigator as Navigator & { canShare?: (d: ShareData) => boolean } : null;
 
-  const copyText = async (quiet = false) => {
+  const copyText = async (quiet = false, text = postText) => {
     try {
-      await navigator.clipboard.writeText(postText);
+      await navigator.clipboard.writeText(text);
     } catch {
       const t = document.createElement('textarea');
-      t.value = postText; document.body.appendChild(t); t.select();
+      t.value = text; document.body.appendChild(t); t.select();
       try { document.execCommand('copy'); } catch { /* nothing more to try */ }
       t.remove();
     }
@@ -452,6 +453,26 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
     return !nav.canShare || nav.canShare({ files: [file] }) ? file : null;
   };
 
+  /** Upload the finished picture once per version of it, and return its /b/<id> link. */
+  const linkRef = useRef<{ blob: Blob; url: string } | null>(null);
+  const uploadForLink = async (): Promise<string | null> => {
+    const b = await ensureBlob();
+    if (!b) return null;
+    if (linkRef.current?.blob === b) return linkRef.current.url;
+    try {
+      const res = await fetch('/api/badge/share', {
+        method: 'POST', body: b, headers: { 'content-type': 'image/jpeg' },
+        credentials: 'include', signal: AbortSignal.timeout(30_000),
+      });
+      const d = await res.json().catch(() => null);
+      if (!res.ok || !d?.url) return null;
+      linkRef.current = { blob: b, url: d.url };
+      return d.url as string;
+    } catch {
+      return null;
+    }
+  };
+
   /**
    * Picture AND post together. A wa.me or facebook.com/sharer link can carry text or a link,
    * never a picture — that is how the post arrived on WhatsApp as bare text. So:
@@ -475,11 +496,28 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
         if ((e as Error)?.name === 'AbortError') return;   // they closed the sheet
       } finally { setBusy(false); }
     }
-    await download();
-    await copyText(true);
-    if (target === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(postText)}`, '_blank', 'noopener');
-    if (target === 'facebook') window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`, '_blank', 'noopener');
-    addToast(tx('الصورة اتحمّلت والنص اتنسخ: ارفق الصورة والصق النص في البوست.', 'Picture downloaded and text copied: attach the picture and paste the text.'), 'success');
+    // A computer cannot hand a file to WhatsApp or Facebook. So the picture is uploaded and
+    // gets its own link (/b/<id>) whose PREVIEW is the picture: post the link and the picture
+    // shows. The app's tab is opened first, inside the click — a window opened after an
+    // upload has been awaited is blocked as a pop-up.
+    const w = target === 'any' ? null : window.open('about:blank', '_blank');
+    if (w) w.opener = null;
+    setBusy(true);
+    const link = await uploadForLink();
+    setBusy(false);
+    const text = postTextFor(link ?? pageUrl);
+    await copyText(true, text);
+    if (!link) await download();
+    const dest = target === 'whatsapp' ? `https://wa.me/?text=${encodeURIComponent(text)}`
+      : target === 'facebook' ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link ?? pageUrl)}`
+      : null;
+    if (w && dest) w.location.href = dest;
+    addToast(link
+      ? (target === 'any'
+          ? tx('اتنسخ البوست ومعاه رابط صورتك — الصقه في أي مكان، وصورتك هتظهر مع الرابط.', 'Post copied with a link to your picture — paste it anywhere and your picture shows with it.')
+          : tx('صورتك هتظهر مع الرابط في البوست.', 'Your picture will show with the link.'))
+      : tx('الصورة اتحمّلت والنص اتنسخ: ارفق الصورة والصق النص في البوست.', 'Picture downloaded and text copied: attach the picture and paste the text.'),
+      'success');
   };
 
   const loginHref = (signup = false) => `/login?${signup ? 'mode=signup&' : ''}redirect=${encodeURIComponent('/badge')}`;
@@ -586,7 +624,7 @@ export default function BadgeStudio({ signedIn, shareUrl, rewardPoints }: {
                 </ul>
                 <p className="mt-2 flex items-start gap-1.5 text-xs text-[#1a1a2e]/60 leading-relaxed">
                   <Icon name="check" size={14} className="mt-0.5 shrink-0 text-emerald-600" />
-                  {tx('صورتك لا تُرفع لأي مكان — كل شيء يتم على جهازك.', 'Your picture is not uploaded anywhere — everything happens on your device.')}
+                  {tx('صورتك بتتجهّز على جهازك. ولو شاركتها من الكمبيوتر بس، بنرفعها عشان تظهر مع الرابط اللي بتنشره.', 'Your picture is prepared on your device. Only if you share it from a computer is it uploaded, so it shows with the link you post.')}
                 </p>
               </div>
 

@@ -1196,6 +1196,13 @@ Books are protected from download at two levels:
   The badge page's post carries the member's own `/r/<code>` link. Crawlers get og: tags from
   the route itself — following the redirect, Facebook would adopt /badge's og:url and every
   click would arrive without the code.
+- **Sharing the badge picture.** On a phone/tablet the share buttons hand the picture FILE
+  to the share sheet with the post as caption (`isTouchDevice()` — a Mac also supports file
+  sharing but its menu has no WhatsApp/Facebook). On a computer, where no site can attach a
+  file to WhatsApp/Facebook, the picture is uploaded (`POST /api/badge/share` → R2
+  `badge-shares/`, model `BadgeShare`) and the post carries `/b/<id>`: crawlers get og: tags
+  whose image IS the picture; people are redirected to /badge with the owner's invite cookie.
+  Uploads happen ONLY on that share click — the page says so.
 - **«يوم ميلاد الابن» — `/api/cron/child-birthday`** (`src/lib/child-birthday.ts`), daily,
   header `x-cron-key: $CRON_SECRET`, `?dry=1` to count without sending. Real addresses only;
   +50 points; `Child.lastGreetedYear` is claimed before sending (once a year per child).

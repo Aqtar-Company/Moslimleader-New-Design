@@ -1027,6 +1027,19 @@ model LoyaltyTransaction {
   @@index([createdAt])
 }
 
+// ─── Badge shares ────────────────────────────────────────────────────────────
+// A member's badge picture, uploaded ONLY when they share it from a computer, so the link
+// they post (/b/<id>) previews with their picture on WhatsApp/Facebook — a computer cannot
+// attach a file to either. The link also carries the member's invite code.
+model BadgeShare {
+  id        String   @id @db.VarChar(12)
+  userId    String
+  imageUrl  String   @db.VarChar(500)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 // ─── Referral Rewards ────────────────────────────────────────────────────────
 model ReferralReward {
   id          String   @id @default(cuid())

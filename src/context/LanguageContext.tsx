@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 
 export type Lang = 'ar' | 'en';
 
@@ -660,6 +661,7 @@ function applyToDocument(l: Lang) {
  */
 export function LanguageProvider({ children, initialLang = 'ar' }: { children: ReactNode; initialLang?: Lang }) {
   const [lang, setLang] = useState<Lang>(initialLang);
+  const router = useRouter();
 
   useEffect(() => {
     const onEnUrl = window.location.pathname === '/en' || window.location.pathname.startsWith('/en/');
@@ -700,6 +702,9 @@ export function LanguageProvider({ children, initialLang = 'ar' }: { children: R
     }
     setLang(next);
     applyToDocument(next);
+    // Pages rendered on the server (the privacy policy, metadata) read the cookie: ask for
+    // them again in the new language.
+    router.refresh();
   };
   const t = (key: TranslationKey): string => translations[lang][key] ?? key;
   const isRtl = lang === 'ar';

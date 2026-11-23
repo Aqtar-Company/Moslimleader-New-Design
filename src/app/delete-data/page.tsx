@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useLang } from '@/context/LanguageContext';
 
 // Data Deletion Instructions page — required by Facebook for any
 // app that handles user data. Lives at /delete-data because Facebook
@@ -18,6 +19,9 @@ const TITLE_AR = 'طلب حذف البيانات';
 const TITLE_EN = 'Data Deletion Instructions';
 
 export default function DeleteDataPage() {
+  const { lang } = useLang();
+  const isEn = lang === 'en';
+  const tx = (ar: string, en: string) => (isEn ? en : ar);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,25 +41,25 @@ export default function DeleteDataPage() {
           email: fd.get('email'),
           phone: fd.get('phone'),
           facebookName: fd.get('facebookName'),
-          message: fd.get('message') || 'طلب حذف بياناتي من مساعد مسلم ليدر الذكي.',
+          message: fd.get('message') || tx('طلب حذف بياناتي من مساعد مسلم ليدر الذكي.', 'Please delete my data from the Moslim Leader AI Assistant.'),
           honeypot: fd.get('website'), // hidden — bots fill this
         }),
       });
       const d = await res.json();
-      if (!res.ok) { setError(d.error || 'فشل الإرسال — حاول مرة أخرى'); setSubmitting(false); return; }
+      if (!res.ok) { setError(d.error || tx('فشل الإرسال — حاول مرة أخرى', 'Sending failed — please try again')); setSubmitting(false); return; }
       setDone(true);
     } catch {
-      setError('فشل الاتصال. حاول مرة أخرى أو راسلنا على orders@moslimleader.com');
+      setError(tx('فشل الاتصال. حاول مرة أخرى أو راسلنا على orders@moslimleader.com', 'Connection failed. Try again or email orders@moslimleader.com'));
     }
     setSubmitting(false);
   };
 
   return (
-    <main dir="rtl" className="min-h-screen bg-gray-50 py-10">
+    <main dir={isEn ? 'ltr' : 'rtl'} className="min-h-screen bg-gray-50 py-10">
       <article className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-10">
         <header className="mb-6 pb-6 border-b border-gray-200">
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900">{TITLE_AR}</h1>
-          <p className="text-sm text-gray-500 mt-1" dir="ltr">{TITLE_EN}</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900">{isEn ? TITLE_EN : TITLE_AR}</h1>
+          <p className="text-sm text-gray-500 mt-1" dir={isEn ? 'rtl' : 'ltr'}>{isEn ? TITLE_AR : TITLE_EN}</p>
         </header>
 
         {/* English block — what the FB reviewer reads first */}
@@ -76,7 +80,7 @@ export default function DeleteDataPage() {
         </section>
 
         {/* Arabic block — what your local users read */}
-        <section className="mb-8 leading-relaxed text-sm text-gray-800">
+        <section className="mb-8 leading-relaxed text-sm text-gray-800" dir="rtl" style={{ textAlign: 'right' }}>
           <p>
             إذا كنت ترغب في حذف بياناتك المرتبطة بمساعد <strong>مسلم ليدر الذكي</strong>
             (المحادثات على Messenger أو التعليقات على صفحتنا)، يمكنك استخدام النموذج أدناه أو التواصل معنا:
@@ -96,10 +100,10 @@ export default function DeleteDataPage() {
         <section className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5">
           {done ? (
             <div className="text-center py-8">
-              <p className="text-2xl font-black text-emerald-700">✅ تم استلام طلبك</p>
+              <p className="text-2xl font-black text-emerald-700">✅ {tx('تم استلام طلبك', 'Your request has been received')}</p>
               <p className="text-sm text-gray-700 mt-2 leading-relaxed">
-                هنراجعه ونرد عليك خلال 30 يوم كحد أقصى.<br />
-                لو محتاج أي استفسار، راسلنا على{' '}
+                {tx('هنراجعه ونرد عليك خلال 30 يوم كحد أقصى.', 'We will review it and reply within 30 days at most.')}<br />
+                {tx('لو محتاج أي استفسار، راسلنا على', 'For any question, email us at')}{' '}
                 <a href="mailto:orders@moslimleader.com" className="text-blue-700 hover:underline">
                   orders@moslimleader.com
                 </a>.
@@ -108,14 +112,14 @@ export default function DeleteDataPage() {
                 href="/"
                 className="inline-block mt-4 px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-xs font-black"
               >
-                العودة للرئيسية
+                {tx('العودة للرئيسية', 'Back to home')}
               </Link>
             </div>
           ) : (
             <>
-              <p className="text-sm font-bold text-amber-900 mb-3">📝 طلب الحذف عبر النموذج</p>
+              <p className="text-sm font-bold text-amber-900 mb-3">📝 {tx('طلب الحذف عبر النموذج', 'Request deletion with this form')}</p>
               <form onSubmit={submit} className="space-y-3">
-                <Field label="اسمك *">
+                <Field label={tx('اسمك *', 'Your name *')}>
                   <input
                     name="name"
                     required
@@ -124,7 +128,7 @@ export default function DeleteDataPage() {
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
                   />
                 </Field>
-                <Field label="اسمك على فيسبوك (مهم) *">
+                <Field label={tx('اسمك على فيسبوك (مهم) *', 'Your Facebook name (important) *')}>
                   <input
                     name="facebookName"
                     required
@@ -135,7 +139,7 @@ export default function DeleteDataPage() {
                   />
                 </Field>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Field label="البريد الإلكتروني">
+                  <Field label={tx('البريد الإلكتروني', 'Email')}>
                     <input
                       name="email"
                       type="email"
@@ -144,7 +148,7 @@ export default function DeleteDataPage() {
                       dir="ltr"
                     />
                   </Field>
-                  <Field label="رقم الموبايل">
+                  <Field label={tx('رقم الموبايل', 'Mobile number')}>
                     <input
                       name="phone"
                       maxLength={50}
@@ -153,12 +157,12 @@ export default function DeleteDataPage() {
                     />
                   </Field>
                 </div>
-                <Field label="ملاحظات إضافية (اختياري)">
+                <Field label={tx('ملاحظات إضافية (اختياري)', 'Additional notes (optional)')}>
                   <textarea
                     name="message"
                     rows={3}
                     maxLength={4000}
-                    placeholder="مثال: حذفت البوست اللي كنت معلّق عليه ومش عاوز أي بيانات تفضل."
+                    placeholder={tx('مثال: حذفت البوست اللي كنت معلّق عليه ومش عاوز أي بيانات تفضل.', 'e.g. I deleted the post I commented on and want no data kept.')}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
                   />
                 </Field>
@@ -178,7 +182,7 @@ export default function DeleteDataPage() {
                     disabled={submitting}
                     className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black transition disabled:opacity-50"
                   >
-                    {submitting ? '...جاري الإرسال' : '🗑️ إرسال طلب الحذف'}
+                    {submitting ? tx('...جاري الإرسال', 'Sending...') : `🗑️ ${tx('إرسال طلب الحذف', 'Send deletion request')}`}
                   </button>
                 </div>
               </form>
@@ -188,11 +192,11 @@ export default function DeleteDataPage() {
 
         <footer className="mt-8 pt-5 border-t border-gray-200 text-center text-xs text-gray-500">
           <div className="flex items-center justify-center gap-3">
-            <Link href="/" className="text-blue-700 hover:underline">الرئيسية</Link>
+            <Link href="/" className="text-blue-700 hover:underline">{tx('الرئيسية', 'Home')}</Link>
             <span>·</span>
-            <Link href="/policy" className="text-blue-700 hover:underline">سياسة الخصوصية</Link>
+            <Link href="/policy" className="text-blue-700 hover:underline">{tx('سياسة الخصوصية', 'Privacy policy')}</Link>
             <span>·</span>
-            <Link href="/contact" className="text-blue-700 hover:underline">تواصل معنا</Link>
+            <Link href="/contact" className="text-blue-700 hover:underline">{tx('تواصل معنا', 'Contact us')}</Link>
           </div>
         </footer>
       </article>

@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     siteName: 'مسلم ليدر',
     type: 'website',
     locale: 'ar_EG',
+    alternateLocale: ['en_US'],
   },
 };
 

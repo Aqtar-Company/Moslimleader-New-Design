@@ -6,7 +6,6 @@ import MediaBrowser from './MediaBrowser';
 export const metadata: Metadata = {
   title: 'وسائط مسلم ليدر — أناشيد وقصص وفيديوهات ورسومات مجانية',
   description: 'مكتبة مسلم ليدر المجانية: أناشيد، قصص قبل النوم، فيديوهات ورسومات تلوين للأطفال — شاهد واستمع مجاناً، وحمّل بعد إنشاء حساب.',
-  alternates: { canonical: '/media' },
   openGraph: {
     title: 'وسائط مسلم ليدر المجانية',
     description: 'أناشيد، قصص قبل النوم، فيديوهات ورسومات تلوين — مجاناً.',

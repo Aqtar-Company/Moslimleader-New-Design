@@ -59,7 +59,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${title} | ${product.category} | مسلم ليدر`,
       description: description.slice(0, 160),
       metadataBase: new URL(baseUrl),
-      alternates: { canonical: url },
       keywords: [
         product.name,
         product.category,

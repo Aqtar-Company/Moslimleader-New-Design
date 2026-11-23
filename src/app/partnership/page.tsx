@@ -18,7 +18,6 @@ export const dynamic = 'force-static';
 export const metadata: Metadata = {
   title: 'الشراكة مع مسلم ليدر | التصور الاستراتيجي 2026',
   description: 'مسلم ليدر تبني منظومة متكاملة للطفل المسلم وأسرته حول العالم وبكل لغة — أنواع التعاون، مراحل الشراكة، مسلم ليدر لاند، وطلب الشراكة.',
-  alternates: { canonical: canonical('/partnership') },
   openGraph: {
     title: 'الشراكة مع مسلم ليدر',
     description: 'منظومة الطفل المسلم حول العالم — قدّم طلب الشراكة.',

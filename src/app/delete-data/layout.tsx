@@ -4,7 +4,6 @@ import { canonical } from '@/lib/seo';
 export const metadata: Metadata = {
   title: 'طلب حذف البيانات | Data Deletion | مسلم ليدر',
   description: 'Request deletion of your data from Moslim Leader AI Assistant. طلب حذف البيانات المرتبطة بمحادثاتك على Messenger أو التعليقات.',
-  alternates: { canonical: canonical('/delete-data') },
   robots: { index: true, follow: true }, // FB review needs to find it
   openGraph: {
     title: 'Data Deletion | حذف البيانات',

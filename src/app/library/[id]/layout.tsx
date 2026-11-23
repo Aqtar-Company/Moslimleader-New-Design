@@ -36,7 +36,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: 'كتاب رقمي | مسلم ليدر',
       description: 'اقرأ الكتب الرقمية الإسلامية للأطفال على منصة مسلم ليدر — كتب تربوية وقصص هادفة بصوت ورسومات راقية.',
-      alternates: { canonical: canonical(`/library/${id}`) },
     };
   }
 
@@ -48,7 +47,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${title} | كتاب رقمي | مسلم ليدر`,
     description,
-    alternates: { canonical: url },
     keywords: [title, 'كتب أطفال إسلامية', 'كتب رقمية', 'مسلم ليدر', 'قصص أطفال'],
     openGraph: {
       title,

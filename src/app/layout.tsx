@@ -14,10 +14,11 @@ import NavProgress from '@/components/NavProgress';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
+import { serverLang, isEnglishUrl, serverPath } from '@/lib/server-lang';
 
 const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
 
-export const metadata: Metadata = {
+const BASE_METADATA: Metadata = {
   // titleTemplate lets child pages set just their unique title and we
   // append the brand suffix automatically. The `default` is shown on
   // the root path (which currently provides its own metadata in
@@ -54,6 +55,31 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Canonical + hreflang for EVERY page, here, from the path the middleware passes on — so a
+ * page never states them itself (a page-level `alternates` would replace these). The Arabic
+ * URL and its /en twin each name themselves canonical and list each other; x-default is
+ * the Arabic one.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const path = serverPath();
+  const en = isEnglishUrl();
+  const ar = `${SITE_URL}${path === '/' ? '' : path}` || SITE_URL;
+  const enUrl = `${SITE_URL}/en${path === '/' ? '' : path}`;
+  return {
+    ...BASE_METADATA,
+    ...(serverLang() === 'en' ? {
+      title: { default: 'Moslim Leader', template: '%s | Moslim Leader' },
+      description: 'Raising tomorrow\'s leaders — Islamic books, games and learning products for children and families.',
+    } : {}),
+    alternates: {
+      canonical: en ? enUrl : ar,
+      languages: { ar, en: enUrl, 'x-default': ar },
+    },
+    openGraph: { ...BASE_METADATA.openGraph, locale: serverLang() === 'en' ? 'en_US' : 'ar_EG', alternateLocale: serverLang() === 'en' ? ['ar_EG'] : ['en_US'] },
+  };
+}
+
 // Viewport meta: hint to mobile browsers that we'd rather have
 // the viewport shrink than have a virtual keyboard overlay (so the
 // Ameen chat input stays visible above the keyboard). viewport-fit
@@ -66,8 +92,9 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const lang = serverLang();
   return (
-    <html lang="ar" dir="rtl">
+    <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <head>
         <meta name="theme-color" content="#F5C518" />
         <meta name="msapplication-TileColor" content="#F5C518" />
@@ -82,7 +109,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Outside every provider on purpose: it must still work when a provider's own
             chunk is the one that failed to load. */}
         <DeployReloadGuard />
-        <LanguageProvider>
+        <LanguageProvider initialLang={lang}>
           <AuthProvider>
             <RegionalPricingProvider>
               <CartProvider>

@@ -631,26 +631,75 @@ const LangContext = createContext<LangContextType>({
   isRtl: true,
 });
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>('ar');
+/** Countries where the site opens in Arabic for a first-time visitor (Arab League members). */
+const ARABIC_COUNTRIES = new Set([
+  'EG', 'SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'YE', 'JO', 'LB', 'SY', 'IQ', 'PS',
+  'LY', 'TN', 'DZ', 'MA', 'SD', 'MR', 'SO', 'DJ', 'KM',
+]);
+const LANG_COOKIE = 'ml_lang';
 
-  // On client mount, restore saved language from localStorage
+/** Write the choice where both the browser (localStorage) and the server (cookie) read it. */
+function rememberLang(l: Lang) {
+  try { localStorage.setItem('lang', l); } catch { /* private mode */ }
+  document.cookie = `${LANG_COOKIE}=${l}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+}
+function applyToDocument(l: Lang) {
+  document.documentElement.lang = l;
+  document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+}
+
+/**
+ * Which language the site speaks. In order:
+ *   1. the visitor's own choice (the EN/ع toggle, stored);
+ *   2. an /en address (the server already rendered it in English — `initialLang`);
+ *   3. a first visit: a browser set to Arabic, or a visitor in an Arab country → Arabic;
+ *      anyone else → English. Before this, the site opened in Arabic for the whole world,
+ *      and a visitor from Turkey or the US had to find a small "EN" button to read it.
+ * An automatic pick is remembered as if chosen, so the server renders that language on
+ * the next page (no flash of Arabic) — and the toggle always overrides it.
+ */
+export function LanguageProvider({ children, initialLang = 'ar' }: { children: ReactNode; initialLang?: Lang }) {
+  const [lang, setLang] = useState<Lang>(initialLang);
+
   useEffect(() => {
-    const saved = localStorage.getItem('lang') as Lang | null;
-    const resolved = saved === 'en' ? 'en' : 'ar';
-    setLang(resolved);
-    document.documentElement.lang = resolved;
-    document.documentElement.dir = resolved === 'ar' ? 'rtl' : 'ltr';
+    const onEnUrl = window.location.pathname === '/en' || window.location.pathname.startsWith('/en/');
+    let saved: string | null = null;
+    try { saved = localStorage.getItem('lang'); } catch { /* ignore */ }
+    const set = (l: Lang, remember: boolean) => {
+      setLang(l); applyToDocument(l);
+      if (remember) rememberLang(l);
+    };
+    if (onEnUrl) { set('en', !saved); return; }
+    if (saved === 'en' || saved === 'ar') { set(saved, true); return; }
+
+    // First visit: decide.
+    const browserArabic = (navigator.languages || [navigator.language]).some(x => /^ar\b/i.test(x || ''));
+    if (browserArabic) { set('ar', true); return; }
+    let known: string | null = null;
+    try { known = localStorage.getItem('ml-pricing-origin') || localStorage.getItem('ml-pricing-country'); } catch { /* ignore */ }
+    if (known) { set(ARABIC_COUNTRIES.has(known.toUpperCase()) ? 'ar' : 'en', true); return; }
+    fetch('/api/geo', { signal: AbortSignal.timeout(3000) })
+      .then(r => r.json())
+      .then(d => {
+        const cc = typeof d?.country === 'string' ? d.country.toUpperCase() : null;
+        // Unknown country: Arabic stays (the site's home audience); English otherwise.
+        set(cc && !ARABIC_COUNTRIES.has(cc) ? 'en' : 'ar', !!cc);
+      })
+      .catch(() => { /* stay as rendered */ });
   }, []);
 
   const toggleLang = () => {
-    setLang(l => {
-      const next = l === 'ar' ? 'en' : 'ar';
-      localStorage.setItem('lang', next);
-      document.documentElement.lang = next;
-      document.documentElement.dir = next === 'ar' ? 'rtl' : 'ltr';
-      return next;
-    });
+    const next: Lang = lang === 'ar' ? 'en' : 'ar';
+    rememberLang(next);
+    // Leaving the English address for Arabic: go to the Arabic URL, or the /en path would
+    // keep forcing English on the next load.
+    const p = window.location.pathname;
+    if (next === 'ar' && (p === '/en' || p.startsWith('/en/'))) {
+      window.location.assign((p.slice(3) || '/') + window.location.search + window.location.hash);
+      return;
+    }
+    setLang(next);
+    applyToDocument(next);
   };
   const t = (key: TranslationKey): string => translations[lang][key] ?? key;
   const isRtl = lang === 'ar';

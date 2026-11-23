@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+/** The visitor's language choice, written by LanguageContext. */
+const LANG_COOKIE = 'ml_lang';
+
 const ALLOWED_ORIGINS = [
   'https://moslimleader.com',
   'https://www.moslimleader.com',
@@ -30,9 +33,35 @@ const MEDIA_PATH = /^\/media\/(?:reels\/)?(\d{1,9})$/;
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const isRead = req.method === 'GET' || req.method === 'HEAD';
+
+  // ── Language in the URL ──
+  // /en/<path> is the English edition of /<path>: rewritten to the same page, with headers
+  // telling the root layout to render it in English and to point canonical/hreflang at the
+  // /en address. Google has no cookie and no localStorage, so a URL is the only way it can
+  // ever see — and list — the English site.
+  if (isRead && (pathname === '/en' || pathname.startsWith('/en/'))) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname.slice(3) || '/';
+    const h = new Headers(req.headers);
+    h.set('x-ml-lang', 'en');
+    h.set('x-ml-en-url', '1');
+    h.set('x-ml-path', url.pathname);
+    return NextResponse.rewrite(url, { request: { headers: h } });
+  }
+
+  // Every other page learns its own path (for canonical/hreflang) and the visitor's chosen
+  // language (cookie), so the server renders the right language the first time.
+  const pageHeaders = () => {
+    const h = new Headers(req.headers);
+    h.set('x-ml-path', pathname);
+    const c = req.cookies.get(LANG_COOKIE)?.value;
+    if (c === 'en' || c === 'ar') h.set('x-ml-lang', c);
+    return h;
+  };
 
   if (pathname === '/') {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: pageHeaders() } });
   }
 
   // Crawlers asking for a post get the lightweight preview document instead — a REWRITE,
@@ -54,6 +83,12 @@ export async function middleware(req: NextRequest) {
       url.pathname = `/media/preview/${mm[1]}`;
       return NextResponse.rewrite(url);
     }
+  }
+
+  // Pages: pass the path + language on. (A page reached by any other method falls through
+  // to the same origin check as before.)
+  if (isRead && !pathname.startsWith('/api/')) {
+    return NextResponse.next({ request: { headers: pageHeaders() } });
   }
 
   // CSRF guard for all API mutations
@@ -79,5 +114,7 @@ export const config = {
   // middleware never ran for a permalink and the crawler rewrite silently did nothing on
   // the live site. `:path*` compiles correctly; the cuid test in POST_PATH is what limits
   // the rewrite to permalinks. Ordinary GETs on the other /tareeq pages cost one regexp.
-  matcher: ['/', '/api/:path*', '/tareeq/:path*', '/media/:path*'],
+  // Every page and /api — but never Next's own assets or files (anything with an extension),
+  // which would only pay for a function call they do not need.
+  matcher: ['/((?!_next/|.*\\.[a-zA-Z0-9]{2,5}$).*)'],
 };

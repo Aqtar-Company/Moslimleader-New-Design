@@ -17,7 +17,6 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const image = absoluteMediaUrl(r.coverUrl, SITE_URL) ?? ORG_OG_IMAGE;
   return {
     title, description,
-    alternates: { canonical: `/media/reels/${r.id}` },
     openGraph: { title, description, url: `/media/reels/${r.id}`, images: [image], type: 'video.other' },
     twitter: { card: 'summary_large_image', title, description, images: [image] },
   };

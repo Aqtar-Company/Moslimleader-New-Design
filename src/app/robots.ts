@@ -32,6 +32,9 @@ export default function robots(): MetadataRoute.Robots {
           '/wishlist',
           '/invoice/',
           '/verify-email',
+          // The same private pages under the English address.
+          '/en/admin', '/en/login', '/en/account', '/en/cart', '/en/checkout',
+          '/en/wishlist', '/en/invoice/', '/en/verify-email',
         ],
       },
     ],

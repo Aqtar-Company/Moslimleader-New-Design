@@ -84,11 +84,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [
-    ...staticPages,
-    ...dbProductPages,
-    ...staticProductPages,
-    ...bookPages,
-    ...seriesPages,
-  ];
+  // Every page twice — the Arabic address and its /en edition — each listing the other, so
+  // Google indexes the English site as English rather than as a duplicate of the Arabic one.
+  const all = [...staticPages, ...dbProductPages, ...staticProductPages, ...bookPages, ...seriesPages];
+  const enOf = (u: string) => {
+    const path = u.slice(baseUrl.length);
+    return `${baseUrl}/en${path === '/' ? '' : path}`;
+  };
+  return all.flatMap(e => {
+    const languages = { ar: e.url, en: enOf(e.url) };
+    return [
+      { ...e, alternates: { languages } },
+      { ...e, url: enOf(e.url), priority: typeof e.priority === 'number' ? Math.max(0.1, +(e.priority - 0.1).toFixed(1)) : e.priority, alternates: { languages } },
+    ];
+  });
 }

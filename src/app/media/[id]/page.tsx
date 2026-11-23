@@ -27,7 +27,6 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   return {
     title,
     description,
-    alternates: { canonical: `/media/${item.id}` },
     openGraph: {
       title, description, url: `/media/${item.id}`, images: [image],
       type: item.kind === 'video' ? 'video.other' : item.kind === 'audio' ? 'music.song' : 'website',

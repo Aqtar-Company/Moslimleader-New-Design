@@ -6,7 +6,6 @@ export const metadata: Metadata = {
   title: 'سياسة الخصوصية | مسلم ليدر',
   description:
     'سياسة الخصوصية لمتجر مسلم ليدر — كيف نجمع، نستخدم، ونحمي بيانات عملائنا في المتجر، المكتبة الرقمية، والتواصل عبر فيسبوك Messenger.',
-  alternates: { canonical: canonical('/policy') },
   openGraph: {
     title: 'سياسة الخصوصية | مسلم ليدر',
     description: 'كيف نتعامل مع بيانات العملاء على منصة مسلم ليدر.',

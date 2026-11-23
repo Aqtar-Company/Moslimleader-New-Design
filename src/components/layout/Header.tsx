@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import MobileMenu from './MobileMenu';
 import dynamic from 'next/dynamic';
 
+const TAREEQ_INTRO_SEEN = 'ml-tareeq-intro-seen';
 const TareeqLandingModal = dynamic(() => import('@/components/tareeq/TareeqLandingModal'), { ssr: false });
 
 const iconBtn = 'relative flex items-center justify-center w-10 h-10 border-2 border-white/70 rounded-lg hover:bg-white/20 transition text-white';
@@ -24,6 +25,20 @@ export default function Header() {
   const [banner, setBanner] = useState<{ code: string; discount: number; bannerText?: string; bannerColor?: string } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [tareeqModal, setTareeqModal] = useState(false);
+  const router = useRouter();
+  /**
+   * The طريق button goes straight in. The introduction card (TareeqLandingModal) is for a
+   * visitor who has never seen طريق — it used to open on EVERY press, signed in or not,
+   * and read like a «are you sure you want to leave?» gate in front of a section of the
+   * same site. Shown once per browser, never to a signed-in member.
+   */
+  const openTareeq = () => {
+    let seen = false;
+    try { seen = localStorage.getItem(TAREEQ_INTRO_SEEN) === '1'; } catch { /* private mode */ }
+    if (user || seen) { router.push('/tareeq'); return; }
+    try { localStorage.setItem(TAREEQ_INTRO_SEEN, '1'); } catch { /* ignore */ }
+    setTareeqModal(true);
+  };
 
   useEffect(() => {
     fetch('/api/coupons', { cache: 'no-store' })
@@ -151,7 +166,7 @@ export default function Header() {
 
             {/* Tareeq CTA — desktop */}
             <button
-              onClick={() => setTareeqModal(true)}
+              onClick={openTareeq}
               className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black transition active:scale-95 shrink-0"
               style={{
                 background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%)',
@@ -168,7 +183,7 @@ export default function Header() {
 
             {/* Tareeq icon — mobile only */}
             <button
-              onClick={() => setTareeqModal(true)}
+              onClick={openTareeq}
               className="md:hidden relative flex w-10 h-10 rounded-lg overflow-hidden border-2 border-white/70 hover:border-white transition shrink-0"
               aria-label="طريق"
             >

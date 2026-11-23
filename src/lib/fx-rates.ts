@@ -26,7 +26,8 @@ const BUILT_IN: Record<string, number> = Object.fromEntries(
   Object.values(COUNTRY_CURRENCIES).map(c => [c.currencyEn, c.usdRate]),
 );
 
-let fetchedAt = 0;
+let fetchedAt = 0;   // when to consider the next fetch (also moved forward after a failure)
+let liveAt = 0;      // when live rates were last applied (0 = built-in table)
 let inflight: Promise<void> | null = null;
 let current: Record<string, number> = { ...BUILT_IN };
 
@@ -58,6 +59,7 @@ export async function ensureFreshRates(): Promise<void> {
         applyRates(picked);
         current = Object.fromEntries(Object.values(COUNTRY_CURRENCIES).map(c => [c.currencyEn, c.usdRate]));
         fetchedAt = Date.now();
+        liveAt = fetchedAt;
         return;
       }
       throw new Error(`fx feed answered ${res.status}`);
@@ -72,7 +74,7 @@ export async function ensureFreshRates(): Promise<void> {
   return inflight;
 }
 
-/** The rates in use right now, and when they were fetched (0 = built-in table). */
+/** The rates in use right now; `live` is false while the built-in table is in use. */
 export function currentRates() {
-  return { rates: { ...current }, fetchedAt };
+  return { rates: { ...current }, live: liveAt > 0, updatedAt: liveAt ? new Date(liveAt).toISOString() : null };
 }

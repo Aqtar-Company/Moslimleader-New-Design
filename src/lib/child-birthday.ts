@@ -58,23 +58,46 @@ export function childSex(gender: string | null, name: string): ChildSex {
   return g === 'female' ? 'girl' : g === 'male' ? 'boy' : 'unknown';
 }
 
-export function birthdayEmail(input: { parentFirstName: string; childName: string; sex: ChildSex; age: number; points: number; suggestions: { name: string; url: string; image: string | null }[] }) {
+export function birthdayEmail(input: { parentFirstName: string; childName: string; sex: ChildSex; age: number; points: number; suggestions: { name: string; url: string; image: string | null }[]; lang?: 'ar' | 'en' }) {
   const { parentFirstName, childName, sex, age, points, suggestions } = input;
+  const en = input.lang === 'en';
   const girl = sex === 'girl';
   const c = esc(childName);
-  const subject = sex === 'girl' ? `كبرت ${childName} في الإسلام سنة 🌙`
-    : sex === 'boy' ? `كبر ${childName} في الإسلام سنة 🌙`
-    : `عامٌ جديد في الإسلام لـ${childName} 🌙`;
-  const line = sex === 'girl' ? `اليوم تُتمّ ${c} عامها الـ${age}.`
-    : sex === 'boy' ? `اليوم يُتمّ ${c} عامه الـ${age}.`
-    : `اليوم يكتمل العام الـ${age} من عمر ${c}.`;
-  const dua = sex === 'girl' ? 'بارك الله لكم فيها، وجعلها قرّة عين لكم، وأنبتها نباتاً حسناً.'
-    : sex === 'boy' ? 'بارك الله لكم فيه، وجعله قرّة عين لكم، وأنبته نباتاً حسناً.'
-    : `بارك الله لكم في ${c}، وجعل قادم أيامه خيراً وبركة.`;
-  const hello = parentFirstName ? `أهلاً ${esc(parentFirstName)}،` : 'أهلاً بك،';
+  const T = en ? {
+    subject: `${childName} is a year older in Islam 🌙`,
+    line: `Today ${c} turns ${age}.`,
+    dua: sex === 'girl' ? 'May Allah bless her for you, make her the delight of your eyes, and help her grow in goodness.'
+      : sex === 'boy' ? 'May Allah bless him for you, make him the delight of your eyes, and help him grow in goodness.'
+      : `May Allah bless ${c} for you and fill the days ahead with goodness and blessing.`,
+    hello: parentFirstName ? `Hello ${esc(parentFirstName)},` : 'Hello,',
+    gift: 'To celebrate, we have added a gift to your balance:',
+    pts: `${points} points`,
+    redeem: 'Redeem it as a discount at checkout — 100 points = 10 EGP.',
+    giftsFor: `Gifts for ${c}'s age`,
+    cta: 'My points on Moslim Leader',
+    textGift: `To celebrate, we have added ${points} gift points to your balance (100 points = 10 EGP).`,
+  } : {
+    subject: sex === 'girl' ? `كبرت ${childName} في الإسلام سنة 🌙`
+      : sex === 'boy' ? `كبر ${childName} في الإسلام سنة 🌙`
+      : `عامٌ جديد في الإسلام لـ${childName} 🌙`,
+    line: sex === 'girl' ? `اليوم تُتمّ ${c} عامها الـ${age}.`
+      : sex === 'boy' ? `اليوم يُتمّ ${c} عامه الـ${age}.`
+      : `اليوم يكتمل العام الـ${age} من عمر ${c}.`,
+    dua: sex === 'girl' ? 'بارك الله لكم فيها، وجعلها قرّة عين لكم، وأنبتها نباتاً حسناً.'
+      : sex === 'boy' ? 'بارك الله لكم فيه، وجعله قرّة عين لكم، وأنبته نباتاً حسناً.'
+      : `بارك الله لكم في ${c}، وجعل قادم أيامه خيراً وبركة.`,
+    hello: parentFirstName ? `أهلاً ${esc(parentFirstName)}،` : 'أهلاً بك،',
+    gift: 'وبهذه المناسبة، أضفنا لرصيدك هدية:',
+    pts: `${points} نقطة`,
+    redeem: 'تُصرف كخصم عند الدفع — كل 100 نقطة = 10 جنيه.',
+    giftsFor: girl ? `هدايا تناسب ${c} في عمرها` : sex === 'boy' ? `هدايا تناسب ${c} في عمره` : `هدايا تناسب ${c}`,
+    cta: 'نقاطي على مسلم ليدر',
+    textGift: `وبهذه المناسبة أضفنا لرصيدك ${points} نقطة هدية (كل 100 نقطة = 10 جنيه).`,
+  };
+  const { subject, line, dua, hello } = T;
   const sugg = suggestions.length ? `
         <tr><td style="padding:8px 32px 0">
-          <p style="margin:0 0 12px;font-weight:bold;color:#1a1a2e">${girl ? `هدايا تناسب ${c} في عمرها` : sex === 'boy' ? `هدايا تناسب ${c} في عمره` : `هدايا تناسب ${c}`}</p>
+          <p style="margin:0 0 12px;font-weight:bold;color:#1a1a2e">${T.giftsFor}</p>
           ${suggestions.map(s => `
           <a href="${esc(s.url)}" style="display:block;text-decoration:none;color:#1a1a2e;border:1px solid #eee;border-radius:12px;padding:10px;margin-bottom:8px">
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
@@ -85,23 +108,23 @@ export function birthdayEmail(input: { parentFirstName: string; childName: strin
         </td></tr>` : '';
 
   const html = `<!DOCTYPE html>
-<html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(subject)}</title></head>
+<html dir="${en ? 'ltr' : 'rtl'}" lang="${en ? 'en' : 'ar'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(subject)}</title></head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Segoe UI', Tahoma, Arial, sans-serif">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f5f5;padding:32px 16px"><tr><td align="center">
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden">
-      <tr><td style="background:#1a1a2e;padding:24px 32px;text-align:center">${emailLogoImg(SITE)}</td></tr>
+      <tr><td style="background:#1a1a2e;padding:24px 32px;text-align:center">${emailLogoImg(SITE, en ? 'Moslim Leader' : 'مسلم ليدر')}</td></tr>
       <tr><td style="padding:32px 32px 8px;text-align:center">
         <p style="margin:0 0 8px;color:#6b7280">${hello}</p>
         <h1 style="margin:0 0 12px;color:#1a1a2e;font-size:26px;font-weight:900">${esc(subject.replace(' 🌙', ''))}</h1>
         <p style="margin:0 0 8px;line-height:1.8;color:#1f2937">${line}</p>
         <p style="margin:0 0 20px;line-height:1.8;color:#1f2937;font-weight:bold">${dua}</p>
-        <p style="margin:0 0 6px;color:#1f2937">وبهذه المناسبة، أضفنا لرصيدك هدية:</p>
-        <p style="margin:0 0 20px"><span style="display:inline-block;padding:12px 24px;background:#F5C518;color:#1a1a2e;border-radius:12px;font-size:20px;font-weight:900">${points} نقطة</span></p>
-        <p style="margin:0 0 8px;color:#6b7280;font-size:13px">تُصرف كخصم عند الدفع — كل 100 نقطة = 10 جنيه.</p>
+        <p style="margin:0 0 6px;color:#1f2937">${T.gift}</p>
+        <p style="margin:0 0 20px"><span style="display:inline-block;padding:12px 24px;background:#F5C518;color:#1a1a2e;border-radius:12px;font-size:20px;font-weight:900">${T.pts}</span></p>
+        <p style="margin:0 0 8px;color:#6b7280;font-size:13px">${T.redeem}</p>
       </td></tr>
       ${sugg}
       <tr><td style="padding:16px 32px 32px;text-align:center">
-        <a href="${SITE}/account" style="display:inline-block;padding:12px 28px;background:#1a1a2e;color:#fff;border-radius:12px;text-decoration:none;font-weight:bold">نقاطي على مسلم ليدر</a>
+        <a href="${SITE}/account?tab=loyalty" style="display:inline-block;padding:12px 28px;background:#1a1a2e;color:#fff;border-radius:12px;text-decoration:none;font-weight:bold">${T.cta}</a>
       </td></tr>
     </table>
   </td></tr></table>
@@ -112,9 +135,9 @@ export function birthdayEmail(input: { parentFirstName: string; childName: strin
     subject.replace(' 🌙', ''),
     line.replace(/&[a-z#0-9]+;/g, ''),
     dua,
-    `وبهذه المناسبة أضفنا لرصيدك ${points} نقطة هدية (كل 100 نقطة = 10 جنيه).`,
+    T.textGift,
     ...suggestions.map(s => `${s.name}: ${s.url}`),
-    `${SITE}/account`,
+    `${SITE}/account?tab=loyalty`,
   ].join('\n\n');
   return { subject, html, text };
 }
@@ -130,7 +153,7 @@ export async function runChildBirthdays(opts: { dryRun?: boolean } = {}) {
   const children = rows.length
     ? await prisma.child.findMany({
         where: { id: { in: rows.map(r => r.id) } },
-        select: { id: true, name: true, gender: true, birthdate: true, user: { select: { id: true, name: true, email: true, marketingOptIn: true } } },
+        select: { id: true, name: true, gender: true, birthdate: true, user: { select: { id: true, name: true, email: true, marketingOptIn: true, preferredLang: true } } },
       })
     : [];
 
@@ -156,12 +179,13 @@ export async function runChildBirthdays(opts: { dryRun?: boolean } = {}) {
         parentFirstName: (ch.user.name || '').trim().split(/\s+/)[0] || '',
         childName: ch.name.trim(),
         sex,
+        lang: ch.user.preferredLang === 'en' ? 'en' : 'ar',
         age,
         points: BIRTHDAY_POINTS,
         suggestions: ch.user.marketingOptIn ? suggestionsFor(age, sex === 'unknown' ? null : sex) : [],
       });
       await transporter!.sendMail({
-        from: `"مسلم ليدر" <${process.env.SMTP_USER || 'orders@moslimleader.com'}>`,
+        from: `"${ch.user.preferredLang === 'en' ? 'Moslim Leader' : 'مسلم ليدر'}" <${process.env.SMTP_USER || 'orders@moslimleader.com'}>`,
         to: ch.user.email,
         subject: mail.subject,
         html: mail.html,

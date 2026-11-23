@@ -325,6 +325,8 @@ export async function POST(req: NextRequest) {
       const subtotalUsd = order.items.reduce((s: number, it: { unitPrice: number; quantity: number }) => s + it.unitPrice * it.quantity, 0);
 
       await sendOrderEmails({
+        // The customer reads their copy in the language they use the site in.
+        lang: req.cookies.get('ml_lang')?.value === 'en' ? 'en' : 'ar',
         orderId: order.id,
         orderNumber: order.id.slice(-6).toUpperCase(),
         items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number; selectedModel?: number | null }) => ({

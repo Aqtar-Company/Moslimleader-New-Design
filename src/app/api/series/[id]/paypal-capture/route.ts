@@ -146,6 +146,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         select: { name: true, email: true, phone: true },
       });
       await sendOrderEmails({
+        // The customer reads their copy in the language they use the site in.
+        lang: req.cookies.get('ml_lang')?.value === 'en' ? 'en' : 'ar',
         orderId: masterOrderId,
         orderNumber: masterOrderId,
         items: langBooks.map((b, i) => ({

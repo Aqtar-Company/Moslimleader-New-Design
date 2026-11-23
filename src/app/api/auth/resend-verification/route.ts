@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { authEmail } from '@/lib/auth-email';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
-import { emailLogoImg } from '@/lib/email-template';
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,27 +55,27 @@ export async function POST(req: NextRequest) {
       tls: { rejectUnauthorized: false },
     });
 
+    // In the language the person uses the site in (cookie written by LanguageContext).
+
+
+    const mail = authEmail('verify-resend', { name: user.name, url: verifyUrl, siteUrl, lang: req.cookies.get('ml_lang')?.value === 'en' ? 'en' : 'ar' });
+
+
     await transporter.sendMail({
-      from: `"مسلم ليدر" <${smtpUser}>`,
+
+
+      from: `"${mail.fromName}" <${smtpUser}>`,
+
+
       to: user.email,
-      subject: 'تأكيد البريد الإلكتروني - مسلم ليدر',
-      html: `
-        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 24px;">${emailLogoImg(siteUrl)}</div>
-          <h2 style="color: #1a1a1a; text-align: center;">تأكيد البريد الإلكتروني</h2>
-          <p style="color: #555;">مرحباً ${user.name}،</p>
-          <p style="color: #555;">اضغط على الزر أدناه لتأكيد بريدك الإلكتروني وتفعيل حسابك. الرابط صالح لمدة 24 ساعة.</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verifyUrl}"
-               style="background-color: #F5C518; color: #1a1a1a; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
-              تأكيد البريد الإلكتروني
-            </a>
-          </div>
-          <p style="color: #999; font-size: 13px;">إذا لم تسجّل في موقعنا، يمكنك تجاهل هذا البريد.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-          <p style="color: #ccc; font-size: 12px; text-align: center;">مسلم ليدر - moslimleader.com</p>
-        </div>
-      `,
+
+
+      subject: mail.subject,
+
+
+      html: mail.html,
+
+
     });
 
     return NextResponse.json({ ok: true });

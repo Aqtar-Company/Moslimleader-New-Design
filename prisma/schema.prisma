@@ -45,6 +45,9 @@ model User {
   referralCode            String?   @unique @db.VarChar(16)
   referredById            String?
   referralRewardedAt      DateTime?
+  // The language the member uses the site in ('ar' | 'en'), copied from the ml_lang cookie by
+  // /api/auth/me. Read by mail that is sent with no request in hand (the birthday greeting).
+  preferredLang           String?   @db.VarChar(5)
   tareeqLastSeen          DateTime?
   tareeqSuspended         Boolean   @default(false)
   tareeqSuspendedAt       DateTime?

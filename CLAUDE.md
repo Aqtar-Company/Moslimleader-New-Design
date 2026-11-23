@@ -1207,6 +1207,27 @@ Books are protected from download at two levels:
   header `x-cron-key: $CRON_SECRET`, `?dry=1` to count without sending. Real addresses only;
   +50 points; `Child.lastGreetedYear` is claimed before sending (once a year per child).
   Product suggestions only for `marketingOptIn`.
+- **The site's language (since 2026-11-23).** Decided in this order: the visitor's toggle
+  (localStorage `lang` + cookie `ml_lang`), an `/en/...` URL, then a first-visit guess —
+  Arabic browser or Arab-League country → Arabic, anyone else → English (`LanguageContext`).
+  `/en/<path>` is rewritten by `src/middleware.ts` to `<path>` with `x-ml-lang: en`,
+  `x-ml-en-url: 1`, `x-ml-path`; every page gets `x-ml-path` and the cookie's language. The
+  root layout renders `<html lang dir>` from it (no Arabic flash) and emits canonical +
+  hreflang (ar / en / x-default) for EVERY page — **never put `alternates` in a page's
+  metadata again**, it replaces the layout's. Server pages read `serverLang()`
+  (`src/lib/server-lang.ts`). The sitemap lists both editions; robots blocks private `/en/*`.
+  The middleware matcher now covers every page (not files, not `_next`).
+- **Exchange rates are live** (`src/lib/fx-rates.ts`): fetched daily from open.er-api.com and
+  written INTO `COUNTRY_CURRENCIES`, which the display, PayPal's `toUsd()` and the assistant
+  already read; `/api/fx-rates` gives the browser the same table. Out-of-range rates (outside
+  0.2×–5× of the built-in one) or a dead feed keep the built-in table. EGP→USD stays fixed
+  (pricing decision). Server routes that convert call `await ensureFreshRates()` first.
+- **Emails follow the customer's language:** order confirmation (`buildOrderEmailHtml(data,
+  { lang, audience })` — the customer copy links to `/account?tab=orders`, the admin copy to
+  the admin), account emails (`src/lib/auth-email.ts`), birthday (`User.preferredLang`, kept
+  from the cookie by `/api/auth/me`). The shop's own notifications stay Arabic.
+- **A third language** needs the inline `isEn ? … : …` choices moved to keys first —
+  `docs/i18n-plan.md`, measured by `node ops/i18n-audit.mjs`.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

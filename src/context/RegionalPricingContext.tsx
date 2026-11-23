@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { applyRates } from '@/lib/fx-rates';
 import { detectCountry, countryToZone, resolvePrice, PricingZone, PriceResult, ZONES, ZoneInfo, COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
 import { Product } from '@/types';
 import { CartItem } from '@/types';
@@ -76,6 +77,24 @@ export function RegionalPricingProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Today's exchange rates from our own server — the same numbers the PayPal routes use —
+  // so a Turkish or European visitor sees a current local price, not one typed into the
+  // code once. Egypt needs none (EGP prices are set directly).
+  const [ratesVersion, setRatesVersion] = useState(0);
+  useEffect(() => {
+    if (!countryCode || countryCode === 'EG') return;
+    let cancelled = false;
+    fetch('/api/fx-rates', { signal: AbortSignal.timeout(5000) })
+      .then(r => r.json())
+      .then(d => {
+        if (cancelled || !d?.rates) return;
+        applyRates(d.rates);
+        setRatesVersion(v => v + 1);
+      })
+      .catch(() => { /* the built-in table stays */ });
+    return () => { cancelled = true; };
+  }, [countryCode]);
+
   const setCountry = useCallback((code: string | null) => {
     setCountryCodeState(code);
     const newZone = code ? countryToZone(code) : 'world';
@@ -97,7 +116,9 @@ export function RegionalPricingProvider({ children }: { children: ReactNode }) {
   const getProductPrice = useCallback((product: Product): PriceResult => {
     // Directly use product.price (EGP) and product.priceUsd (USD)
     return resolvePrice(product.price, product.priceUsd || 0, zone, countryCode);
-  }, [zone, countryCode]);
+    // ratesVersion: recompute once today's rates have arrived.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zone, countryCode, ratesVersion]);
 
   const formatPrice = useCallback((result: PriceResult): string => {
     const num = result.price % 1 === 0 ? result.price.toString() : result.price.toFixed(2);

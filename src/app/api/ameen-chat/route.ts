@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureFreshRates } from '@/lib/fx-rates';
 import { prisma } from '@/lib/prisma';
 import {
   getAssistantSettings,
@@ -62,6 +63,8 @@ interface ChatBody {
 }
 
 export async function POST(req: NextRequest) {
+  // Today's exchange rates before any USD ↔ local conversion (src/lib/fx-rates.ts).
+  await ensureFreshRates();
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     req.headers.get('x-real-ip') ||

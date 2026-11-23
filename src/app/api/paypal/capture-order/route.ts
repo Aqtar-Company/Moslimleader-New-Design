@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureFreshRates } from '@/lib/fx-rates';
 import { getAuthUser } from '@/lib/jwt';
 import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
@@ -13,6 +14,8 @@ import { applyOverride, loadStaticOverrides } from '@/lib/product-overrides';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
+  // Today's exchange rates before any USD ↔ local conversion (src/lib/fx-rates.ts).
+  await ensureFreshRates();
   try {
     // Cookie-based auth is the happy path. On Safari / iOS the
     // sameSite=none cookie occasionally drops across the PayPal

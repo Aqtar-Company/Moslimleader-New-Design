@@ -4,6 +4,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { isAllowedMediaRef, kindOfType } from '@/lib/free-media';
+import { isContentLang, guessLanguageFromTitle } from '@/lib/content-languages.mjs';
 
 export const VALID_MEDIA_TYPES = ['mp3', 'video', 'reel', 'image', 'pdf'] as const;
 
@@ -20,6 +21,7 @@ export type MediaItemInput = {
   categoryId: number | null;
   durationSec: number | null;
   previewUrl: string | null;
+  language: string;
   waveform?: number[] | typeof Prisma.DbNull;
 };
 
@@ -69,6 +71,9 @@ export async function parseMediaItem(body: Record<string, unknown>): Promise<{ d
       categoryId,
       durationSec: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : null,
       previewUrl,
+      // One of the content languages; a missing or unknown value is read from the title
+      // («… (تركي)», Latin script → English, else Arabic), so a bulk upload is filed too.
+      language: isContentLang(body.language) ? body.language : guessLanguageFromTitle(title),
       // Absent = leave it; null/garbage = clear it (a DB NULL, not the JSON value `null`).
       ...(body.waveform !== undefined ? { waveform: parseWaveform(body.waveform) ?? Prisma.DbNull } : {}),
     },

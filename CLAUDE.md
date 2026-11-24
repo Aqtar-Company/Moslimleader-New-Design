@@ -1228,6 +1228,13 @@ Books are protected from download at two levels:
   from the cookie by `/api/auth/me`). The shop's own notifications stay Arabic.
 - **A third language** needs the inline `isEn ? … : …` choices moved to keys first —
   `docs/i18n-plan.md`, measured by `node ops/i18n-audit.mjs`.
+- **Media items carry a language (`FreeMedia.language`, since 2026-11-24).** Eight codes in
+  `src/lib/content-languages.mjs` (plain JS, shared with ops): the library's six — ar en ur id
+  de fr — plus es and tr. The admin form has «اللغة»; an item saved WITHOUT one (bulk upload)
+  gets `guessLanguageFromTitle()` — a language named in the title wins, Turkish-only letters →
+  tr, Latin-only title → en, else ar. `/media` shows a language row only when the selected kind
+  holds more than one language (`?lang=`); null counts as Arabic.
+  `ops/classify-media-language.mjs` (dry run, `--apply`) files the songs that predate it.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

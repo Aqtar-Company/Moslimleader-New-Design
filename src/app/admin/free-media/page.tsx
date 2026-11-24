@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { CONTENT_LANGUAGES, contentLang } from '@/lib/content-languages.mjs';
 import { MEDIA_KINDS, KIND_LABEL, KIND_TO_TYPE, TYPE_TO_KIND, formatDuration, type MediaKind } from '@/lib/free-media-shared';
 import {
   ACCEPT, kindOfFile, prepareAndUpload, titleFromFile, uploadCover, type UploadStage,
@@ -25,6 +26,7 @@ interface Item {
   id: number; title: string; titleEn: string | null; type: string; url: string; coverUrl: string | null;
   previewUrl: string | null; waveform: unknown; description: string | null; descriptionEn: string | null;
   sortOrder: number; isPublished: boolean; categoryId: number | null; durationSec: number | null;
+  language: string | null;
   viewCount: number; downloadCount: number;
   /** Its discussion post in طريق, once it has one. */
   discussionPostId: string | null;
@@ -33,13 +35,15 @@ type Form = {
   title: string; titleEn: string; type: string; url: string; coverUrl: string; previewUrl: string;
   description: string; descriptionEn: string; sortOrder: number; isPublished: boolean;
   categoryId: number | null; durationSec: number | null; waveform?: number[] | null;
+  /** Content language code (src/lib/content-languages.mjs). */
+  language: string;
   /** «انشر في طريق أيضاً» — sent with the save; ignored for a hidden item. */
   postToTareeq?: boolean;
 };
 
 const emptyForm = (kind: MediaKind): Form => ({
   title: '', titleEn: '', type: KIND_TO_TYPE[kind], url: '', coverUrl: '', previewUrl: '', description: '', descriptionEn: '',
-  sortOrder: 0, isPublished: false, categoryId: null, durationSec: null,
+  sortOrder: 0, isPublished: false, categoryId: null, durationSec: null, language: 'ar',
   // On by default: an item the admin publishes is expected to appear in طريق too.
   postToTareeq: true,
 });
@@ -117,6 +121,7 @@ export default function FreeMediaAdminPage() {
       title: item.title, titleEn: item.titleEn ?? '', type: item.type, url: item.url, coverUrl: item.coverUrl ?? '',
       previewUrl: item.previewUrl ?? '', description: item.description ?? '', descriptionEn: item.descriptionEn ?? '',
       sortOrder: item.sortOrder, isPublished: item.isPublished, categoryId: item.categoryId, durationSec: item.durationSec,
+      language: item.language ?? 'ar',
     });
     setError(''); setSuccess('');
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -581,13 +586,20 @@ export default function FreeMediaAdminPage() {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4 mb-4">
+        <div className="grid sm:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">التصنيف</label>
             <select value={form.categoryId ?? ''} onChange={e => setForm(f => ({ ...f, categoryId: e.target.value ? Number(e.target.value) : null }))}
               className="w-full border rounded-lg px-3 py-2 text-sm">
               <option value="">— بلا تصنيف —</option>
               {kindCats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">اللغة</label>
+            <select value={form.language} onChange={e => setForm(f => ({ ...f, language: e.target.value }))}
+              className="w-full border rounded-lg px-3 py-2 text-sm">
+              {CONTENT_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.ar} — {l.native}</option>)}
             </select>
           </div>
           <div>
@@ -683,6 +695,7 @@ export default function FreeMediaAdminPage() {
               <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                 <span className={`text-xs px-2 py-0.5 rounded-full ${item.isPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{item.isPublished ? 'منشور' : 'مخفي'}</span>
                 {catName(item.categoryId) && <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">{catName(item.categoryId)}</span>}
+                <span className="text-xs bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full" title="اللغة">{contentLang(item.language).flag} {contentLang(item.language).ar}</span>
                 {formatDuration(item.durationSec) && <span className="text-xs text-gray-400" dir="ltr">{formatDuration(item.durationSec)}</span>}
               </div>
               <p className="font-bold text-gray-800 truncate">{item.title}</p>

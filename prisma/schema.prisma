@@ -675,6 +675,9 @@ model FreeMedia {
   waveform      Json?
   /// Read from the file in the admin's browser at upload time; null when unknown.
   durationSec   Int?
+  /// The language the item is in (src/lib/content-languages.mjs: ar en ur id de fr es tr).
+  /// Null = not set; treated as Arabic. /media filters songs by it.
+  language      String?             @db.VarChar(5)
   viewCount     Int                 @default(0)
   downloadCount Int                 @default(0)
   createdAt     DateTime            @default(now())
@@ -693,6 +696,7 @@ model FreeMedia {
 
   @@index([isPublished, type])
   @@index([categoryId])
+  @@index([language])
 }
 
 /// A visitor's comment on a media item (a reel, a nasheed…). Signed-in members only.

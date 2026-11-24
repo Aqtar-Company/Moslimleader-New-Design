@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { MEDIA_KINDS, KIND_LABEL, isMediaKind, type MediaKind } from '@/lib/free-media-shared';
+import { CONTENT_LANGUAGES } from '@/lib/content-languages.mjs';
 import type { PublicMediaCategory, PublicMediaItem } from '@/lib/free-media-query';
 import MediaThumb from '@/components/media/MediaThumb';
 import MediaPlaylist from './MediaPlaylist';
@@ -44,9 +45,22 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
   const playable = kind === 'audio' || kind === 'video';
   const view: 'player' | 'grid' = playable && params.get('view') !== 'grid' ? 'player' : 'grid';
 
-  const setParam = (next: { kind?: MediaKind; cat?: number | null; view?: 'player' | 'grid'; play?: number }) => {
+  // LANGUAGE — songs (and anything else) come in several languages. The row appears only
+  // when this kind actually holds more than one, listing only those, most-stocked first.
+  // An item with no language set counts as Arabic. `lang` in the URL; absent = all.
+  const itemLang = (i: PublicMediaItem) => i.language || 'ar';
+  const kindLangs = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const i of items) if (i.kind === kind) counts.set(itemLang(i), (counts.get(itemLang(i)) ?? 0) + 1);
+    return CONTENT_LANGUAGES.filter(l => counts.has(l.code)).sort((a, b) => (counts.get(b.code) ?? 0) - (counts.get(a.code) ?? 0));
+  }, [items, kind]);
+  const qLang = params.get('lang');
+  const langFilter: string | null = kindLangs.length > 1 && kindLangs.some(l => l.code === qLang) ? qLang : null;
+
+  const setParam = (next: { kind?: MediaKind; cat?: number | null; view?: 'player' | 'grid'; play?: number; lang?: string | null }) => {
     const sp = new URLSearchParams(params.toString());
-    if (next.kind) { sp.set('kind', next.kind); sp.delete('cat'); sp.delete('view'); sp.delete('play'); }
+    if (next.kind) { sp.set('kind', next.kind); sp.delete('cat'); sp.delete('view'); sp.delete('play'); sp.delete('lang'); }
+    if (next.lang !== undefined) { if (next.lang) sp.set('lang', next.lang); else sp.delete('lang'); sp.delete('play'); }
     if (next.cat !== undefined) { sp.set('cat', next.cat ? String(next.cat) : 'all'); sp.delete('play'); }
     if (next.view) { if (next.view === 'grid') sp.set('view', 'grid'); else sp.delete('view'); }
     if (next.play) sp.set('play', String(next.play));
@@ -60,6 +74,7 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
   const shown = items.filter(i =>
     i.kind === kind &&
     (!cat || i.categoryId === cat) &&
+    (!langFilter || itemLang(i) === langFilter) &&
     (!q || i.title.toLowerCase().includes(q) || (i.titleEn ?? '').toLowerCase().includes(q) || (i.description ?? '').toLowerCase().includes(q)),
   );
   const playId = Number(params.get('play'));
@@ -154,6 +169,25 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
                       className={`h-9 px-3.5 rounded-full border text-[13px] whitespace-nowrap transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#F5C518] ${active ? 'bg-[#FFF3C4] border-[#F5C518] text-[#1a1a2e] font-bold' : 'bg-transparent border-[#1a1a2e]/15 text-[#1a1a2e]/75 font-semibold hover:border-[#1a1a2e]/40 hover:text-[#1a1a2e]'}`}
                     >
                       {chip.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {kindLangs.length > 1 && (
+              <div className="flex flex-wrap items-center gap-2 mb-3" role="group" aria-label={t('اللغة', 'Language')}>
+                <span className="text-xs font-bold text-[#1a1a2e]/50">{t('اللغة', 'Language')}</span>
+                {[{ code: null as string | null, label: t('كل اللغات', 'All languages'), flag: '' }, ...kindLangs.map(l => ({ code: l.code as string | null, label: l.native, flag: l.flag }))].map(chip => {
+                  const active = langFilter === chip.code;
+                  return (
+                    <button
+                      key={chip.code ?? 'all'}
+                      onClick={() => setParam({ lang: chip.code })}
+                      aria-pressed={active}
+                      className={`h-8 px-3 rounded-full border text-[12px] whitespace-nowrap transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#F5C518] ${active ? 'bg-[#1a1a2e] border-[#1a1a2e] text-white font-bold' : 'bg-white border-[#1a1a2e]/15 text-[#1a1a2e]/75 font-semibold hover:border-[#1a1a2e]/40'}`}
+                    >
+                      {chip.flag && <span className="me-1" aria-hidden>{chip.flag}</span>}{chip.label}
                     </button>
                   );
                 })}

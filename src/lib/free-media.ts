@@ -47,7 +47,7 @@ export function kindOfType(type: string): MediaKind | null {
 export const PUBLIC_MEDIA_SELECT = {
   id: true, title: true, titleEn: true, type: true, url: true, coverUrl: true,
   description: true, descriptionEn: true, durationSec: true, viewCount: true,
-  previewUrl: true, waveform: true,
+  previewUrl: true, waveform: true, language: true,
   createdAt: true, categoryId: true,
   category: { select: { id: true, name: true, nameEn: true } },
 } as const;

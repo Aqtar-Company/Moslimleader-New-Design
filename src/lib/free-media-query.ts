@@ -12,6 +12,8 @@ export type PublicMediaItem = {
   /** A drawing's light display copy; `url` stays the full original for download. */
   previewUrl: string | null;
   waveform: number[] | null;
+  /** Content language code; null = not set (shown as Arabic). */
+  language: string | null;
   categoryId: number | null; category: { id: number; name: string; nameEn: string | null } | null;
 };
 export type PublicMediaCategory = { id: number; kind: MediaKind; name: string; nameEn: string | null };

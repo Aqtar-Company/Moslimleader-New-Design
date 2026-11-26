@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
@@ -97,6 +97,14 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
 
   const playId = Number(params.get('play'));
   const playing = view === 'player' ? (listed.find(i => i.id === playId) ?? listed[0] ?? null) : null;
+  // A shared link (/media/<id> redirects here with ?play=) lands ON the player, not on the
+  // header picture above it. Once, on arrival — never while browsing the list.
+  const arrivedOn = useRef(playId);
+  useEffect(() => {
+    if (!arrivedOn.current) return;
+    const el = document.getElementById('media-player');
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ block: 'start' }));
+  }, []);
   const portrait = kind === 'image' || kind === 'pdf' || kind === 'reel';
   const t = (ar: string, en: string) => (isEn ? en : ar);
 

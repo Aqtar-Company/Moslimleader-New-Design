@@ -162,7 +162,7 @@ export default function MediaPlaylist({ items, current, onPick, isEn, customOrde
   const pill = 'inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5C518]';
 
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+    <div id="media-player" className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start scroll-mt-24">
       {/* ── the player ── */}
       <div className="min-w-0 lg:col-start-1 lg:row-start-1">
         {current.kind === 'video' ? (

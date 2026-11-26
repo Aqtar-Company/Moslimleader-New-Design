@@ -7,6 +7,7 @@ import { loadMediaItem, absoluteMediaUrl } from '@/lib/free-media-query';
 import { SITE_URL, ORG_OG_IMAGE } from '@/lib/seo';
 import { KIND_LABEL } from '@/lib/free-media-shared';
 import MediaWatch from './MediaWatch';
+import { isEnglishUrl } from '@/lib/server-lang';
 
 function cut(s: string, n: number) {
   if (s.length <= n) return s;
@@ -42,6 +43,14 @@ export default async function MediaItemPage({ params }: { params: { id: string }
   if (!data) notFound();
   // A reel lives in the swipe viewer; an old /media/<id> link to one lands there.
   if (data.item.kind === 'reel') redirect(`/media/reels/${id}`);
+  // A song or a video opens INSIDE its playlist — the shared link plays this item with the
+  // rest of its category beside it, instead of a page holding one item alone. Crawlers never
+  // reach this (the middleware sends them to ./preview for the link card), so a shared link
+  // keeps its picture and title.
+  if (data.item.kind === 'audio' || data.item.kind === 'video') {
+    const sp = new URLSearchParams({ kind: data.item.kind, cat: data.item.categoryId ? String(data.item.categoryId) : 'all', play: String(id) });
+    redirect(`${isEnglishUrl() ? '/en' : ''}/media?${sp}`);
+  }
   const viewer = await getAuthUser().catch(() => null);
   const [reactions, comments] = await Promise.all([
     reactionSummaries([id], viewer?.userId ?? null).catch(() => new Map()),

@@ -1241,6 +1241,11 @@ Books are protected from download at two levels:
   الأصلي». The order is kept by `MediaBrowser` in localStorage `ml-media-order`, one per
   kind + category + language; items added later come FIRST. A search shows the library's
   order and cannot be rearranged. Rearranging pins `?play=` so the item playing never changes.
+- **`/media/<id>` of a song or video REDIRECTS into the playlist** (`/media?kind=…&cat=<its
+  category or all>&play=<id>`, `/en` kept) — the owner's rule: a shared link opens with the
+  rest of the list visible, and lands scrolled to the player (`#media-player`). Crawlers are
+  rewritten to the preview route before the page runs, so link cards are unchanged.
+  `MediaWatch` (single-item page, sleep timer) now serves only drawings and PDFs.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

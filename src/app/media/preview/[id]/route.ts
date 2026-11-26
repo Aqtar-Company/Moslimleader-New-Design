@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!item || !kind) {
     // Not ours to describe — send the crawler to the real page, marked so the middleware
     // does not rewrite it straight back here.
-    const back = new URL(req.nextUrl.pathname.replace('/media/preview/', '/media/'), SITE_URL);
+    const back = new URL(req.nextUrl.pathname.replace('/media/preview/', '/media/') + req.nextUrl.search, SITE_URL);
     back.searchParams.set('_np', '1');
     return NextResponse.redirect(back, 302);
   }

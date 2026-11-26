@@ -1247,7 +1247,10 @@ Books are protected from download at two levels:
 - **`/media/<id>` of a song or video REDIRECTS into the playlist** (`/media?kind=…&cat=<its
   category or all>&play=<id>`, `/en` kept) — the owner's rule: a shared link opens with the
   rest of the list visible, and lands scrolled to the player (`#media-player`). Crawlers are
-  rewritten to the preview route before the page runs, so link cards are unchanged.
+  rewritten to the preview route before the page runs, so link cards are unchanged. The
+  playlist's OWN address (`/media?play=<id>`, what people copy from the address bar) is
+  rewritten for crawlers too (`mediaPreviewId()` in middleware, `/en` included) — it used
+  to unfurl as the library's generic card with no song picture.
   `MediaWatch` (single-item page, sleep timer) now serves only drawings and PDFs.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 

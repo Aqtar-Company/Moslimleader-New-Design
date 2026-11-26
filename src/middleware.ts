@@ -31,6 +31,18 @@ const POST_PATH = /^\/tareeq\/(c[a-z0-9]{20,32})$/;
 /** A media item or a reel: /media/<id>, /media/reels/<id>. */
 const MEDIA_PATH = /^\/media\/(?:reels\/)?(\d{1,9})$/;
 
+/**
+ * The link-card document for a crawler, or null. Two addresses name one media item: its own
+ * page (/media/<id>) and the playlist playing it (/media?play=<id>) — the second is what a
+ * visitor copies from the address bar, and it used to unfurl as the library's generic card.
+ */
+function mediaPreviewId(path: string, sp: URLSearchParams): string | null {
+  const m = MEDIA_PATH.exec(path);
+  if (m) return m[1];
+  if (path === '/media') { const p = sp.get('play'); if (p && /^\d{1,9}$/.test(p)) return p; }
+  return null;
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isRead = req.method === 'GET' || req.method === 'HEAD';
@@ -43,6 +55,9 @@ export async function middleware(req: NextRequest) {
   if (isRead && (pathname === '/en' || pathname.startsWith('/en/'))) {
     const url = req.nextUrl.clone();
     url.pathname = pathname.slice(3) || '/';
+    const enMedia = !req.nextUrl.searchParams.has('_np') && UNFURL_BOT.test(req.headers.get('user-agent') ?? '')
+      ? mediaPreviewId(url.pathname, req.nextUrl.searchParams) : null;
+    if (enMedia) { url.pathname = `/media/preview/${enMedia}`; return NextResponse.rewrite(url); }
     const h = new Headers(req.headers);
     h.set('x-ml-lang', 'en');
     h.set('x-ml-en-url', '1');
@@ -77,10 +92,10 @@ export async function middleware(req: NextRequest) {
       return NextResponse.rewrite(url);
     }
     // The same for the media library: src/app/media/preview/[id]/route.ts.
-    const mm = MEDIA_PATH.exec(pathname);
+    const mm = mediaPreviewId(pathname, req.nextUrl.searchParams);
     if (mm && UNFURL_BOT.test(req.headers.get('user-agent') ?? '')) {
       const url = req.nextUrl.clone();
-      url.pathname = `/media/preview/${mm[1]}`;
+      url.pathname = `/media/preview/${mm}`;
       return NextResponse.rewrite(url);
     }
   }

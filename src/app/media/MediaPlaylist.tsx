@@ -22,9 +22,9 @@ import MediaQuickComment from '@/components/media/MediaQuickComment';
  *
  * «تشغيل تلقائي» shares its stored switch with the item page (`ml-media-autoplay`).
  *
- * «ترتيب» lets the listener arrange the list: drag a row by its handle, or move it with the
- * up/down buttons (the keyboard and screen-reader path), «بعد الحالي» to queue it next,
- * «عشوائي» to shuffle and «الترتيب الأصلي» to undo. The order itself is kept by MediaBrowser
+ * The listener arranges the list BY HAND: drag any row (mouse), or press-and-hold then drag
+ * (finger); Alt+↑/↓ on a focused row for the keyboard. «عشوائي» shuffles and «الترتيب
+ * الأصلي» undoes. The order itself is kept by MediaBrowser
  * (per kind + category + language, in this browser); «التالي» follows it.
  */
 const AUTOPLAY_KEY = 'ml-media-autoplay';
@@ -51,9 +51,7 @@ export default function MediaPlaylist({ items, current, onPick, isEn, customOrde
   const counted = useRef(new Set<number>());
   const [autoplay, setAutoplay] = useState(true);
   const [shareOpen, setShareOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
-  useEffect(() => { if (!onReorder) setEditing(false); }, [onReorder]);
 
   const ids = items.map(i => i.id);
   const commit = (next: number[]) => { if (onReorder && next.join() !== ids.join()) onReorder(next); };
@@ -62,10 +60,6 @@ export default function MediaPlaylist({ items, current, onPick, isEn, customOrde
     const at2 = Math.max(0, Math.min(rest.length, to));
     commit([...rest.slice(0, at2), id, ...rest.slice(at2)]);
   };
-  const playAfterCurrent = (id: number) => {
-    const rest = ids.filter(x => x !== id);
-    commit([...rest.slice(0, rest.indexOf(current.id) + 1), id, ...rest.slice(rest.indexOf(current.id) + 1)]);
-  };
   const shuffle = () => {
     // The item playing stays on top, so «التالي» continues into the shuffled order.
     const rest = ids.filter(x => x !== current.id);
@@ -73,43 +67,84 @@ export default function MediaPlaylist({ items, current, onPick, isEn, customOrde
     commit([current.id, ...rest]);
   };
 
-  // Drag by the handle — pointer events, so a finger works as well as a mouse. Moves are
-  // read on WINDOW: React moves the row's DOM node as the order changes, and a moved node
-  // loses its pointer capture. The row's new place is the count of OTHER rows whose middle
-  // is above the pointer.
+  // ── Drag a row by hand ──
+  // Mouse: press any row and move it. Finger: press and HOLD a row, then drag — a quick
+  // swipe still scrolls the list, as a finger on a list expects; the grip at the row's end
+  // starts at once. Positions are read on WINDOW: React moves the row's DOM node as the
+  // order changes, and a moved node would lose a capture. The row's new place is the count
+  // of OTHER rows whose middle is above the pointer. A tap that ended a drag does not play.
   const dragRef = useRef<number | null>(null);
   const moveRef = useRef(move);
   moveRef.current = move;
-  const startDrag = (e: React.PointerEvent, id: number) => {
-    e.preventDefault();
+  const noClickUntil = useRef(0);
+  const beginDrag = (id: number) => {
     dragRef.current = id;
     setDragId(id);
-    const onMove = (ev: PointerEvent) => {
-      const dragging = dragRef.current;
-      const list = listRef.current;
-      if (dragging === null || !list) return;
+    try { navigator.vibrate?.(15); } catch { /* not supported */ }
+  };
+  const endDrag = () => {
+    if (dragRef.current !== null) noClickUntil.current = Date.now() + 400;
+    dragRef.current = null;
+    setDragId(null);
+  };
+  const placeAt = (y: number) => {
+    const dragging = dragRef.current;
+    const list = listRef.current;
+    if (dragging === null || !list) return;
+    const box = list.getBoundingClientRect();
+    if (y < box.top + 40) list.scrollBy(0, -14);
+    else if (y > box.bottom - 40) list.scrollBy(0, 14);
+    let k = 0;
+    list.querySelectorAll<HTMLElement>('li[data-id]').forEach(li => {
+      if (Number(li.dataset.id) === dragging) return;
+      const r = li.getBoundingClientRect();
+      if (r.top + r.height / 2 < y) k++;
+    });
+    moveRef.current(dragging, k);
+  };
+  const onRowPointerDown = (e: React.PointerEvent, id: number) => {
+    if (!onReorder || e.pointerType === 'touch' || e.button !== 0) return;
+    const y0 = e.clientY;
+    let started = false;
+    const mv = (ev: PointerEvent) => {
+      if (!started) { if (Math.abs(ev.clientY - y0) < 6) return; started = true; beginDrag(id); }
       ev.preventDefault();
-      const box = list.getBoundingClientRect();
-      if (ev.clientY < box.top + 36) list.scrollBy(0, -12);
-      else if (ev.clientY > box.bottom - 36) list.scrollBy(0, 12);
-      let k = 0;
-      list.querySelectorAll<HTMLElement>('li[data-id]').forEach(li => {
-        if (Number(li.dataset.id) === dragging) return;
-        const r = li.getBoundingClientRect();
-        if (r.top + r.height / 2 < ev.clientY) k++;
-      });
-      moveRef.current(dragging, k);
+      placeAt(ev.clientY);
     };
-    const onUp = () => {
-      dragRef.current = null;
-      setDragId(null);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
+    const up = () => {
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      endDrag();
     };
-    window.addEventListener('pointermove', onMove, { passive: false });
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+  const onRowTouchStart = (e: React.TouchEvent, id: number, holdMs: number) => {
+    if (!onReorder || e.touches.length !== 1) return;
+    const x0 = e.touches[0].clientX, y0 = e.touches[0].clientY;
+    let timer = window.setTimeout(() => { timer = 0; beginDrag(id); }, holdMs);
+    const cleanup = () => {
+      if (timer) window.clearTimeout(timer);
+      window.removeEventListener('touchmove', mv);
+      window.removeEventListener('touchend', end);
+      window.removeEventListener('touchcancel', end);
+    };
+    function mv(ev: TouchEvent) {
+      const p = ev.touches[0];
+      if (dragRef.current === null) {
+        // Moved before the hold completed: it is a scroll, not a drag.
+        if (Math.hypot(p.clientX - x0, p.clientY - y0) > 8) cleanup();
+        return;
+      }
+      ev.preventDefault();
+      placeAt(p.clientY);
+    }
+    function end() { cleanup(); endDrag(); }
+    window.addEventListener('touchmove', mv, { passive: false });
+    window.addEventListener('touchend', end);
+    window.addEventListener('touchcancel', end);
   };
 
   const at = items.findIndex(i => i.id === current.id);
@@ -241,49 +276,48 @@ export default function MediaPlaylist({ items, current, onPick, isEn, customOrde
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-gray-400 tabular-nums">{at + 1} / {items.length}</span>
             {onReorder && items.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setEditing(v => !v)}
-                aria-pressed={editing}
-                className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${editing ? 'bg-[#F5C518] text-[#1a1a2e]' : 'bg-[#EFEBE2] text-[#1a1a2e] hover:bg-[#E5DFD2]'}`}
-              >
-                {editing ? <><Icon name="check" size={14} /> {t('تم', 'Done')}</> : <><Icon name="sort" size={14} /> {t('ترتيب', 'Arrange')}</>}
-              </button>
+              <>
+                <button type="button" onClick={shuffle} title={t('عشوائي', 'Shuffle')} aria-label={t('ترتيب عشوائي', 'Shuffle')} className="w-7 h-7 inline-flex items-center justify-center rounded-md bg-[#EFEBE2] text-[#1a1a2e] hover:bg-[#E5DFD2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
+                  <Icon name="shuffle" size={15} />
+                </button>
+                {customOrder && onResetOrder && (
+                  <button type="button" onClick={onResetOrder} title={t('الترتيب الأصلي', 'Original order')} aria-label={t('الترتيب الأصلي', 'Original order')} className="w-7 h-7 inline-flex items-center justify-center rounded-md bg-[#EFEBE2] text-[#1a1a2e] hover:bg-[#E5DFD2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
+                    <Icon name="undo" size={15} className="icon-dir-flip" />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
-        {editing && (
-          <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-[#FAF8F3]">
-            <p className="w-full text-[11px] text-gray-500">{t('اسحب من المقبض أو استخدم الأسهم. الترتيب محفوظ على هذا الجهاز.', 'Drag by the handle or use the arrows. Your order is saved on this device.')}</p>
-            <button type="button" onClick={shuffle} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-bold bg-white border border-gray-200 text-[#1a1a2e] hover:bg-[#EFEBE2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
-              <Icon name="shuffle" size={14} /> {t('عشوائي', 'Shuffle')}
-            </button>
-            {customOrder && onResetOrder && (
-              <button type="button" onClick={onResetOrder} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-bold bg-white border border-gray-200 text-[#1a1a2e] hover:bg-[#EFEBE2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
-                <Icon name="undo" size={14} className="icon-dir-flip" /> {t('الترتيب الأصلي', 'Original order')}
-              </button>
-            )}
-          </div>
+        {onReorder && items.length > 1 && (
+          <p className="px-4 py-1.5 text-[11px] text-gray-400 border-b border-gray-100 flex items-center gap-1.5">
+            <Icon name="grip" size={13} />
+            {t('رتّبها بيدك: اسحب أي عنصر لمكانه — على الموبايل اضغط عليه مطوّلاً ثم اسحب.', 'Arrange by hand: drag any item into place — on a phone, press and hold it, then drag.')}
+          </p>
         )}
         <ul ref={listRef} className="relative max-h-[420px] lg:max-h-[560px] overflow-y-auto p-2 flex flex-col gap-1">
           {items.map((it, i) => {
             const on = it.id === current.id;
             const itTitle = isEn && it.titleEn ? it.titleEn : it.title;
             return (
-              <li key={it.id} data-id={it.id} className={`flex items-center gap-1 rounded-xl transition ${dragId === it.id ? 'bg-[#F5C518]/25 shadow-md' : ''}`}>
-                {editing && (
-                  <span
-                    role="presentation"
-                    onPointerDown={e => startDrag(e, it.id)}
-                    className="shrink-0 w-7 h-12 flex items-center justify-center text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none"
-                    title={t('اسحب لتغيير المكان', 'Drag to move')}
-                  >
-                    <Icon name="grip" size={18} />
-                  </span>
-                )}
+              <li
+                key={it.id}
+                data-id={it.id}
+                onPointerDown={e => onRowPointerDown(e, it.id)}
+                onTouchStart={e => onRowTouchStart(e, it.id, 350)}
+                onContextMenu={onReorder ? e => e.preventDefault() : undefined}
+                onDragStart={e => e.preventDefault()}
+                className={`flex items-center gap-1 rounded-xl transition select-none [-webkit-touch-callout:none] ${dragId === it.id ? 'relative z-10 scale-[1.02] bg-[#F5C518]/30 shadow-lg ring-2 ring-[#F5C518] cursor-grabbing' : ''}`}
+              >
                 <button
                   type="button"
-                  onClick={() => pick(it.id)}
+                  onClick={() => { if (Date.now() < noClickUntil.current) return; pick(it.id); }}
+                  onKeyDown={e => {
+                    // Keyboard path: Alt + ↑/↓ moves the focused item.
+                    if (!onReorder || !e.altKey) return;
+                    if (e.key === 'ArrowUp') { e.preventDefault(); move(it.id, i - 1); }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); move(it.id, i + 1); }
+                  }}
                   aria-current={on ? 'true' : undefined}
                   className={`min-w-0 flex-1 text-start flex items-center gap-3 rounded-xl p-2 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${on ? 'bg-[#1a1a2e] text-white' : 'hover:bg-[#FAF8F3] text-[#1a1a2e]'}`}
                 >
@@ -294,7 +328,7 @@ export default function MediaPlaylist({ items, current, onPick, isEn, customOrde
                     kind={it.kind}
                     coverUrl={it.coverUrl ?? null}
                     title={itTitle}
-                    className={`shrink-0 ${it.kind === 'video' ? (editing ? 'w-20 aspect-video' : 'w-28 aspect-video') : (editing ? 'w-11 aspect-square' : 'w-14 aspect-square')}`}
+                    className={`shrink-0 ${it.kind === 'video' ? 'w-24 aspect-video' : 'w-14 aspect-square'}`}
                     width={320}
                   />
                   <span className="min-w-0 flex-1">
@@ -304,20 +338,14 @@ export default function MediaPlaylist({ items, current, onPick, isEn, customOrde
                     )}
                   </span>
                 </button>
-                {editing && (
-                  <span className="shrink-0 flex flex-col items-center">
-                    <button type="button" onClick={() => move(it.id, i - 1)} disabled={i === 0} aria-label={t(`تحريك «${itTitle}» لأعلى`, `Move "${itTitle}" up`)} className="w-8 h-7 flex items-center justify-center rounded-md text-[#1a1a2e] hover:bg-[#EFEBE2] disabled:opacity-25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
-                      <Icon name="up" size={16} />
-                    </button>
-                    <button type="button" onClick={() => move(it.id, i + 1)} disabled={i === items.length - 1} aria-label={t(`تحريك «${itTitle}» لأسفل`, `Move "${itTitle}" down`)} className="w-8 h-7 flex items-center justify-center rounded-md text-[#1a1a2e] hover:bg-[#EFEBE2] disabled:opacity-25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
-                      <Icon name="down" size={16} />
-                    </button>
+                {onReorder && items.length > 1 && (
+                  <span
+                    aria-hidden
+                    onTouchStart={e => { e.stopPropagation(); onRowTouchStart(e, it.id, 0); }}
+                    className="shrink-0 w-7 h-12 flex items-center justify-center text-gray-300 hover:text-gray-500 cursor-grab touch-none"
+                  >
+                    <Icon name="grip" size={18} />
                   </span>
-                )}
-                {editing && !on && (
-                  <button type="button" onClick={() => playAfterCurrent(it.id)} title={t('تشغيل بعد الحالي', 'Play next')} aria-label={t(`تشغيل «${itTitle}» بعد الحالي`, `Play "${itTitle}" next`)} className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-[#1a1a2e] hover:bg-[#EFEBE2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
-                    <Icon name="next" size={15} />
-                  </button>
                 )}
               </li>
             );

@@ -1235,10 +1235,13 @@ Books are protected from download at two levels:
   tr, Latin-only title → en, else ar. `/media` shows a language row only when the selected kind
   holds more than one language (`?lang=`); null counts as Arabic.
   `ops/classify-media-language.mjs` (dry run, `--apply`) files the songs that predate it.
-- **A listener can arrange a /media playlist (audio and video).** «ترتيب» in the playlist
-  header (`MediaPlaylist.tsx`): drag by the handle (pointer events read on `window` — a row
-  React moves loses pointer capture), up/down arrows, «بعد الحالي», «عشوائي», «الترتيب
-  الأصلي». The order is kept by `MediaBrowser` in localStorage `ml-media-order`, one per
+- **A listener arranges a /media playlist BY HAND (audio and video)** — the owner's rule: no
+  edit mode, no arrow buttons. `MediaPlaylist.tsx`: a mouse drags any row (6px threshold, so a
+  click still plays); a finger PRESSES AND HOLDS 350ms then drags (a quick swipe still scrolls
+  the list); the grip at the row's end starts at once (`touch-none`). Moves are read on
+  `window` (a row React moves loses pointer capture); touchmove is a non-passive window
+  listener so the page does not scroll mid-drag; a click within 400ms of a drop is ignored.
+  Alt+↑/↓ on a focused row is the keyboard path. Header: «عشوائي» and «الترتيب الأصلي». The order is kept by `MediaBrowser` in localStorage `ml-media-order`, one per
   kind + category + language; items added later come FIRST. A search shows the library's
   order and cannot be rearranged. Rearranging pins `?play=` so the item playing never changes.
 - **`/media/<id>` of a song or video REDIRECTS into the playlist** (`/media?kind=…&cat=<its

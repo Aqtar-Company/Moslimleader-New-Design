@@ -1235,6 +1235,12 @@ Books are protected from download at two levels:
   tr, Latin-only title → en, else ar. `/media` shows a language row only when the selected kind
   holds more than one language (`?lang=`); null counts as Arabic.
   `ops/classify-media-language.mjs` (dry run, `--apply`) files the songs that predate it.
+- **A listener can arrange a /media playlist (audio and video).** «ترتيب» in the playlist
+  header (`MediaPlaylist.tsx`): drag by the handle (pointer events read on `window` — a row
+  React moves loses pointer capture), up/down arrows, «بعد الحالي», «عشوائي», «الترتيب
+  الأصلي». The order is kept by `MediaBrowser` in localStorage `ml-media-order`, one per
+  kind + category + language; items added later come FIRST. A search shows the library's
+  order and cannot be rearranged. Rearranging pins `?play=` so the item playing never changes.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

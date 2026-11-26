@@ -21,14 +21,24 @@ import MediaQuickComment from '@/components/media/MediaQuickComment';
  * (MediaEngage); its own page adds the sleep timer.
  *
  * «تشغيل تلقائي» shares its stored switch with the item page (`ml-media-autoplay`).
+ *
+ * «ترتيب» lets the listener arrange the list: drag a row by its handle, or move it with the
+ * up/down buttons (the keyboard and screen-reader path), «بعد الحالي» to queue it next,
+ * «عشوائي» to shuffle and «الترتيب الأصلي» to undo. The order itself is kept by MediaBrowser
+ * (per kind + category + language, in this browser); «التالي» follows it.
  */
 const AUTOPLAY_KEY = 'ml-media-autoplay';
 
-export default function MediaPlaylist({ items, current, onPick, isEn }: {
+export default function MediaPlaylist({ items, current, onPick, isEn, customOrder = false, onReorder, onResetOrder }: {
   items: PublicMediaItem[];
   current: PublicMediaItem;
   onPick: (id: number) => void;
   isEn: boolean;
+  /** The list is in the listener's own order (shows «الترتيب الأصلي»). */
+  customOrder?: boolean;
+  /** Absent while a search filters the list — a filtered list is not reordered. */
+  onReorder?: (ids: number[]) => void;
+  onResetOrder?: () => void;
 }) {
   const t = (ar: string, en: string) => (isEn ? en : ar);
   const { user } = useAuth();
@@ -41,6 +51,66 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
   const counted = useRef(new Set<number>());
   const [autoplay, setAutoplay] = useState(true);
   const [shareOpen, setShareOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [dragId, setDragId] = useState<number | null>(null);
+  useEffect(() => { if (!onReorder) setEditing(false); }, [onReorder]);
+
+  const ids = items.map(i => i.id);
+  const commit = (next: number[]) => { if (onReorder && next.join() !== ids.join()) onReorder(next); };
+  const move = (id: number, to: number) => {
+    const rest = ids.filter(x => x !== id);
+    const at2 = Math.max(0, Math.min(rest.length, to));
+    commit([...rest.slice(0, at2), id, ...rest.slice(at2)]);
+  };
+  const playAfterCurrent = (id: number) => {
+    const rest = ids.filter(x => x !== id);
+    commit([...rest.slice(0, rest.indexOf(current.id) + 1), id, ...rest.slice(rest.indexOf(current.id) + 1)]);
+  };
+  const shuffle = () => {
+    // The item playing stays on top, so «التالي» continues into the shuffled order.
+    const rest = ids.filter(x => x !== current.id);
+    for (let i = rest.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
+    commit([current.id, ...rest]);
+  };
+
+  // Drag by the handle — pointer events, so a finger works as well as a mouse. Moves are
+  // read on WINDOW: React moves the row's DOM node as the order changes, and a moved node
+  // loses its pointer capture. The row's new place is the count of OTHER rows whose middle
+  // is above the pointer.
+  const dragRef = useRef<number | null>(null);
+  const moveRef = useRef(move);
+  moveRef.current = move;
+  const startDrag = (e: React.PointerEvent, id: number) => {
+    e.preventDefault();
+    dragRef.current = id;
+    setDragId(id);
+    const onMove = (ev: PointerEvent) => {
+      const dragging = dragRef.current;
+      const list = listRef.current;
+      if (dragging === null || !list) return;
+      ev.preventDefault();
+      const box = list.getBoundingClientRect();
+      if (ev.clientY < box.top + 36) list.scrollBy(0, -12);
+      else if (ev.clientY > box.bottom - 36) list.scrollBy(0, 12);
+      let k = 0;
+      list.querySelectorAll<HTMLElement>('li[data-id]').forEach(li => {
+        if (Number(li.dataset.id) === dragging) return;
+        const r = li.getBoundingClientRect();
+        if (r.top + r.height / 2 < ev.clientY) k++;
+      });
+      moveRef.current(dragging, k);
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      setDragId(null);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
 
   const at = items.findIndex(i => i.id === current.id);
   const next = at >= 0 && at < items.length - 1 ? items[at + 1] : null;
@@ -168,19 +238,54 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
       <aside className="min-w-0 rounded-2xl bg-white border border-gray-100 overflow-hidden lg:col-start-2 lg:row-start-1 lg:row-span-2">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <h2 className="text-sm font-black text-[#1a1a2e] flex items-center gap-2"><Icon name="list" size={18} /> {t('قائمة التشغيل', 'Playlist')}</h2>
-          <span className="text-xs font-bold text-gray-400 tabular-nums">{at + 1} / {items.length}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-400 tabular-nums">{at + 1} / {items.length}</span>
+            {onReorder && items.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setEditing(v => !v)}
+                aria-pressed={editing}
+                className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${editing ? 'bg-[#F5C518] text-[#1a1a2e]' : 'bg-[#EFEBE2] text-[#1a1a2e] hover:bg-[#E5DFD2]'}`}
+              >
+                {editing ? <><Icon name="check" size={14} /> {t('تم', 'Done')}</> : <><Icon name="sort" size={14} /> {t('ترتيب', 'Arrange')}</>}
+              </button>
+            )}
+          </div>
         </div>
+        {editing && (
+          <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-[#FAF8F3]">
+            <p className="w-full text-[11px] text-gray-500">{t('اسحب من المقبض أو استخدم الأسهم. الترتيب محفوظ على هذا الجهاز.', 'Drag by the handle or use the arrows. Your order is saved on this device.')}</p>
+            <button type="button" onClick={shuffle} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-bold bg-white border border-gray-200 text-[#1a1a2e] hover:bg-[#EFEBE2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
+              <Icon name="shuffle" size={14} /> {t('عشوائي', 'Shuffle')}
+            </button>
+            {customOrder && onResetOrder && (
+              <button type="button" onClick={onResetOrder} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-bold bg-white border border-gray-200 text-[#1a1a2e] hover:bg-[#EFEBE2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
+                <Icon name="undo" size={14} className="icon-dir-flip" /> {t('الترتيب الأصلي', 'Original order')}
+              </button>
+            )}
+          </div>
+        )}
         <ul ref={listRef} className="relative max-h-[420px] lg:max-h-[560px] overflow-y-auto p-2 flex flex-col gap-1">
           {items.map((it, i) => {
             const on = it.id === current.id;
             const itTitle = isEn && it.titleEn ? it.titleEn : it.title;
             return (
-              <li key={it.id} data-id={it.id}>
+              <li key={it.id} data-id={it.id} className={`flex items-center gap-1 rounded-xl transition ${dragId === it.id ? 'bg-[#F5C518]/25 shadow-md' : ''}`}>
+                {editing && (
+                  <span
+                    role="presentation"
+                    onPointerDown={e => startDrag(e, it.id)}
+                    className="shrink-0 w-7 h-12 flex items-center justify-center text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none"
+                    title={t('اسحب لتغيير المكان', 'Drag to move')}
+                  >
+                    <Icon name="grip" size={18} />
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => pick(it.id)}
                   aria-current={on ? 'true' : undefined}
-                  className={`w-full text-start flex items-center gap-3 rounded-xl p-2 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${on ? 'bg-[#1a1a2e] text-white' : 'hover:bg-[#FAF8F3] text-[#1a1a2e]'}`}
+                  className={`min-w-0 flex-1 text-start flex items-center gap-3 rounded-xl p-2 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518] ${on ? 'bg-[#1a1a2e] text-white' : 'hover:bg-[#FAF8F3] text-[#1a1a2e]'}`}
                 >
                   <span className={`w-6 shrink-0 text-center text-xs font-bold tabular-nums ${on ? 'text-[#F5C518]' : 'text-gray-400'}`}>
                     {on ? <Icon name="play" size={14} className="mx-auto" /> : i + 1}
@@ -189,7 +294,7 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
                     kind={it.kind}
                     coverUrl={it.coverUrl ?? null}
                     title={itTitle}
-                    className={`shrink-0 ${it.kind === 'video' ? 'w-28 aspect-video' : 'w-14 aspect-square'}`}
+                    className={`shrink-0 ${it.kind === 'video' ? (editing ? 'w-20 aspect-video' : 'w-28 aspect-video') : (editing ? 'w-11 aspect-square' : 'w-14 aspect-square')}`}
                     width={320}
                   />
                   <span className="min-w-0 flex-1">
@@ -199,6 +304,21 @@ export default function MediaPlaylist({ items, current, onPick, isEn }: {
                     )}
                   </span>
                 </button>
+                {editing && (
+                  <span className="shrink-0 flex flex-col items-center">
+                    <button type="button" onClick={() => move(it.id, i - 1)} disabled={i === 0} aria-label={t(`تحريك «${itTitle}» لأعلى`, `Move "${itTitle}" up`)} className="w-8 h-7 flex items-center justify-center rounded-md text-[#1a1a2e] hover:bg-[#EFEBE2] disabled:opacity-25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
+                      <Icon name="up" size={16} />
+                    </button>
+                    <button type="button" onClick={() => move(it.id, i + 1)} disabled={i === items.length - 1} aria-label={t(`تحريك «${itTitle}» لأسفل`, `Move "${itTitle}" down`)} className="w-8 h-7 flex items-center justify-center rounded-md text-[#1a1a2e] hover:bg-[#EFEBE2] disabled:opacity-25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
+                      <Icon name="down" size={16} />
+                    </button>
+                  </span>
+                )}
+                {editing && !on && (
+                  <button type="button" onClick={() => playAfterCurrent(it.id)} title={t('تشغيل بعد الحالي', 'Play next')} aria-label={t(`تشغيل «${itTitle}» بعد الحالي`, `Play "${itTitle}" next`)} className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-[#1a1a2e] hover:bg-[#EFEBE2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5C518]">
+                    <Icon name="next" size={15} />
+                  </button>
+                )}
               </li>
             );
           })}

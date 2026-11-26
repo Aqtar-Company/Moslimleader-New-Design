@@ -13,9 +13,13 @@ export type IconName =
   | 'back' | 'forward' | 'moon' | 'search' | 'upload' | 'trash' | 'edit' | 'eye' | 'check'
   | 'close' | 'zap' | 'mail' | 'external' | 'next' | 'tag' | 'grid' | 'up' | 'down' | 'loader'
   | 'alert' | 'book' | 'cart' | 'heart' | 'info' | 'badge' | 'reel' | 'comment' | 'volume' | 'mute' | 'send' | 'smile' | 'link' | 'more' | 'list' | 'expand' | 'bell' | 'bell-on'
-  | 'shirt' | 'hoodie' | 'swatch' | 'resize';
+  | 'shirt' | 'hoodie' | 'swatch' | 'resize' | 'grip' | 'shuffle' | 'undo' | 'sort';
 
 const PATHS: Record<IconName, JSX.Element> = {
+  grip: <><circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none" /><circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none" /><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none" /><circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none" /></>,
+  shuffle: <><path d="M3.5 7h3.5c4.5 0 6.5 10 11 10h2.5M3.5 17h3.5c1.6 0 2.8-1.3 3.8-3M14 8.5C15 7.6 16.2 7 18 7h2.5" /><path d="M18 4.5L20.5 7 18 9.5M18 14.5l2.5 2.5-2.5 2.5" /></>,
+  undo: <><path d="M8 5L3.5 9.5 8 14" /><path d="M3.5 9.5H14a5 5 0 010 10h-4" /></>,
+  sort: <><path d="M7 4v16M3.5 16.5L7 20l3.5-3.5" /><path d="M17 20V4M13.5 7.5L17 4l3.5 3.5" /></>,
   shirt: <path d="M8 3.5L3.5 5.5 2.5 10l3.5 1V20.5h12V11l3.5-1-1-4.5L16 3.5a4 4 0 01-8 0z" />,
   hoodie: <><path d="M8.5 5L4.5 7 2.5 19h3l1.5-7.5v9h10v-9l1.5 7.5h3l-2-12-4-2" /><path d="M8.5 5c0-1.8 1.6-2.8 3.5-2.8s3.5 1 3.5 2.8c0 2.2-1.6 3.5-3.5 3.5S8.5 7.2 8.5 5z" /><path d="M9.5 16.5h5" /></>,
   swatch: <><rect x="3.5" y="3.5" width="17" height="17" rx="3" /><path d="M3.5 15.5l5-4 4 3 3-2.5 5 4" /></>,

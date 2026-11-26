@@ -77,8 +77,26 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
     (!langFilter || itemLang(i) === langFilter) &&
     (!q || i.title.toLowerCase().includes(q) || (i.titleEn ?? '').toLowerCase().includes(q) || (i.description ?? '').toLowerCase().includes(q)),
   );
+  // The listener's OWN order of a playlist — one per kind + category + language, kept in
+  // this browser. A search shows the library's order (a filtered list is not reordered).
+  const orderKey = `${kind}:${cat ?? 'all'}:${langFilter ?? 'all'}`;
+  const [orders, setOrders] = useState<Record<string, number[]>>({});
+  useEffect(() => { setOrders(readOrders()); }, []);
+  const saveOrder = (ids: number[] | null) => {
+    const nextOrders = { ...orders };
+    if (ids) nextOrders[orderKey] = ids; else delete nextOrders[orderKey];
+    setOrders(nextOrders);
+    try { localStorage.setItem(ORDER_STORE, JSON.stringify(nextOrders)); } catch { /* private mode */ }
+    // Rearranging must not change what is playing: with no `play` in the URL the player
+    // shows the list's FIRST item, which a move to the top would otherwise replace.
+    if (playing && !params.get('play')) setParam({ play: playing.id });
+  };
+  const reorderable = view === 'player' && !q;
+  const savedOrder = reorderable ? orders[orderKey] : undefined;
+  const listed = savedOrder ? applyOrder(shown, savedOrder) : shown;
+
   const playId = Number(params.get('play'));
-  const playing = view === 'player' ? (shown.find(i => i.id === playId) ?? shown[0] ?? null) : null;
+  const playing = view === 'player' ? (listed.find(i => i.id === playId) ?? listed[0] ?? null) : null;
   const portrait = kind === 'image' || kind === 'pdf' || kind === 'reel';
   const t = (ar: string, en: string) => (isEn ? en : ar);
 
@@ -225,7 +243,15 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
             {shown.length === 0 ? (
               <p className="text-center text-gray-400 py-16">{t('لا نتائج هنا.', 'Nothing here.')}</p>
             ) : playing ? (
-              <MediaPlaylist items={shown} current={playing} onPick={id => setParam({ play: id })} isEn={isEn} />
+              <MediaPlaylist
+                items={listed}
+                current={playing}
+                onPick={id => setParam({ play: id })}
+                isEn={isEn}
+                customOrder={!!savedOrder}
+                onReorder={reorderable ? ids => saveOrder(ids) : undefined}
+                onResetOrder={() => saveOrder(null)}
+              />
             ) : (
               <div className={`grid gap-x-4 gap-y-7 ${portrait ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
                 {shown.map(item => {
@@ -271,4 +297,28 @@ export default function MediaBrowser({ items, categories, heroUrl }: { items: Pu
       </div>
     </div>
   );
+}
+
+const ORDER_STORE = 'ml-media-order';
+
+function readOrders(): Record<string, number[]> {
+  try {
+    const v = JSON.parse(localStorage.getItem(ORDER_STORE) || '{}');
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+    const out: Record<string, number[]> = {};
+    for (const [k, ids] of Object.entries(v)) {
+      if (Array.isArray(ids)) out[k] = ids.filter((n): n is number => Number.isInteger(n));
+    }
+    return out;
+  } catch { return {}; }
+}
+
+/** A saved order applied to today's list: items added since the listener arranged it come
+ *  FIRST (they are the new ones), then the rest in the listener's order; ids that no longer
+ *  exist are simply skipped. */
+function applyOrder<T extends { id: number }>(items: T[], ids: number[]): T[] {
+  const pos = new Map(ids.map((id, i) => [id, i]));
+  const fresh = items.filter(i => !pos.has(i.id));
+  const known = items.filter(i => pos.has(i.id)).sort((a, b) => pos.get(a.id)! - pos.get(b.id)!);
+  return [...fresh, ...known];
 }
